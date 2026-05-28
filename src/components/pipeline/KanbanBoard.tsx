@@ -186,7 +186,7 @@ export function KanbanBoard({
   const handleDrop = (stageName: string) => {
     if (!draggingDealId) return;
     const deal = deals.find(d => d.id === draggingDealId);
-    if (deal && deal.stage !== stageName) {
+    if (deal && stageNameToId(deal.stage) !== stageNameToId(stageName)) {
       onMoveDeal(draggingDealId, stageName);
     }
     setDraggingDealId(null);
