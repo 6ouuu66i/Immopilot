@@ -38,12 +38,13 @@ interface DealCardProps {
   deal: Deal;
   store: Store;
   selected: boolean;
+  isDragging?: boolean;
   onSelect: () => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
 }
 
-function DealCard({ deal, store, selected, onSelect, onDragStart, onDragEnd }: DealCardProps) {
+function DealCard({ deal, store, selected, isDragging, onSelect, onDragStart, onDragEnd }: DealCardProps) {
   const property = store.getProperty(deal.propertyId);
   const agent    = store.getAgents().find(a => a.id === deal.ownerId);
   const photo    = property?.photos[0] ?? '';
@@ -55,7 +56,7 @@ function DealCard({ deal, store, selected, onSelect, onDragStart, onDragEnd }: D
 
   return (
     <article
-      className="deal-card"
+      className={`deal-card${isDragging ? ' dragging' : ''}`}
       style={{ outline: selected ? '2px solid #1E5A3A' : 'none', outlineOffset: 2 }}
       draggable
       onDragStart={onDragStart}
@@ -112,6 +113,7 @@ interface KanbanColumnProps {
   deals: Deal[];
   store: Store;
   selectedDealId: string | null;
+  draggingDealId: string | null;
   onSelectDeal: (dealId: string) => void;
   onDrop: (stageName: string) => void;
   onDragStart: (dealId: string) => void;
@@ -119,7 +121,7 @@ interface KanbanColumnProps {
 }
 
 function KanbanColumn({
-  stage, deals, store, selectedDealId,
+  stage, deals, store, selectedDealId, draggingDealId,
   onSelectDeal, onDrop, onDragStart, onDragEnd,
 }: KanbanColumnProps) {
   const [dragOver, setDragOver] = useState(false);
@@ -155,6 +157,7 @@ function KanbanColumn({
               deal={deal}
               store={store}
               selected={selectedDealId === deal.id}
+              isDragging={draggingDealId === deal.id}
               onSelect={() => onSelectDeal(deal.id)}
               onDragStart={e => {
                 e.dataTransfer.setData('text/plain', deal.id);
@@ -204,6 +207,7 @@ export function KanbanBoard({
             deals={stageDeals}
             store={store}
             selectedDealId={selectedDealId}
+            draggingDealId={draggingDealId}
             onSelectDeal={onSelectDeal}
             onDrop={handleDrop}
             onDragStart={setDraggingDealId}

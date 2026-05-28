@@ -114,6 +114,7 @@ export function PipelineListView({
   deals, stages, onSelectDeal, selectedDealId, store,
 }: PipelineListViewProps) {
   const [draggingDealId, setDraggingDealId] = useState<string | null>(null);
+  const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
 
   const handleDrop = (stageName: string, e: React.DragEvent) => {
     e.preventDefault();
@@ -135,10 +136,11 @@ export function PipelineListView({
         return (
           <div
             key={stage.id}
-            className="list-group"
+            className={`list-group${dragOverStageId === stageId ? ' drag-over' : ''}`}
             data-stage={stageId}
-            onDragOver={e => e.preventDefault()}
-            onDrop={e => handleDrop(stage.name, e)}
+            onDragOver={e => { e.preventDefault(); setDragOverStageId(stageId); }}
+            onDragLeave={() => setDragOverStageId(null)}
+            onDrop={e => { setDragOverStageId(null); handleDrop(stage.name, e); }}
           >
             <div className="list-group-head">
               {stage.name}
