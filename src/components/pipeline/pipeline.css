@@ -168,7 +168,12 @@
 }
 .deal-card:hover::before { opacity: 1; transform: scaleY(1); }
 .deal-card:active { cursor: grabbing; }
-.deal-card.dragging { visibility: hidden; }
+.deal-card.dragging { opacity: 0; pointer-events: none; transition: none; }
+
+@keyframes drag-wiggle {
+  0%, 100% { transform: rotate(-1.8deg) translateY(0); }
+  50%       { transform: rotate(1.8deg) translateY(-3px); }
+}
 .dc-img {
   position: relative;
   width: 100%;
@@ -347,7 +352,7 @@
   transition: opacity 200ms ease, transform 240ms cubic-bezier(0.34, 1.2, 0.64, 1);
 }
 .list-row:hover::before { opacity: 1; transform: scaleY(1); }
-.list-row.dragging { visibility: hidden; }
+.list-row.dragging { opacity: 0; pointer-events: none; transition: none; }
 .lr-thumb {
   width: 80px; height: 56px;
   border-radius: 6px;

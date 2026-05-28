@@ -1,5 +1,5 @@
 // src/components/pipeline/PipelineListView.tsx
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { store as appStore } from '../../lib/store';
 import type { Deal } from '../../types';
 
@@ -31,18 +31,25 @@ function stageNameToId(name: string): string {
   return 'nouveau';
 }
 
+const BLANK_IMG = (() => {
+  const img = new Image(1, 1);
+  img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+  return img;
+})();
+
 // ── List Row ───────────────────────────────────────────────────────────────────
 
 interface ListRowProps {
   deal: Deal;
   store: Store;
   selected: boolean;
+  isDragging: boolean;
   onSelect: () => void;
-  onDragStart: (e: React.DragEvent) => void;
+  onDragStart: (e: React.DragEvent<HTMLElement>) => void;
   onDragEnd: () => void;
 }
 
-function ListRow({ deal, store, selected, onSelect, onDragStart, onDragEnd }: ListRowProps) {
+function ListRow({ deal, store, selected, isDragging, onSelect, onDragStart, onDragEnd }: ListRowProps) {
   const property = store.getProperty(deal.propertyId);
   const agent    = store.getAgents().find(a => a.id === deal.ownerId);
   const score    = property?.score ?? 70;
@@ -53,7 +60,7 @@ function ListRow({ deal, store, selected, onSelect, onDragStart, onDragEnd }: Li
 
   return (
     <div
-      className="list-row"
+      className={`list-row${isDragging ? ' dragging' : ''}`}
       style={{ outline: selected ? '2px solid #1E5A3A' : 'none', outlineOffset: -2 }}
       draggable
       onDragStart={onDragStart}
@@ -115,15 +122,70 @@ export function PipelineListView({
 }: PipelineListViewProps) {
   const [draggingDealId, setDraggingDealId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
+  const draggingRef = useRef<string | null>(null);
+  const ghostRef    = useRef<HTMLDivElement | null>(null);
+  const offsetRef   = useRef({ x: 0, y: 0 });
 
-  const handleDrop = (stageName: string, e: React.DragEvent) => {
-    e.preventDefault();
-    if (!draggingDealId) return;
-    const deal = deals.find(d => d.id === draggingDealId);
-    if (deal && stageNameToId(deal.stage) !== stageNameToId(stageName)) {
-      store.moveDealStage(draggingDealId, stageName);
-    }
+  // Follow cursor during drag
+  useEffect(() => {
+    const move = (e: DragEvent) => {
+      const ghost = ghostRef.current;
+      if (!ghost) return;
+      ghost.style.left = `${e.clientX - offsetRef.current.x}px`;
+      ghost.style.top  = `${e.clientY - offsetRef.current.y}px`;
+    };
+    document.addEventListener('dragover', move);
+    return () => document.removeEventListener('dragover', move);
+  }, []);
+
+  const startDrag = (dealId: string, e: React.DragEvent<HTMLElement>) => {
+    e.dataTransfer.setDragImage(BLANK_IMG, 0, 0);
+    e.dataTransfer.setData('text/plain', dealId);
+    e.dataTransfer.effectAllowed = 'move';
+
+    const source = e.currentTarget as HTMLElement;
+    const rect   = source.getBoundingClientRect();
+    offsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+    const ghost = source.cloneNode(true) as HTMLDivElement;
+    ghost.style.cssText = [
+      'position:fixed',
+      `left:${rect.left}px`,
+      `top:${rect.top}px`,
+      `width:${rect.width}px`,
+      'z-index:9999',
+      'pointer-events:none',
+      'opacity:0.96',
+      'border-radius:8px',
+      'box-shadow:0 14px 32px -8px rgba(29,31,30,0.38),0 6px 14px -4px rgba(30,90,58,0.18)',
+      'border:1.5px solid #1E5A3A',
+      'animation:drag-wiggle 360ms ease-in-out infinite',
+      'transform-origin:center left',
+      'will-change:transform,left,top',
+    ].join(';');
+    document.body.appendChild(ghost);
+    ghostRef.current = ghost;
+
+    draggingRef.current = dealId;
+    requestAnimationFrame(() => setDraggingDealId(dealId));
+  };
+
+  const endDrag = () => {
+    ghostRef.current?.remove();
+    ghostRef.current    = null;
+    draggingRef.current = null;
     setDraggingDealId(null);
+    setDragOverStageId(null);
+  };
+
+  const handleDrop = (stageName: string) => {
+    const id = draggingRef.current;
+    if (!id) return;
+    const deal = deals.find(d => d.id === id);
+    if (deal && stageNameToId(deal.stage) !== stageNameToId(stageName)) {
+      store.moveDealStage(id, stageName);
+    }
+    endDrag();
   };
 
   return (
@@ -138,9 +200,12 @@ export function PipelineListView({
             key={stage.id}
             className={`list-group${dragOverStageId === stageId ? ' drag-over' : ''}`}
             data-stage={stageId}
-            onDragOver={e => { e.preventDefault(); setDragOverStageId(stageId); }}
-            onDragLeave={() => setDragOverStageId(null)}
-            onDrop={e => { setDragOverStageId(null); handleDrop(stage.name, e); }}
+            onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverStageId(stageId); }}
+            onDragLeave={e => {
+              const related = e.relatedTarget as Node | null;
+              if (!related || !e.currentTarget.contains(related)) setDragOverStageId(null);
+            }}
+            onDrop={() => handleDrop(stage.name)}
           >
             <div className="list-group-head">
               {stage.name}
@@ -160,13 +225,10 @@ export function PipelineListView({
                   deal={deal}
                   store={store}
                   selected={selectedDealId === deal.id}
+                  isDragging={draggingDealId === deal.id}
                   onSelect={() => onSelectDeal(deal.id)}
-                  onDragStart={e => {
-                    e.dataTransfer.setData('text/plain', deal.id);
-                    e.dataTransfer.effectAllowed = 'move';
-                    setDraggingDealId(deal.id);
-                  }}
-                  onDragEnd={() => setDraggingDealId(null)}
+                  onDragStart={e => startDrag(deal.id, e)}
+                  onDragEnd={endDrag}
                 />
               ))
             )}

@@ -1,5 +1,5 @@
 // src/components/pipeline/KanbanBoard.tsx
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { store as appStore } from '../../lib/store';
 import type { Deal } from '../../types';
 
@@ -32,15 +32,22 @@ function stageNameToId(name: string): string {
   return 'nouveau';
 }
 
+// Transparent 1×1 PNG used to suppress the native drag ghost
+const BLANK_IMG = (() => {
+  const img = new Image(1, 1);
+  img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+  return img;
+})();
+
 // ── Deal Card ──────────────────────────────────────────────────────────────────
 
 interface DealCardProps {
   deal: Deal;
   store: Store;
   selected: boolean;
-  isDragging?: boolean;
+  isDragging: boolean;
   onSelect: () => void;
-  onDragStart: (e: React.DragEvent) => void;
+  onDragStart: (e: React.DragEvent<HTMLElement>) => void;
   onDragEnd: () => void;
 }
 
@@ -90,7 +97,6 @@ function DealCard({ deal, store, selected, isDragging, onSelect, onDragStart, on
           {property?.city ?? '—'}
         </div>
         <div className="dc-price">{fmt(deal.price)}</div>
-        {/* Clean divider replacing the legacy wavy SVG */}
         <div style={{ borderTop: '1px solid #E6E4DF', margin: '10px 0 8px' }} />
         <div className="dc-foot">
           <div className="dc-owner">
@@ -116,7 +122,7 @@ interface KanbanColumnProps {
   draggingDealId: string | null;
   onSelectDeal: (dealId: string) => void;
   onDrop: (stageName: string) => void;
-  onDragStart: (dealId: string) => void;
+  onDragStart: (dealId: string, e: React.DragEvent<HTMLElement>) => void;
   onDragEnd: () => void;
 }
 
@@ -132,9 +138,17 @@ function KanbanColumn({
     <div
       className={`column${dragOver ? ' drag-over' : ''}`}
       data-stage={stageId}
-      onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={e => { e.preventDefault(); setDragOver(false); onDrop(stage.name); }}
+      onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOver(true); }}
+      onDragLeave={e => {
+        // Only clear when the pointer truly leaves this column (not into a child)
+        const related = e.relatedTarget as Node | null;
+        if (!related || !e.currentTarget.contains(related)) setDragOver(false);
+      }}
+      onDrop={e => {
+        e.preventDefault();
+        setDragOver(false);
+        onDrop(stage.name);
+      }}
     >
       <div className="column-head">
         <div className="column-head-row">
@@ -159,11 +173,7 @@ function KanbanColumn({
               selected={selectedDealId === deal.id}
               isDragging={draggingDealId === deal.id}
               onSelect={() => onSelectDeal(deal.id)}
-              onDragStart={e => {
-                e.dataTransfer.setData('text/plain', deal.id);
-                e.dataTransfer.effectAllowed = 'move';
-                onDragStart(deal.id);
-              }}
+              onDragStart={e => onDragStart(deal.id, e)}
               onDragEnd={onDragEnd}
             />
           ))
@@ -185,14 +195,73 @@ export function KanbanBoard({
   deals, stages, onSelectDeal, onMoveDeal, selectedDealId, store,
 }: KanbanBoardProps) {
   const [draggingDealId, setDraggingDealId] = useState<string | null>(null);
+  // We keep a ref alongside state so handleDrop always reads the live value
+  const draggingRef = useRef<string | null>(null);
+  const ghostRef    = useRef<HTMLDivElement | null>(null);
+  const offsetRef   = useRef({ x: 0, y: 0 });
+
+  // Follow cursor during drag via document-level dragover
+  useEffect(() => {
+    const move = (e: DragEvent) => {
+      const ghost = ghostRef.current;
+      if (!ghost) return;
+      ghost.style.left = `${e.clientX - offsetRef.current.x}px`;
+      ghost.style.top  = `${e.clientY - offsetRef.current.y}px`;
+    };
+    document.addEventListener('dragover', move);
+    return () => document.removeEventListener('dragover', move);
+  }, []);
+
+  const startDrag = (dealId: string, e: React.DragEvent<HTMLElement>) => {
+    // Suppress native ghost
+    e.dataTransfer.setDragImage(BLANK_IMG, 0, 0);
+    e.dataTransfer.setData('text/plain', dealId);
+    e.dataTransfer.effectAllowed = 'move';
+
+    // Build animated ghost clone
+    const source = e.currentTarget as HTMLElement;
+    const rect   = source.getBoundingClientRect();
+    offsetRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+    const ghost = source.cloneNode(true) as HTMLDivElement;
+    ghost.style.cssText = [
+      'position:fixed',
+      `left:${rect.left}px`,
+      `top:${rect.top}px`,
+      `width:${rect.width}px`,
+      'z-index:9999',
+      'pointer-events:none',
+      'opacity:0.96',
+      'border-radius:8px',
+      'box-shadow:0 14px 32px -8px rgba(29,31,30,0.38),0 6px 14px -4px rgba(30,90,58,0.18)',
+      'border:1.5px solid #1E5A3A',
+      'animation:drag-wiggle 360ms ease-in-out infinite',
+      'transform-origin:center top',
+      'will-change:transform,left,top',
+    ].join(';');
+    document.body.appendChild(ghost);
+    ghostRef.current = ghost;
+
+    draggingRef.current = dealId;
+    // Delay opacity change so ghost paints before source fades
+    requestAnimationFrame(() => setDraggingDealId(dealId));
+  };
+
+  const endDrag = () => {
+    ghostRef.current?.remove();
+    ghostRef.current    = null;
+    draggingRef.current = null;
+    setDraggingDealId(null);
+  };
 
   const handleDrop = (stageName: string) => {
-    if (!draggingDealId) return;
-    const deal = deals.find(d => d.id === draggingDealId);
+    const id = draggingRef.current; // always fresh, never stale
+    if (!id) return;
+    const deal = deals.find(d => d.id === id);
     if (deal && stageNameToId(deal.stage) !== stageNameToId(stageName)) {
-      onMoveDeal(draggingDealId, stageName);
+      onMoveDeal(id, stageName);
     }
-    setDraggingDealId(null);
+    endDrag();
   };
 
   return (
@@ -210,8 +279,8 @@ export function KanbanBoard({
             draggingDealId={draggingDealId}
             onSelectDeal={onSelectDeal}
             onDrop={handleDrop}
-            onDragStart={setDraggingDealId}
-            onDragEnd={() => setDraggingDealId(null)}
+            onDragStart={startDrag}
+            onDragEnd={endDrag}
           />
         );
       })}
