@@ -31,13 +31,9 @@ export function DealFichePanel({ deal, store, onClose, onMoveDeal }: DealFichePa
     deal.stage === 'Bien vendu' ? 'Reçue' :
     deal.stage === 'Perdu'      ? 'Annulée' : 'Ouverte';
 
-  const sellerInitials = (contact?.name ?? deal.title)
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w: string) => w[0])
-    .join('')
-    .toUpperCase();
+  const sellerInitials = contact
+    ? contact.name.split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase()
+    : '?';
 
   const handleAddNote = () => {
     if (!noteDraft.trim()) return;
@@ -117,7 +113,7 @@ export function DealFichePanel({ deal, store, onClose, onMoveDeal }: DealFichePa
               <div
                 key={stage.id}
                 className={`step ${cls}`}
-                onClick={() => onMoveDeal(deal.id, stage.name)}
+                onClick={() => { if (stage.name !== deal.stage) onMoveDeal(deal.id, stage.name); }}
               >
                 <div className="step-icon">
                   {idx < currentStageIdx && (
@@ -195,7 +191,7 @@ export function DealFichePanel({ deal, store, onClose, onMoveDeal }: DealFichePa
                 <div className="mc-label">Notes</div>
                 <div className="notes-list">
                   {deal.notes.slice(0, 3).map((note, i) => (
-                    <div key={i} className="note-item">
+                    <div key={`note-${i}-${note.slice(0, 20)}`} className="note-item">
                       <div className="note-avatar">{sellerInitials}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="note-header">
@@ -255,7 +251,7 @@ export function DealFichePanel({ deal, store, onClose, onMoveDeal }: DealFichePa
                 </div>
                 <div className="commission-row">
                   <span className="ck">Pourcentage</span>
-                  <span className="cv">3,00 %</span>
+                  <span className="cv">{deal.price > 0 ? ((deal.commissionAmount / deal.price) * 100).toLocaleString('fr-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '3,00'} %</span>
                 </div>
                 <div className="commission-row">
                   <span className="ck">Statut</span>
