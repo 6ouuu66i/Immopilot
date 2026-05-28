@@ -14,10 +14,10 @@ import { renderInteractiveMap, hasValidKey } from './lib/maps';
 import { AppShell } from './components/AppShell';
 import { Dashboard } from './pages/Dashboard';
 import { Biens } from './pages/Biens';
+import { Pipeline } from './pages/Pipeline';
 
 import biensHtml from './pages/biens.html?raw';
 import inboxHtml from './pages/inbox.html?raw';
-import pipelineHtml from './pages/pipeline.html?raw';
 import contactsHtml from './pages/contacts.html?raw';
 import testsHtml from './pages/tests.html?raw';
 import agendaHtml from './pages/agenda.html?raw';
@@ -43,7 +43,6 @@ const DEFAULT_ROUTE: RouteKey = 'dashboard';
 
 const legacyRoutes: Partial<Record<RouteKey, string>> = {
   inbox: inboxHtml,
-  pipeline: pipelineHtml,
   contacts: contactsHtml,
   tests: testsHtml,
   agenda: agendaHtml,
@@ -56,7 +55,7 @@ const legacyRoutes: Partial<Record<RouteKey, string>> = {
 function getRouteFromHash(): RouteKey {
   const rawHash = window.location.hash.replace(/^#/, '') || DEFAULT_ROUTE;
   const routeName = rawHash.split('?')[0] as RouteKey;
-  if (routeName === 'dashboard' || routeName === 'biens' || legacyRoutes[routeName]) return routeName;
+  if (routeName === 'dashboard' || routeName === 'biens' || routeName === 'pipeline' || legacyRoutes[routeName]) return routeName;
   return DEFAULT_ROUTE;
 }
 
@@ -132,6 +131,8 @@ function App() {
         <Dashboard store={store} />
       ) : route === 'biens' ? (
         <Biens store={store} />
+      ) : route === 'pipeline' ? (
+        <Pipeline store={store} />
       ) : legacyHtml ? (
         <LegacyPage html={legacyHtml} route={route} />
       ) : (
