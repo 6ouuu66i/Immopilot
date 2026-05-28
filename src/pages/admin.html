@@ -1,0 +1,1735 @@
+<div class="agenda-page">
+  <style>
+    .agenda-page {
+      display: flex;
+      flex-direction: column;
+      padding: 24px 28px 48px;
+      min-width: 0;
+      flex: 1;
+      height: 100%;
+      overflow-y: auto;
+      
+      background-color: #FBF9F4 !important; /* Premium warm paper sheet background */
+      background-image: 
+        /* Soft red margin vertical line typical of high-quality notebooks */
+        linear-gradient(90deg, transparent 55px, rgba(200, 85, 61, 0.24) 55px, rgba(200, 85, 61, 0.24) 57px, transparent 57px),
+        /* Delicate forest-green grid lines to emphasize the sketched vibe */
+        linear-gradient(rgba(30, 90, 58, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 90, 58, 0.08) 1px, transparent 1px) !important;
+      background-size: 100% 100%, 20px 20px, 20px 20px !important;
+    }
+
+    /* Page Header */
+    .admin-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+
+    .admin-title-area {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .admin-title-area h1 {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+    }
+
+    .admin-title-area h1::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 22px;
+      background: var(--forest);
+      margin-right: 12px;
+      border-radius: 99px;
+    }
+
+    .admin-subtitle {
+      font-size: 13px;
+      color: var(--stone);
+      margin-left: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .admin-subtitle-select {
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--forest);
+      text-decoration: underline;
+      cursor: pointer;
+      padding: 0;
+      outline: none;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* KPI Grid - Row of 6 cards */
+    .kpi-grid-6 {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    @media (max-width: 1400px) {
+      .kpi-grid-6 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .kpi-grid-6 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .kpi-card-postit {
+      background: #FFFFFF;
+      border: 1.5px solid var(--stone);
+      border-radius: 8px;
+      padding: 16px 18px;
+      box-shadow: 2px 2px 0px var(--sand-deep);
+      position: relative;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms;
+    }
+
+    .kpi-card-postit:hover {
+      transform: translateY(-2.5px) rotate(-0.5deg);
+      box-shadow: 4px 4px 0px var(--forest-soft);
+      border-color: var(--forest);
+    }
+
+    /* Rotation variation to make it look non-robotic and sketched */
+    .kpi-card-postit:nth-child(even) {
+       transform: rotate(0.6deg);
+    }
+    .kpi-card-postit:nth-child(odd) {
+       transform: rotate(-0.4deg);
+    }
+    .kpi-card-postit:nth-child(3n) {
+       transform: rotate(0.8deg);
+    }
+
+    .kpi-card-postit::before {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: 35%;
+      width: 30%;
+      height: 14px;
+      background: rgba(223, 221, 195, 0.45);
+      transform: rotate(-1deg);
+      border-left: 1px dashed rgba(29, 31, 30, 0.08);
+      border-right: 1px dashed rgba(29, 31, 30, 0.08);
+    }
+
+    .kpi-circle-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 180px 15px 150px 15px/15px 150px 15px 180px;
+      border: 1.5px solid var(--stone);
+      background: var(--sand);
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 1px 1.5px 0px rgba(0,0,0,0.05);
+    }
+
+    .kpi-text-info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .kpi-text-info h4 {
+      margin: 0;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--stone);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .kpi-val-number {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 24px;
+      font-weight: 850;
+      color: var(--ink);
+      line-height: 1.15;
+      margin: 2px 0 1px;
+    }
+
+    .kpi-sub-trend {
+      font-size: 11px;
+      color: var(--forest);
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .kpi-sub-trend.silent {
+      color: var(--stone-light);
+      font-weight: 500;
+    }
+
+    /* MIDDLE CONTENT GRID */
+    .admin-main-grid {
+      display: grid;
+      grid-template-columns: 1.62fr 1.38fr;
+      gap: 28px;
+      margin-bottom: 32px;
+    }
+
+    @media (max-width: 1100px) {
+      .admin-main-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+    }
+
+    /* Standard Card containers */
+    .admin-board {
+      background: #FFFFFF;
+      border: 1.5px solid var(--stone);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 2.5px 2.5px 0px var(--sand-deep);
+      position: relative;
+    }
+
+    .admin-board-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .admin-board-title-row h3 {
+      font-family: 'Lora', Georgia, serif;
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--ink);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Tables Style */
+    .custom-table-container {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .custom-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .custom-table th {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      font-weight: 750;
+      color: var(--stone);
+      text-transform: uppercase;
+      padding: 10px 12px;
+      border-bottom: 1.8px solid var(--stone);
+    }
+
+    .custom-table td {
+      padding: 14px 12px;
+      border-bottom: 1px dashed var(--sand-deep);
+      font-size: 12.5px;
+      color: var(--ink);
+      vertical-align: middle;
+    }
+
+    .custom-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Top Performer Badge */
+    .badge-top-performer {
+      background: #EBF7EE;
+      color: var(--forest);
+      border: 1px solid var(--forest);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-top: 2px;
+    }
+
+    .delayed-tasks-box {
+      background: #FCECE9;
+      color: #C0553D;
+      border: 1.3px solid #C0553D;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 800;
+      font-size: 11px;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      margin: 0 auto;
+    }
+
+    /* Tabs Filter for logs and requests */
+    .badge-tab-list {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--sand-light, #FAF7F2);
+      border: 1.2px solid var(--stone);
+      padding: 3.5px;
+      border-radius: 30px;
+    }
+
+    .badge-tab-item {
+      padding: 4px 12px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      border-radius: 20px;
+      cursor: pointer;
+      color: var(--stone);
+      background: none;
+      border: none;
+      transition: all 120ms;
+    }
+
+    .badge-tab-item.active {
+      background: var(--forest);
+      color: #FFFDF7 !important;
+    }
+
+    .badge-tab-counter {
+      font-size: 9px;
+      opacity: 0.85;
+      margin-left: 2px;
+    }
+
+    /* Transfer Thumbnail */
+    .transfer-house-pic {
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      border: 1.3px solid var(--stone);
+      object-fit: cover;
+      box-shadow: 1px 1px 0px rgba(0,0,0,0.06);
+    }
+
+    /* Bottom Row Structure of 3 Config columns */
+    .admin-bottom-grid-3 {
+      display: grid;
+      grid-template-columns: 1.45fr 0.95fr 1.1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 1200px) {
+      .admin-bottom-grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Interlocking workflow stages list */
+    .pipeline-stages-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8.5px;
+      margin: 14px 0 16px;
+    }
+
+    .pipeline-card-stage {
+      flex: 1;
+      min-width: 78px;
+      background: #FFFFFF;
+      border: 1.5px solid var(--stone);
+      border-radius: 6px;
+      padding: 10px 6px;
+      text-align: center;
+      box-shadow: 1.5px 1.5px 0px var(--sand-deep);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      transition: transform 120ms;
+    }
+
+    .pipeline-card-stage:hover {
+      transform: translateY(-2px);
+      border-color: var(--forest);
+    }
+
+    .pipeline-number {
+      position: absolute;
+      top: 3px;
+      left: 4.5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--stone-light);
+    }
+
+    .pipeline-icon-box {
+      width: 24px;
+      height: 24px;
+      background: var(--sand);
+      border-radius: 50%;
+      border: 1.1px solid var(--stone);
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+    }
+
+    .pipeline-stage-title {
+      font-size: 10.5px;
+      font-weight: 750;
+      color: var(--ink);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    /* Styled Toggle switches */
+    .automation-item-row {
+      background: #FFFDF9;
+      border: 1.5px solid var(--stone);
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .automation-info h4 {
+      margin: 0 0 3px 0;
+      font-family: 'Lora', Georgia, serif;
+      font-size: 12.5px;
+      font-weight: 750;
+      color: var(--ink);
+    }
+
+    .automation-info p {
+      margin: 0;
+      font-size: 10.5px;
+      color: var(--stone);
+      line-height: 1.35;
+    }
+
+    /* Retro inputs with units */
+    .retro-input-wrapper {
+      margin-bottom: 14px;
+    }
+
+    .retro-input-wrapper label {
+      display: block;
+      font-size: 11.5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 750;
+      color: var(--stone);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+
+    .retro-input-unit {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .retro-input-unit input {
+      width: 100%;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 9px 40px 9px 12px;
+      border: 1.5px solid var(--stone);
+      border-radius: 8px;
+      background: #FFFFFF;
+      outline: none;
+      color: var(--ink);
+      transition: all 120ms;
+    }
+
+    .retro-input-unit input:focus {
+      border-color: var(--forest);
+      box-shadow: 2px 2px 0px var(--forest-soft);
+    }
+
+    .retro-input-unit span {
+      position: absolute;
+      right: 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 750;
+      color: var(--stone);
+      pointer-events: none;
+    }
+
+    /* Checkboxes */
+    .checkbox-container-custom {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 16px 0 20px;
+      cursor: pointer;
+    }
+
+    .checkbox-container-custom input {
+      margin-top: 3px;
+      cursor: pointer;
+    }
+
+    .checkbox-container-custom span {
+      font-size: 11.5px;
+      color: var(--stone);
+      line-height: 1.4;
+    }
+
+    /* Statuses for Sync Sources */
+    .pill-status {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9.5px;
+      font-weight: 800;
+      padding: 2.5px 10px;
+      border-radius: 99px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      text-transform: uppercase;
+    }
+
+    .pill-status.synced {
+      background: #EBF7EE;
+      color: var(--forest);
+      border: 1px solid var(--forest);
+    }
+
+    .pill-status.warning {
+      background: #FFF9E6;
+      color: #C67A13;
+      border: 1px solid #C67A13;
+    }
+
+    .pill-status.error {
+      background: #FCECE9;
+      color: #C0553D;
+      border: 1px solid #C0553D;
+    }
+
+    /* Brand Logo Circles */
+    .brand-circle-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 850;
+      font-size: 11px;
+      color: #FFFFFF;
+      border: 1.2px solid var(--stone);
+      box-shadow: 1px 1px 0px rgba(0,0,0,0.04);
+      flex-shrink: 0;
+    }
+
+    /* Toggles custom design */
+    .switch-retro {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .switch-retro input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider-retro {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--sand-deep);
+      border: 1.5px solid var(--stone);
+      transition: .2s;
+      border-radius: 20px;
+    }
+
+    .slider-retro:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 2.5px;
+      background-color: #FFFFFF;
+      border: 1.2px solid var(--stone);
+      transition: .2s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider-retro {
+      background-color: var(--forest);
+    }
+
+    input:checked + .slider-retro:before {
+      transform: translateX(21px);
+    }
+
+    /* Sticky/Postit decorative headers or footers */
+    .footer-handwritten-link {
+      font-size: 12.5px;
+      color: var(--forest);
+      text-decoration: underline;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 14px;
+      transition: color 100ms;
+    }
+
+    .footer-handwritten-link:hover {
+      color: var(--ink);
+    }
+
+    /* Action buttons thick board */
+    .thick-btn-action {
+      background: var(--forest);
+      color: #FFFDF7 !important;
+      border: 2px solid var(--ink);
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 12.5px;
+      padding: 10px 18px;
+      border-radius: 180px 15px 150px 15px/15px 150px 15px 180px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 120ms;
+      box-shadow: 2px 2px 0px var(--ink);
+      width: 100%;
+    }
+
+    .thick-btn-action:hover {
+      background: rgba(30, 90, 58, 0.95);
+      box-shadow: 3.5px 3.5px 0px var(--ink);
+      transform: translate(-0.5px, -0.5px);
+    }
+
+    .thick-btn-action:active {
+      transform: translate(0.5px, 0.5px);
+      box-shadow: 0.5px 0.5px 0px var(--ink);
+    }
+
+    /* Overrides and UI indicators */
+    .top-performer-tr-bg {
+      background-color: #FAFAF7;
+    }
+
+    .dot-menu-icon {
+      outline: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--stone);
+      font-size: 18px;
+      line-height: 1;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .dot-menu-icon:hover {
+      background: var(--sand);
+      color: var(--ink);
+    }
+
+    .admin-restricted-box {
+      background: #FFFFFF;
+      border: 2px dashed #C0553D;
+      border-radius: 12px;
+      padding: 45px 32px;
+      text-align: center;
+      max-width: 610px;
+      margin: 40px auto;
+      box-shadow: 2.2px 2.2px 0px rgba(107, 111, 109, 0.08);
+    }
+  </style>
+
+  <!-- Header Area -->
+  <div class="admin-header">
+    <div class="admin-title-area">
+      <h1>Administration</h1>
+      <div class="admin-subtitle">
+        Vue d'ensemble de l'agence • <select class="admin-subtitle-select" onchange="alert('Changement de vue vers : ' + this.value)"><option value="plus">SaaS ImmoPilot (Global)</option><option value="brabant">Succursale Brabant-Wallon</option></select>
+      </div>
+    </div>
+    <div class="header-actions">
+      <!-- Exporter le rapport Button -->
+      <button class="tab-btn" style="display: inline-flex; align-items: center; gap: 8px;" onclick="triggerReportExport()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Exporter le rapport
+      </button>
+
+      <!-- Badge displaying current authorization role -->
+      <span class="status-badge" id="admin-main-role-indicator">Chargement...</span>
+    </div>
+  </div>
+
+  <!-- Dynamic view wrapper -->
+  <div id="admin-interactive-view">
+     <!-- Filled dynamically depending on administrative privileges -->
+  </div>
+</div>
+
+<script>
+(function() {
+  const store = window.ImmoPilotStore;
+  if (!store) return;
+
+  // Track state locally
+  let selectedTransferTab = 'tous'; 
+  let selectedAgentKPI = 'global';
+
+  // Local state for portal sync sources to simulate real-time API integrations
+  let portalSyncStates = {
+    'Immoweb': { status: 'synced', text: '✔ Sync', lastTime: '09:42', count: 28734, color: '#2B3A8C', initials: 'iw' },
+    'Zimmo': { status: 'synced', text: '✔ Sync', lastTime: '09:40', count: 19872, color: 'var(--forest)', initials: 'zi' },
+    'Immovlan': { status: 'synced', text: '✔ Sync', lastTime: '09:39', count: 12104, color: '#8F55C9', initials: 'im' },
+    '2ememain': { status: 'warning', text: '⚠ Alerte', lastTime: '08:10', count: 6120, color: '#C67A13', initials: '2e' },
+    'Biddit': { status: 'error', text: '✖ Erreur', lastTime: 'Hier', count: 418, color: '#C0553D', initials: 'bi' }
+  };
+
+  function renderAdminView() {
+    const mainView = document.getElementById('admin-interactive-view');
+    const roleIndicator = document.getElementById('admin-main-role-indicator');
+    if (!mainView) return;
+
+    const currentAgent = store.getCurrentAgent();
+    const isAdmin = currentAgent.role === 'admin';
+
+    // 1. Update Role Indicator style
+    if (roleIndicator) {
+      roleIndicator.textContent = isAdmin ? 'Portail Administrateur Garanti' : 'Vue Restreinte — Admin uniquement';
+      roleIndicator.className = isAdmin ? 'status-badge status-payable' : 'status-badge status-brouillon';
+    }
+
+    // 2. Restricted View for non-admin profiles
+    if (!isAdmin) {
+      mainView.innerHTML = `
+        <div class="admin-restricted-box">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C0553D" stroke-width="2" style="margin: 0 auto 16px;">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <h2 style="font-family:'Lora',serif; font-size:19px; font-weight:800; margin-bottom:10px; color:var(--ink);">Accès Administratif Protégé</h2>
+          <p style="font-size:13px; color:var(--stone); margin-bottom:20px; line-height:1.55;">
+            Thomas Martin, vous êtes actuellement authentifié en tant que <b>Conseiller de terrain</b>. Les tableaux de synthèses de l'agence, l'audit-log d'activité et la configuration des automatisations exigent un profil d'administrateur.
+          </p>
+          <button class="thick-btn-action" style="max-width:320px; margin: 0 auto;" onclick="forceSwitchToAdminSarah()">
+            Basculer sur le profil de Sarah (Admin)
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    // Load elements from global store database
+    const properties = store.getProperties();
+    const deals = store.getDeals();
+    const commissions = store.getCommissions();
+    const transfers = store.getTransfers();
+
+    // Sum calculation for KPI Cards dynamically filtered by agent
+    let kpiCA = 3845000;
+    let kpiComs = 142350;
+    let kpiBiensActifs = 38;
+    let kpiVentesConclues = 22;
+    let subTrendCA = "+ 520 000 € ce mois";
+    let subTrendComs = "+ 18 420 € ce mois";
+    let subTrendBiensActifs = "+ 6 ce mois";
+    let subTrendVentesConclues = "+ 4 ce mois";
+    let activeAgentName = "Global Agence";
+
+    if (selectedAgentKPI === 'lucas') {
+      kpiCA = 1850000;
+      kpiComs = 42850;
+      kpiBiensActifs = 15;
+      kpiVentesConclues = 8;
+      subTrendCA = "Lucas - Top Vendeur de l'agence";
+      subTrendComs = "Lucas - 42.850 € cumulés";
+      subTrendBiensActifs = "Lucas - Bruxelles & Brabant";
+      subTrendVentesConclues = "Lucas - 8 ventes bouclées";
+      activeAgentName = "Lucas Martin";
+    } else if (selectedAgentKPI === 'sarah') {
+      kpiCA = 1310000;
+      kpiComs = 31240;
+      kpiBiensActifs = 12;
+      kpiVentesConclues = 6;
+      subTrendCA = "Sarah - Volume d'agence";
+      subTrendComs = "Sarah - 31.240 € ouverts";
+      subTrendBiensActifs = "Sarah - Uccle & Ixelles";
+      subTrendVentesConclues = "Sarah - 6 ventes d'excellence";
+      activeAgentName = "Sarah Vermeulen";
+    } else if (selectedAgentKPI === 'adam') {
+      kpiCA = 850000;
+      kpiComs = 18760;
+      kpiBiensActifs = 9;
+      kpiVentesConclues = 4;
+      subTrendCA = "Adam - Liège & périphérie";
+      subTrendComs = "Adam - 18.760 € cumulés";
+      subTrendBiensActifs = "Adam - 9 mandats actifs";
+      subTrendVentesConclues = "Adam - 4 deals signés";
+      activeAgentName = "Adam Dubois";
+    } else if (selectedAgentKPI === 'nora') {
+      kpiCA = 720000;
+      kpiComs = 24310;
+      kpiBiensActifs = 8;
+      kpiVentesConclues = 3;
+      subTrendCA = "Nora - Namur & environs";
+      subTrendComs = "Nora - 24.310 € de commissions";
+      subTrendBiensActifs = "Nora - 1 tâche de retard";
+      subTrendVentesConclues = "Nora - 3 signatures";
+      activeAgentName = "Nora Peeters";
+    } else if (selectedAgentKPI === 'thomas') {
+      kpiCA = 640000;
+      kpiComs = 15200;
+      kpiBiensActifs = 6;
+      kpiVentesConclues = 2;
+      subTrendCA = "Thomas - Wavre & Brabant";
+      subTrendComs = "Thomas - 15.200 € commission";
+      subTrendBiensActifs = "Thomas - 0 tâche de retard 🎉";
+      subTrendVentesConclues = "Thomas - 2 ventes";
+      activeAgentName = "Thomas Martin";
+    }
+
+    // Blend in live values from the store
+    if (selectedAgentKPI === 'global') {
+      kpiBiensActifs = properties.filter(p => !p.reserved && p.tag !== 'Vendu').length + 22;
+      kpiVentesConclues = properties.filter(p => p.tag === 'Vendu').length + 18;
+    } else {
+      const liveAssigned = properties.filter(p => p.ownerId === selectedAgentKPI && !p.reserved && p.tag !== 'Vendu').length;
+      if (liveAssigned > 0) kpiBiensActifs = liveAssigned + 6;
+      const liveSold = properties.filter(p => p.ownerId === selectedAgentKPI && p.tag === 'Vendu').length;
+      if (liveSold > 0) kpiVentesConclues = liveSold + 2;
+    }
+
+    const pendingTransfers = transfers.filter(tr => tr.status === 'en_attente');
+
+    // Load pipeline stages dynamically for the stage editor
+    const pStages = store.getPipelineStages ? store.getPipelineStages() : [];
+    const stagesHtml = pStages.map((stg, i) => {
+      const isLast = i === pStages.length - 1;
+      const isFirst = i === 0;
+      return `
+        <div class="pipeline-card-stage" style="border-color:${stg.color || 'var(--stone)'}; background:${stg.id === 'perdu' ? '#FFF7F6' : '#FFFFFF'}; padding: 10px 4px; min-height: 85px; justify-content: space-between;">
+          <span class="pipeline-number">${i + 1}</span>
+          <div class="pipeline-icon-box" style="color:${stg.color || 'var(--stone)'}; margin-top: 4px;">${stg.icon || '✦'}</div>
+          <span class="pipeline-stage-title" title="${stg.name}" style="font-size: 10px; margin-top:2px;">${stg.name}</span>
+          
+          <!-- Hover arrow-controls for pipeline editor -->
+          <div style="display:flex; gap:3px; margin-top:4px;" class="stage-hover-controls">
+            ${!isFirst ? `<button onclick="event.stopPropagation(); movePipelineStage(${i}, -1)" style="font-size:9px; font-weight:bold; cursor:pointer; background:#FAF7F2; border:1px solid var(--stone); border-radius:3px; padding:0px 2px;" title="Déplacer à gauche">◀</button>` : ''}
+            <button onclick="event.stopPropagation(); renamePipelineStage(${i})" style="font-size:9px; cursor:pointer; background:#FAF7F2; border:1px solid var(--stone); border-radius:3px; padding:0px 3px;" title="Renommer">✏</button>
+            <button onclick="event.stopPropagation(); deletePipelineStage(${i})" style="font-size:9px; cursor:pointer; background:#FAF7F2; border:1px solid var(--stone); border-radius:3px; padding:0px 3px; color:#C0553D;" title="Supprimer">✕</button>
+            ${!isLast ? `<button onclick="event.stopPropagation(); movePipelineStage(${i}, 1)" style="font-size:9px; font-weight:bold; cursor:pointer; background:#FAF7F2; border:1px solid var(--stone); border-radius:3px; padding:0px 2px;" title="Déplacer à droite">▶</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Load active syncing states list dynamically
+    const portalsHtml = Object.keys(portalSyncStates).map(portalName => {
+      const p = portalSyncStates[portalName];
+      let pillClass = '';
+      if (p.status === 'synced') pillClass = 'pill-status synced';
+      else if (p.status === 'warning') pillClass = 'pill-status warning';
+      else if (p.status === 'error') pillClass = 'pill-status error';
+      else pillClass = 'pill-status warning'; // syncing
+
+      return `
+        <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px dashed var(--sand-deep); padding-bottom:8px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="brand-circle-avatar" style="background:${p.color};">${p.initials}</div>
+            <div>
+              <strong style="font-size:12px; font-family:'Lora',serif;">${portalName}</strong><br>
+              <span style="font-size:9.5px; color:var(--stone-light); font-family:'JetBrains Mono';">Dernier import : ${p.lastTime}</span>
+            </div>
+          </div>
+          <div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:2px;">
+            <div style="display:flex; gap:6px; align-items:center;">
+              <span class="${pillClass}" style="padding: 1px 7px; font-size: 8.5px;">${p.text}</span>
+              ${p.status !== 'syncing' ? `
+                <button onclick="syncSourcePortal('${portalName}')" style="background:#FFFFFF; border:1px solid var(--stone); border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:800; cursor:pointer; padding:1px 4px; line-height:1;" title="Forcer la synchronisation d'urgence">🔄 Sync</button>
+              ` : ''}
+            </div>
+            <span style="font-size:10.5px; font-family:'JetBrains Mono'; font-weight:700; color:var(--ink);">${p.count.toLocaleString('fr-FR')} annonces.</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Layout insertion
+    mainView.innerHTML = `
+      <!-- Active analysis filter warning card -->
+      <div style="background: rgba(30, 90, 58, 0.05); border: 1.5px solid var(--stone); border-radius: 8px; padding: 12px 18px; margin-bottom: 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+        <span style="font-family:'Lora',serif; font-size:14px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:6px;">
+          📊 Filtre d'analyse actif : <span style="text-decoration: underline; color: var(--forest); font-weight:900;">${activeAgentName}</span>
+        </span>
+        <div style="display:flex; gap:8px;">
+          ${selectedAgentKPI !== 'global' ? `
+            <button class="action-btn-sm" onclick="selectAgentKPI('global')" style="font-size:11px; padding:3px 12px; font-family:'JetBrains Mono'; background:#FFFFFF; border-color:var(--forest); color:var(--forest);">Voir Global Agence</button>
+          ` : `<span style="font-size:11px; font-family:'JetBrains Mono'; color:var(--stone-light);">Cliquez sur un agent ci-dessous pour filtrer les KPI virtuellement.</span>`}
+        </div>
+      </div>
+
+      <!-- KPI Row top -->
+      <div class="kpi-grid-6">
+        <!-- KPI 1 -->
+        <div class="kpi-card-postit">
+          <div class="kpi-circle-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--forest)" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+            </svg>
+          </div>
+          <div class="kpi-text-info">
+            <h4>Chiffre d'affaires</h4>
+            <div class="kpi-val-number" style="font-size:21px;">${kpiCA.toLocaleString('fr-FR')} €</div>
+            <div class="kpi-sub-trend">${subTrendCA}</div>
+          </div>
+        </div>
+
+        <!-- KPI 2 -->
+        <div class="kpi-card-postit">
+          <div class="kpi-circle-icon">
+            <span style="font-family:'Lora',serif; font-weight:900; font-size:16px;">€</span>
+          </div>
+          <div class="kpi-text-info">
+            <h4>Commissions</h4>
+            <div class="kpi-val-number" style="font-size:21px;">${kpiComs.toLocaleString('fr-FR')} €</div>
+            <div class="kpi-sub-trend">${subTrendComs}</div>
+          </div>
+        </div>
+
+        <!-- KPI 3 -->
+        <div class="kpi-card-postit">
+          <div class="kpi-circle-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </div>
+          <div class="kpi-text-info">
+            <h4>Biens actifs</h4>
+            <div class="kpi-val-number">${kpiBiensActifs}</div>
+            <div class="kpi-sub-trend">${subTrendBiensActifs}</div>
+          </div>
+        </div>
+
+        <!-- KPI 4 -->
+        <div class="kpi-card-postit">
+          <div class="kpi-circle-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <div class="kpi-text-info">
+            <h4>Ventes conclues</h4>
+            <div class="kpi-val-number">${kpiVentesConclues}</div>
+            <div class="kpi-sub-trend">${subTrendVentesConclues}</div>
+          </div>
+        </div>
+
+        <!-- KPI 5 -->
+        <div class="kpi-card-postit">
+          <div class="kpi-circle-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+          </div>
+          <div class="kpi-text-info">
+            <h4>Mandats signés</h4>
+            <div class="kpi-val-number">${properties.filter(p => p.reserved).length + 18}</div>
+            <div class="kpi-sub-trend">+ 6 ce mois</div>
+          </div>
+        </div>
+
+        <!-- KPI 6 -->
+        <div class="kpi-card-postit" onclick="scrollToElement('transfer-logs-board-card')" style="border-color:#C0553D;">
+          <div class="kpi-circle-icon" style="background:#FFF0ED; border-color:#C0553D; color:#C0553D;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 3 21 8 16 13"></polyline>
+              <line x1="21" y1="8" x2="9" y2="8"></line>
+              <polyline points="8 21 3 16 8 11"></polyline>
+              <line x1="3" y1="16" x2="15" y2="16"></line>
+            </svg>
+          </div>
+          <div class="kpi-text-info" style="cursor:pointer;">
+            <h4>Leads en attente</h4>
+            <div class="kpi-val-number" style="color:#C0553D;">${pendingTransfers.length || 5}</div>
+            <div class="kpi-sub-trend" style="color:var(--forest); font-weight:800; text-decoration:underline;">Traiter les transferts</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MIDDLE CONTENT AREA (GRID 2 COLUMNS) -->
+      <div class="admin-main-grid">
+        
+        <!-- COLUMN 1: Performance des agents -->
+        <div class="admin-board">
+          <div class="admin-board-title-row">
+            <div>
+              <h3>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 3v18h18"></path>
+                  <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path>
+                </svg>
+                Performance des agents (KPIs)
+              </h3>
+            </div>
+            <div>
+              <select class="select-retro" style="padding: 4px 10px; font-size:11px;" onchange="alert('Données temporelles mises à jour')">
+                <option value="ce-mois">Ce mois</option>
+                <option value="6-mois">6 derniers mois</option>
+                <option value="annee">Cette année</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="custom-table-container">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Agent</th>
+                  <th>Zone de travail</th>
+                  <th style="text-align:center;">Deals actifs</th>
+                  <th style="text-align:center;">Taux conv.</th>
+                  <th style="text-align:center;">Mandats signés</th>
+                  <th style="text-align:right;">Commission (ouverte)</th>
+                  <th style="text-align:center;">Retards</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Row 1: Lucas Martin -->
+                <tr onclick="selectAgentKPI('lucas')" class="${selectedAgentKPI === 'lucas' ? 'top-performer-tr-bg' : ''}" style="cursor: pointer; transition: background 150ms; outline: ${selectedAgentKPI === 'lucas' ? '2px solid var(--forest)' : 'none'};">
+                  <td>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&q=80" style="width:30px; height:30px; border-radius:10px 150px 10px 150px; border:1px solid var(--stone);" />
+                      <div>
+                        <strong style="font-family:'Lora',serif; font-size:13px; color: ${selectedAgentKPI === 'lucas' ? 'var(--forest)' : 'var(--ink)'};">Lucas Martin</strong><br>
+                        <span class="badge-top-performer" style="line-height:1; padding: 2px 4px;">Top performer</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="color:var(--stone-light); font-size:11.5px;">Bruxelles & Brabant</td>
+                  <td style="text-align:center; font-weight:800;">42 <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+5</span></td>
+                  <td style="text-align:center; font-weight:800;">28 % <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+3%</span></td>
+                  <td style="text-align:center; font-weight:800;">12 <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+2</span></td>
+                  <td style="text-align:right; font-weight:800;">42 850 € <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+8 120€</span></td>
+                  <td style="text-align:center;"><div class="delayed-tasks-box">3</div></td>
+                  <td><button class="dot-menu-icon" onclick="event.stopPropagation(); triggerAgentAction('Lucas Martin')">⋮</button></td>
+                </tr>
+
+                <!-- Row 2: Sarah Vermeulen -->
+                <tr onclick="selectAgentKPI('sarah')" class="${selectedAgentKPI === 'sarah' ? 'top-performer-tr-bg' : ''}" style="cursor: pointer; transition: background 150ms; outline: ${selectedAgentKPI === 'sarah' ? '2px solid var(--forest)' : 'none'};">
+                  <td>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&q=80" style="width:30px; height:30px; border-radius:10px 150px 10px 150px; border:1px solid var(--stone);" />
+                      <div>
+                        <strong style="font-family:'Lora',serif; font-size:13px; color: ${selectedAgentKPI === 'sarah' ? 'var(--forest)' : 'var(--ink)'};">Sarah Vermeulen</strong><br>
+                        <span style="font-size:10px; color:var(--stone-light);">Directrice d'agence</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="color:var(--stone-light); font-size:11.5px;">Uccle & Ixelles</td>
+                  <td style="text-align:center; font-weight:800;">35 <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+4</span></td>
+                  <td style="text-align:center; font-weight:800;">24 % <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+2%</span></td>
+                  <td style="text-align:center; font-weight:800;">9 <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+1</span></td>
+                  <td style="text-align:right; font-weight:800;">31 240 € <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+6 430€</span></td>
+                  <td style="text-align:center;"><div class="delayed-tasks-box" style="background:#FFF9E6; border-color:#C67A13; color:#C67A13;">2</div></td>
+                  <td><button class="dot-menu-icon" onclick="event.stopPropagation(); triggerAgentAction('Sarah Vermeulen')">⋮</button></td>
+                </tr>
+
+                <!-- Row 3: Adam Dubois -->
+                <tr onclick="selectAgentKPI('adam')" class="${selectedAgentKPI === 'adam' ? 'top-performer-tr-bg' : ''}" style="cursor: pointer; transition: background 150ms; outline: ${selectedAgentKPI === 'adam' ? '2px solid var(--forest)' : 'none'};">
+                  <td>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&q=80" style="width:30px; height:30px; border-radius:10px 150px 10px 150px; border:1px solid var(--stone);" />
+                      <div>
+                        <strong style="font-family:'Lora',serif; font-size:13px; color: ${selectedAgentKPI === 'adam' ? 'var(--forest)' : 'var(--ink)'};">Adam Dubois</strong><br>
+                        <span style="font-size:10px; color:var(--stone-light);">Négociateur senior</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="color:var(--stone-light); font-size:11.5px;">Liège & périphérie</td>
+                  <td style="text-align:center; font-weight:800;">28 <span style="display:block; font-size:9.5px; color:#C0553D; font-family:monospace;">-1</span></td>
+                  <td style="text-align:center; font-weight:800;">19 % <span style="display:block; font-size:9.5px; color:#C0553D; font-family:monospace;">-1%</span></td>
+                  <td style="text-align:center; font-weight:800;">6 <span style="display:block; font-size:9.5px; color:var(--stone-light); font-family:monospace;">—</span></td>
+                  <td style="text-align:right; font-weight:800;">18 760 € <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+1 980€</span></td>
+                  <td style="text-align:center;"><div class="delayed-tasks-box">5</div></td>
+                  <td><button class="dot-menu-icon" onclick="event.stopPropagation(); triggerAgentAction('Adam Dubois')">⋮</button></td>
+                </tr>
+
+                <!-- Row 4: Nora Peeters -->
+                <tr onclick="selectAgentKPI('nora')" class="${selectedAgentKPI === 'nora' ? 'top-performer-tr-bg' : ''}" style="cursor: pointer; transition: background 150ms; outline: ${selectedAgentKPI === 'nora' ? '2px solid var(--forest)' : 'none'};">
+                  <td>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&q=80" style="width:30px; height:30px; border-radius:10px 150px 10px 150px; border:1px solid var(--stone);" />
+                      <div>
+                        <strong style="font-family:'Lora',serif; font-size:13px; color: ${selectedAgentKPI === 'nora' ? 'var(--forest)' : 'var(--ink)'};">Nora Peeters</strong><br>
+                        <span style="font-size:10px; color:var(--stone-light);">Conseillère junior</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="color:var(--stone-light); font-size:11.5px;">Namur & environs</td>
+                  <td style="text-align:center; font-weight:800;">26 <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+2</span></td>
+                  <td style="text-align:center; font-weight:800;">22 % <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+4%</span></td>
+                  <td style="text-align:center; font-weight:800;">7 <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+1</span></td>
+                  <td style="text-align:right; font-weight:800;">24 310 € <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+4 210€</span></td>
+                  <td style="text-align:center;"><div class="delayed-tasks-box" style="background:#EBF7EE; border-color:var(--forest); color:var(--forest);">1</div></td>
+                  <td><button class="dot-menu-icon" onclick="event.stopPropagation(); triggerAgentAction('Nora Peeters')">⋮</button></td>
+                </tr>
+
+                <!-- Row 5: Thomas Martin -->
+                <tr onclick="selectAgentKPI('thomas')" class="${selectedAgentKPI === 'thomas' ? 'top-performer-tr-bg' : ''}" style="cursor: pointer; transition: background 150ms; outline: ${selectedAgentKPI === 'thomas' ? '2px solid var(--forest)' : 'none'};">
+                  <td>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                      <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&q=80" style="width:30px; height:30px; border-radius:10px 150px 10px 150px; border:1px solid var(--stone);" />
+                      <div>
+                        <strong style="font-family:'Lora',serif; font-size:13px; color: ${selectedAgentKPI === 'thomas' ? 'var(--forest)' : 'var(--ink)'};">Thomas Martin</strong><br>
+                        <span style="font-size:10px; color:var(--stone-light);">Conseiller de terrain (Vous)</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="color:var(--stone-light); font-size:11.5px;">Wavre Centre</td>
+                  <td style="text-align:center; font-weight:800;">18 <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+2</span></td>
+                  <td style="text-align:center; font-weight:800;">21 % <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+1%</span></td>
+                  <td style="text-align:center; font-weight:800;">5 <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+1</span></td>
+                  <td style="text-align:right; font-weight:800;">15 200 € <span style="display:block; font-size:9.5px; color:var(--forest); font-family:monospace;">+2 100€</span></td>
+                  <td style="text-align:center;"><div class="delayed-tasks-box" style="background:#EBF7EE; border-color:var(--forest); color:var(--forest);">0</div></td>
+                  <td><button class="dot-menu-icon" onclick="event.stopPropagation(); triggerAgentAction('Thomas Martin')">⋮</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="text-align:center; padding-top:10px; border-top: 1px dashed var(--sand-deep);">
+            <span style="font-family:'Lora',serif; font-size:11.5px; color:var(--stone-light);">Astuce : Cliquez sur une ligne de tableau d'un agent pour isoler sa performance ses KPIs ci-dessus.</span>
+          </div>
+        </div>
+
+        <!-- COLUMN 2: Validation des transferts de Leads -->
+        <div class="admin-board" id="transfer-logs-board-card">
+          <div class="admin-board-title-row">
+            <div>
+              <h3>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="16 3 21 8 16 13"></polyline>
+                  <line x1="21" y1="8" x2="9" y2="8"></line>
+                  <polyline points="8 21 3 16 8 11"></polyline>
+                  <line x1="3" y1="16" x2="15" y2="16"></line>
+                </svg>
+                Validation des transferts de Leads
+              </h3>
+            </div>
+            <div>
+              <!-- Tabbed Badge group -->
+              <div class="badge-tab-list">
+                <button class="badge-tab-item active" id="tab-tr-tous" onclick="setTransferTab('tous')">Tous <span class="badge-tab-counter" id="cnt-tr-all">0</span></button>
+                <button class="badge-tab-item" id="tab-tr-en_attente" onclick="setTransferTab('en_attente')">Attentes <span class="badge-tab-counter" id="cnt-tr-pending">0</span></button>
+                <button class="badge-tab-item" id="tab-tr-accepte" onclick="setTransferTab('accepte')">Validés <span class="badge-tab-counter" id="cnt-tr-accepted">0</span></button>
+                <button class="badge-tab-item" id="tab-tr-refuse" onclick="setTransferTab('refuse')">Rejetés <span class="badge-tab-counter" id="cnt-tr-rejected">0</span></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Header layout row -->
+          <div style="max-height:300px; overflow-y:auto; padding-right:2px;">
+            <table class="custom-table" style="font-size:12px;">
+              <thead>
+                <tr>
+                  <th>Bien / Deal</th>
+                  <th>De</th>
+                  <th>Vers</th>
+                  <th>Raison d'attribution</th>
+                  <th>Statut</th>
+                  <th>Demande le</th>
+                  <th style="width: 70px;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="transfer-requests-table-body">
+                <!-- Filled dynamically by custom JS logic -->
+              </tbody>
+            </table>
+          </div>
+          <div style="text-align:center; margin-top:14px; border-top: 1px dashed var(--sand-deep); padding-top: 8px;">
+            <span class="footer-handwritten-link" onclick="window.location.hash='#notifications'">Ouvrir l'intégralité du centre de notifications d'agence →</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- BOTTOM ROW OF 3 CONFIGURATION MODULES -->
+      <div class="admin-bottom-grid-3">
+        <!-- BOTTOM PANEL 1: Configuration pipeline (Éditeur d'étapes de pipeline) -->
+        <div class="admin-board" style="display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <h3 class="panel-title" style="font-family:'Lora',serif; font-size:16px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:8px;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Éditeur d'étapes de pipeline
+            </h3>
+            <div class="panel-subtitle" style="font-size:11.5px; color:var(--stone); margin-bottom:12px;">Planifiez et ordonnez les phases de vente Kanban. Survolez pour réordonner ou renommer.</div>
+
+            <!-- The dynamic horizontal workflow cards -->
+            <div class="pipeline-stages-container" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-bottom:12px; max-height: 200px; overflow-y: auto; padding: 4px;">
+              ${stagesHtml}
+            </div>
+          </div>
+
+          <!-- Small control bar to append a stage -->
+          <div style="border-top: 1px dashed var(--sand-deep); padding-top:10px; margin-top:8px;">
+            <label style="display:block; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:750; color:var(--stone); margin-bottom:4px;">AJOUTER UNE ÉTAPE AU PIPELINE :</label>
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="new-stage-title-input" placeholder="Ex : Signature de Compromis..." class="select-retro" style="flex:1; padding:6px 10px; font-size:11.5px; background:#FFFFFF; border:1px solid var(--stone); border-radius:4px;" />
+              <button class="thick-btn-action" onclick="addNewPipelineStage()" style="width:auto; padding: 6px 12px; font-size:11px; font-family:'JetBrains Mono',monospace; border-radius:6px; box-shadow: 1px 1px 0 var(--ink);">Ajouter</button>
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-top:6px;">
+              <button onclick="resetPipelineStagesToDefault()" style="background:none; border:none; text-decoration:underline; font-family:'JetBrains Mono'; font-size:9px; color:var(--stone-light); cursor:pointer;">Réinitialiser par défaut</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- BOTTOM PANEL 2: Configuration commissions (Curseurs commission) -->
+        <div class="admin-board" style="display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <h3 class="panel-title" style="font-family:'Lora',serif; font-size:16px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:8px;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+              Configuration commissions
+            </h3>
+            <div class="panel-subtitle" style="font-size:11.5px; color:var(--stone); margin-bottom:14px;">Ajustez avec les curseurs ci-dessous les commissions courantes.</div>
+
+            <!-- Sliders -->
+            <div class="retro-input-wrapper" style="margin-bottom:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <label style="margin:0;">Pourcentage par défaut :</label>
+                <span style="font-family:'JetBrains Mono',monospace; font-weight:800; color:var(--forest); font-size:13.5px;"><span id="cfg-commission-pct-val">3.00</span> %</span>
+              </div>
+              <input type="range" id="cfg-commission-pct" min="1.0" max="10.0" step="0.1" value="3.0" oninput="document.getElementById('cfg-commission-pct-val').textContent = parseFloat(this.value).toFixed(2)" style="width:100%; height:8px; background:var(--sand-deep); outline:none; border-radius:4px; accent-color:var(--forest); cursor:pointer;" />
+            </div>
+
+            <div class="retro-input-wrapper" style="margin-bottom:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <label style="margin:0;">Frais fixes d'agence :</label>
+                <span style="font-family:'JetBrains Mono',monospace; font-weight:800; color:var(--forest); font-size:13.5px;"><span id="cfg-commission-fixes-val">1250</span> €</span>
+              </div>
+              <input type="range" id="cfg-commission-fixes" min="0" max="5000" step="250" value="1250" oninput="document.getElementById('cfg-commission-fixes-val').textContent = this.value" style="width:100%; height:8px; background:var(--sand-deep); outline:none; border-radius:4px; accent-color:var(--forest); cursor:pointer;" />
+            </div>
+
+            <div class="retro-input-wrapper" style="margin-bottom:12px;">
+              <label>TVA applicable aux dossiers</label>
+              <select id="cfg-commission-tva" class="select-retro" style="width:100%; background:#FFFFFF; padding:6px 10px; border:1px solid var(--stone); border-radius:4px;">
+                <option value="21" selected>21 % (Taux plein belge)</option>
+                <option value="6">6 % (Frais réduits)</option>
+                <option value="0">0 % (Exonération d'agence)</option>
+              </select>
+            </div>
+
+            <label class="checkbox-container-custom" style="display:flex; align-items:center; gap:8px; margin: 0 0 8px 0;">
+              <input type="checkbox" id="cfg-apply-new" checked style="cursor:pointer;" />
+              <span style="font-size:11px; color:var(--stone-light);">Mettre à jour automatiquement les dossiers en cours</span>
+            </label>
+          </div>
+
+          <!-- Button -->
+          <div style="margin-top:12px;">
+            <button class="thick-btn-action" onclick="saveComsSettings()" style="padding: 8px 16px; border-radius:8px; font-size:11.5px; box-shadow: 2px 2px 0 var(--ink);">
+              Enregistrer les paramètres
+            </button>
+          </div>
+        </div>
+
+        <!-- BOTTOM PANEL 3: Statut de synchronisation des sources -->
+        <div class="admin-board" style="display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <h3 class="panel-title" style="font-family:'Lora',serif; font-size:16px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:8px;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              Synchronisation des sources
+            </h3>
+            <div class="panel-subtitle" style="font-size:11.5px; color:var(--stone); margin-bottom:12px;">État des connexions automatiques sur les portails belges.</div>
+
+            <!-- Interlocking Sync List -->
+            <div style="display:flex; flex-direction:column; gap:8px;">
+               ${portalsHtml}
+            </div>
+          </div>
+
+          <div style="text-align:center; margin-top:12px; border-top:1px dashed var(--sand-deep); padding-top:6px;">
+            <span class="footer-handwritten-link" onclick="forceSyncAllPortals()" style="font-size:11px;">🔄 Lancer une resynchronisation générale</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Fetch and display active lists in logs transfer
+    renderTransfersGrid();
+  }
+
+  // Interactivity to filter and manage transfers list
+  window.setTransferTab = function(status) {
+    selectedTransferTab = status;
+    
+    // Update active UI classes of tabs
+    const buttons = ['tous', 'en_attente', 'accepte', 'refuse'];
+    buttons.forEach(btnKey => {
+      const el = document.getElementById('tab-tr-' + btnKey);
+      if (el) {
+        if (btnKey === status) el.classList.add('active');
+        else el.classList.remove('active');
+      }
+    });
+
+    renderTransfersGrid();
+  };
+
+  function renderTransfersGrid() {
+    const tableBody = document.getElementById('transfer-requests-table-body');
+    if (!tableBody) return;
+
+    const transfers = store.getTransfers();
+    const agents = store.getAgents();
+    const properties = store.getProperties();
+
+    // High fidelity counter values in tabs from both store and screenshot defaults
+    const pendingTrans = transfers.filter(x => x.status === 'en_attente');
+    const acceptedTrans = transfers.filter(x => x.status === 'accepté');
+    const rejectedTrans = transfers.filter(x => x.status === 'refusé');
+
+    const totalCounter = 16 + transfers.length; 
+    
+    // Safety check on elements existence before updating text
+    const allEl = document.getElementById('cnt-tr-all');
+    if (allEl) allEl.textContent = totalCounter;
+    const pendEl = document.getElementById('cnt-tr-pending');
+    if (pendEl) pendEl.textContent = pendingTrans.length;
+    const accEl = document.getElementById('cnt-tr-accepted');
+    if (accEl) accEl.textContent = 10 + acceptedTrans.length;
+    const rejEl = document.getElementById('cnt-tr-rejected');
+    if (rejEl) rejEl.textContent = 6 + rejectedTrans.length;
+
+    // Filter requests
+    let filteredList = [...transfers];
+    if (selectedTransferTab === 'en_attente') {
+      filteredList = transfers.filter(tr => tr.status === 'en_attente');
+    } else if (selectedTransferTab === 'accepte') {
+      filteredList = transfers.filter(tr => tr.status === 'accepté');
+    } else if (selectedTransferTab === 'refuse') {
+      filteredList = transfers.filter(tr => tr.status === 'refusé');
+    }
+
+    // Baseline historical requests to populate beautiful image contents
+    const baseHistorical = [
+      {
+        id: 'hist-1',
+        title: 'Maison 4 façades',
+        city: 'Wavre',
+        photo: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=100&q=80',
+        from: 'Sarah V.',
+        to: 'Lucas M.',
+        reason: 'Client demande Lucas',
+        status: 'accepté',
+        date: '2026-05-24'
+      },
+      {
+        id: 'hist-2',
+        title: 'Penthouse 3 ch.',
+        city: 'Uccle',
+        photo: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=100&q=80',
+        from: 'Adam D.',
+        to: 'Sarah V.',
+        reason: 'Surcharge planning',
+        status: 'refusé',
+        date: '2026-05-23'
+      }
+    ];
+
+    let renderRows = [];
+
+    // Map the active ones from store
+    filteredList.forEach(tr => {
+      const propObj = properties.find(p => p.id === tr.propertyId);
+      const fromAg = agents.find(a => a.id === tr.fromAgentId)?.name || 'Lucas M.';
+      const toAg = agents.find(a => a.id === tr.toAgentId)?.name || 'Sarah V.';
+      
+      const initialsFrom = fromAg.split(' ').map(s=>s[0]).join('') + '.';
+      const initialsTo = toAg.split(' ').map(s=>s[0]).join('') + '.';
+
+      renderRows.push({
+        id: tr.id,
+        title: propObj ? propObj.title : 'Bien Immo',
+        city: propObj ? propObj.city : 'Belgique',
+        photo: propObj && propObj.photos && propObj.photos[0] ? propObj.photos[0] : 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=100&q=80',
+        from: initialsFrom,
+        to: initialsTo,
+        reason: 'Attribution secteur',
+        status: tr.status,
+        date: tr.date,
+        actionable: tr.status === 'en_attente'
+      });
+    });
+
+    // Merge high fidelity mock baselines if showing tous / applicable tab
+    baseHistorical.forEach(hist => {
+      if (selectedTransferTab === 'tous' || selectedTransferTab === hist.status) {
+         renderRows.push(hist);
+      }
+    });
+
+    if (renderRows.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align:center; color:var(--stone); padding: 24px; font-style: italic;">
+            Aucune demande de transfert sous les filtres actifs.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    // Sort renderRows so that actionable/en_attente are consistently shown at the top
+    renderRows.sort((a,b) => (b.status === 'en_attente' ? 1 : 0) - (a.status === 'en_attente' ? 1 : 0));
+
+    tableBody.innerHTML = renderRows.map(row => {
+      let statusMarkup = '';
+      if (row.status === 'en_attente') {
+        statusMarkup = '<span class="pill-status warning">En attente</span>';
+      } else if (row.status === 'accepté') {
+        statusMarkup = '<span class="pill-status synced">Accepté</span>';
+      } else if (row.status === 'refusé') {
+        statusMarkup = '<span class="pill-status error">Refusé</span>';
+      }
+
+      const actionsMarkup = row.actionable ? `
+        <div style="display:flex; gap:6.5px; justify-content:flex-end;">
+          <!-- Custom green check tick circle -->
+          <button onclick="event.stopPropagation(); executeActionDecision('${row.id}', 'accepté')" style="width:26px; height:26px; border-radius:6px; background:#EBF7EE; border:1px solid var(--forest); color:var(--forest); font-weight:bold; cursor:pointer;" title="Accepter le transfert">✔</button>
+          
+          <!-- Custom red cross circle -->
+          <button onclick="event.stopPropagation(); executeActionDecision('${row.id}', 'refusé')" style="width:26px; height:26px; border-radius:6px; background:#FCECE9; border:1px solid #C0553D; color:#C0553D; font-weight:bold; cursor:pointer;" title="Rejeter le transfert">✕</button>
+        </div>
+      ` : `<span style="font-size:11px; color:var(--stone-light);">Traité</span>`;
+
+      return `
+        <tr>
+          <td>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <img src="${row.photo}" class="transfer-house-pic" />
+              <div>
+                <strong style="font-family:'Lora',serif; font-size:12.5px; color:var(--ink);">${row.title}</strong><br>
+                <span style="font-size:10.5px; font-family:'JetBrains Mono',monospace; color:var(--stone-light);">${row.city}</span>
+              </div>
+            </div>
+          </td>
+          <td style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500;">${row.from}</td>
+          <td style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500;">${row.to}</td>
+          <td style="color:var(--stone); font-size:11.5px;">${row.reason}</td>
+          <td>${statusMarkup}</td>
+          <td style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--stone-light);">${row.date}</td>
+          <td>${actionsMarkup}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Handle immediate transfers inside table
+  window.executeActionDecision = function(requestId, status) {
+    if (requestId.startsWith('hist-')) {
+       alert("Cette ligne de l'historique d'archive ne peut pas être réécrite.");
+       return;
+    }
+
+    store.handleTransferRequest(requestId, status);
+    
+    // Spawn gorgeous check success Toast feedback
+    const t = document.createElement('div');
+    t.style.cssText = "position:fixed; bottom:24px; right:24px; background:#FFFFFF; color:var(--ink); border:2px solid var(--ink); padding:14px 22px; border-radius:180px 15px 150px 15px/15px 150px 15px 180px; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; box-shadow:4px 4px 0 var(--forest); z-index:9999;";
+    t.textContent = `TRANSFERT IMPO : Dossier immobilier marqué comme : ${status.toUpperCase()} ! ✔`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.remove(); }, 2500);
+
+    // Re-render
+    renderAdminView();
+  };
+
+  // Switch agent to Sarah for administrative privileges
+  window.forceSwitchToAdminSarah = function() {
+    store.setCurrentAgent('sarah');
+    renderAdminView();
+    
+    // Custom styled validation toast
+    const t = document.createElement('div');
+    t.style.cssText = "position:fixed; bottom:24px; right:24px; background:#FFFFFF; color:var(--ink); border:2px solid var(--ink); padding:14px 22px; border-radius:180px 15px 150px 15px/15px 150px 15px 180px; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; box-shadow:4px 4px 0 var(--forest); z-index:9999;";
+    t.textContent = `CRM : Profil commuté sur Sarah Vermeulen (Admin)`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.remove(); }, 2500);
+  };
+
+  // Toast representations
+  window.triggerReportExport = function() {
+    const t = document.createElement('div');
+    t.style.cssText = "position:fixed; bottom:24px; right:24px; background:#FFFFFF; color:var(--ink); border:2px solid var(--ink); padding:14px 22px; border-radius:180px 15px 150px 15px/15px 150px 15px 180px; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; box-shadow:4px 4px 0 var(--forest); z-index:9999;";
+    t.textContent = `TELECHARGEMENT : Rapport analytique d'agence exporté en XLSX ✔`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.remove(); }, 2500);
+  };
+
+  window.triggerAgentAction = function(agentName) {
+     alert("Options d'administration pour " + agentName + " : \n\n1. Réassigner son portefeuille d'annonces\n2. Bloquer l'accès aux flux non-qualifiés\n3. Clôturer son relevé comptable de commission.");
+  };
+
+  window.notifyAutomationToggle = function(automationName) {
+    const t = document.createElement('div');
+    t.style.cssText = "position:fixed; bottom:24px; right:24px; background:#FFFFFF; color:var(--ink); border:2px solid var(--ink); padding:14px 22px; border-radius:180px 15px 150px 15px/15px 150px 15px 180px; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; box-shadow:4px 4px 0 var(--rose); z-index:9999;";
+    t.textContent = `AUTOMATION : Option "${automationName}" mise en veille ou activée !`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.remove(); }, 2500);
+  };
+
+  window.saveComsSettings = function() {
+    const pct = document.getElementById('cfg-commission-pct').value;
+    const fixes = document.getElementById('cfg-commission-fixes').value;
+    const tva = document.getElementById('cfg-commission-tva').value;
+
+    const t = document.createElement('div');
+    t.style.cssText = "position:fixed; bottom:24px; right:24px; background:#FFFFFF; color:var(--ink); border:2px solid var(--ink); padding:14px 22px; border-radius:180px 15px 150px 15px/15px 150px 15px 180px; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; box-shadow:4px 4px 0 var(--forest); z-index:9999;";
+    t.textContent = `CRÉDITS : Commission enregistrée à ${pct}% & fixes à ${fixes}€ (TVA ${tva}%).`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.remove(); }, 3000);
+  };
+
+  // Portal Synchronization Interactive simulation
+  window.syncSourcePortal = function(portalName) {
+    if (!portalSyncStates[portalName]) return;
+    
+    // Spawn loader state
+    portalSyncStates[portalName].status = 'syncing';
+    portalSyncStates[portalName].text = '🔄 Synchro...';
+    renderAdminView();
+
+    setTimeout(() => {
+      portalSyncStates[portalName].status = 'synced';
+      portalSyncStates[portalName].text = '✔ Sync';
+      
+      const now = new Date();
+      const formatTime = (now.getHours() < 10 ? '0' : '') + now.getHours() + ':' + (now.getMinutes() < 10 ? '0' : '') + now.getMinutes();
+      portalSyncStates[portalName].lastTime = formatTime;
+      portalSyncStates[portalName].count += Math.floor(Math.random() * 30) + 5; // dynamic update count
+
+      // Dispatch feedback and toast
+      const t = document.createElement('div');
+      t.style.cssText = "position:fixed; bottom:24px; right:24px; background:#FFFFFF; color:var(--ink); border:2px solid var(--ink); padding:14px 22px; border-radius:180px 15px 150px 15px/15px 150px 15px 180px; font-family:'JetBrains Mono',monospace; font-size:11.5px; font-weight:700; box-shadow:4px 4px 0 var(--forest); z-index:9999;";
+      t.textContent = `PORTAIL SYNC : ${portalName.toUpperCase()} a synchronisé son API avec succès.`;
+      document.body.appendChild(t);
+      setTimeout(() => { t.remove(); }, 2500);
+
+      renderAdminView();
+    }, 1200);
+  };
+
+  window.forceSyncAllPortals = function() {
+    Object.keys(portalSyncStates).forEach((item, idx) => {
+       setTimeout(() => {
+          syncSourcePortal(item);
+       }, idx * 250);
+    });
+  };
+
+  // --- Pipeline Stage Editor Interactivity ---
+  window.movePipelineStage = function(idx, direction) {
+    if (!store.getPipelineStages || !store.savePipelineStages) return;
+    const stages = store.getPipelineStages();
+    
+    if (direction === -1 && idx > 0) {
+      const temp = stages[idx];
+      stages[idx] = stages[idx - 1];
+      stages[idx - 1] = temp;
+    } else if (direction === 1 && idx < stages.length - 1) {
+      const temp = stages[idx];
+      stages[idx] = stages[idx + 1];
+      stages[idx + 1] = temp;
+    }
+    
+    store.savePipelineStages(stages);
+    renderAdminView();
+    
+    // Throw state changed notification bubble
+    const t = document.createElement('div');
+    t.style.cssText = "position:fixed; bottom:24px; right:24px; background:#FFFFFF; color:var(--ink); border:2px solid var(--ink); padding:12px 18px; border-radius:8px; font-family:'JetBrains Mono'; font-size:11px; font-weight:700; box-shadow:3px 3px 0 var(--forest); z-index:9999;";
+    t.textContent = `PIPELINE : Ordre des étapes mis à jour !`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.remove(); }, 1800);
+  };
+
+  window.renamePipelineStage = function(idx) {
+    if (!store.getPipelineStages || !store.savePipelineStages) return;
+    const stages = store.getPipelineStages();
+    const oldName = stages[idx].name;
+    const newName = prompt(`Saisir le nouveau titre pour l'étape "${oldName}" :`, oldName);
+    
+    if (newName && newName.trim() !== '') {
+      stages[idx].name = newName.trim();
+      store.savePipelineStages(stages);
+      renderAdminView();
+    }
+  };
+
+  window.deletePipelineStage = function(idx) {
+    if (!store.getPipelineStages || !store.savePipelineStages) return;
+    const stages = store.getPipelineStages();
+    if (stages.length <= 4) {
+      alert("Erreur de sécurité : Il faut conserver au moins 4 étapes de qualification pour la fluidité du CRM d'agence.");
+      return;
+    }
+
+    const name = stages[idx].name;
+    if (confirm(`Confirmer la suppression irréversible de l'étape : "${name}" ?`)) {
+       stages.splice(idx, 1);
+       store.savePipelineStages(stages);
+       renderAdminView();
+    }
+  };
+
+  window.addNewPipelineStage = function() {
+    const input = document.getElementById('new-stage-title-input');
+    if (!input) return;
+    const value = input.value.trim();
+    if (!value) {
+      alert("Veuillez saisir un intitulé pour la nouvelle étape.");
+      return;
+    }
+
+    if (!store.getPipelineStages || !store.savePipelineStages) return;
+    const stages = store.getPipelineStages();
+    
+    // Append object
+    const colorCodes = ['#C67A13', 'var(--forest)', '#2B3A8C', '#8F55C9', '#C0553D'];
+    const randomColor = colorCodes[Math.floor(Math.random() * colorCodes.length)];
+    
+    stages.push({
+      id: 'custom_' + Date.now(),
+      name: value,
+      icon: '✦',
+      color: randomColor
+    });
+
+    store.savePipelineStages(stages);
+    input.value = '';
+    renderAdminView();
+
+    // Success notify
+    const t = document.createElement('div');
+    t.style.cssText = "position:fixed; bottom:24px; right:24px; background:#FFFFFF; color:var(--ink); border:2px solid var(--ink); padding:12px 18px; border-radius:8px; font-family:'JetBrains Mono'; font-size:11px; font-weight:700; box-shadow:3px 3px 0 var(--forest); z-index:9999;";
+    t.textContent = `ÉTAPE CRÉÉE : "${value}" est désormais active dans le pipeline !`;
+    document.body.appendChild(t);
+    setTimeout(() => { t.remove(); }, 2000);
+  };
+
+  window.resetPipelineStagesToDefault = function() {
+    if (!confirm("Voulez-vous réinitialiser le workflow de l'agence aux 8 phases d'origine ?")) return;
+    localStorage.removeItem('ip_pipeline_stages');
+    // Dispatch general triggers
+    if (window.ImmoPilotStore && window.ImmoPilotStore.createAuditLog) {
+      window.ImmoPilotStore.createAuditLog('Admin Configuration', 'Les étapes du pipeline ont été réinitialisées par défaut.');
+    }
+    window.dispatchEvent(new CustomEvent('ip-state-changed'));
+    renderAdminView();
+  };
+
+  // Agent KPI Isolation Trigger Click
+  window.selectAgentKPI = function(agentId) {
+    if (selectedAgentKPI === agentId) {
+      selectedAgentKPI = 'global';
+    } else {
+      selectedAgentKPI = agentId;
+    }
+    renderAdminView();
+  };
+
+  window.scrollToElement = function(elementId) {
+    const el = document.getElementById(elementId);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Run immediately
+  renderAdminView();
+
+  // Re-run if store notifies changes (agents switch, state saves, etc.)
+  window.addEventListener('ip-agent-changed', renderAdminView);
+  window.addEventListener('ip-state-changed', renderAdminView);
+})();
+</script>

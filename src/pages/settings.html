@@ -1,0 +1,226 @@
+<div class="agenda-page">
+  <style>
+    .settings-container {
+      margin-right: 22px;
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 24px;
+    }
+    .settings-card {
+      background: #FFFDF7;
+      border: 1.5px solid var(--stone);
+      border-radius: 4px;
+      padding: 20px;
+      box-shadow: 2.2px 2.5px 0px rgba(107, 111, 109, 0.15);
+      margin-bottom: 24px;
+    }
+    .form-group-retro {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .form-group-retro label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--stone);
+    }
+    .form-control-retro {
+      padding: 8px 12px;
+      font-size: 13.5px;
+      border: 1.5px solid var(--stone);
+      border-radius: 4px;
+      background: #FFFDF7;
+      outline: none;
+      transition: all 120ms;
+    }
+    .form-control-retro:focus {
+      border-color: var(--forest);
+      box-shadow: 1.5px 1.5px 0px var(--forest);
+    }
+    .agent-switcher {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .agent-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1.5px solid var(--stone);
+      border-radius: 4px;
+      padding: 10px 14px;
+      background: #FFFDF7;
+      cursor: pointer;
+      transition: all 150ms;
+    }
+    .agent-option:hover {
+      background: var(--forest-tint);
+    }
+    .agent-option.selected {
+      border-color: var(--forest);
+      background: var(--forest-tint);
+      box-shadow: 2px 2px 0px var(--forest);
+    }
+    .sync-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+  </style>
+
+  <!-- Title section -->
+  <div class="agenda-header" style="margin-bottom:20px;">
+    <div class="agenda-header-top">
+      <div class="agenda-title">
+        <h1>Paramètres d'ImmoPilot</h1>
+        <div class="agenda-subtitle">Configuration des préférences d'agence, du profil simulé actif, et intégrations</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-container">
+    <!-- LEFT: System preferences -->
+    <div>
+      <div class="settings-card">
+        <h3 style="font-family:'Lora',serif; font-size:16px; font-weight:700; color:var(--ink); margin-bottom:14px;">🎛️ Sélecteur de profil actif (Simulateur de rôles)</h3>
+        <p style="font-size:12.5px; color:var(--stone); margin-bottom:16px;">Sélectionnez l'utilisateur simulé pour naviguer entre les niveaux d'autorisation CRM d'ImmoPilot :</p>
+        
+        <div class="agent-switcher" id="settings-agent-switcher-list">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3 style="font-family:'Lora',serif; font-size:16px; font-weight:700; color:var(--ink); margin-bottom:14px;">🏢 Configuration de l'Agence</h3>
+        <div class="form-group-retro">
+          <label>Nom de la structure Real-Estate</label>
+          <input type="text" class="form-control-retro" id="settings-agency-name" value="Agence Plus Immobilier SRL">
+        </div>
+        <div class="form-group-retro">
+          <label>Taux de Commission standard (%)</label>
+          <input type="number" class="form-control-retro" id="settings-agency-fee" value="3.0" step="0.5">
+        </div>
+        <button class="tab-btn active" onclick="alert('Configuration d\'agence enregistrée !')" style="height:34px;">Sauvegarder les préférences</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: Integrations and Sync status -->
+    <div>
+      <div class="settings-card">
+        <h3 style="font-family:'Lora',serif; font-size:16px; font-weight:700; color:var(--ink); margin-bottom:12px;">📅 Synchronisation Calendrier externe</h3>
+        <p style="font-size:12.5px; color:var(--stone); margin-bottom:16px;">Permettez la synchronisation instantanée bidirectionnelle de votre Agenda ImmoPilot avec vos outils d'équipe personnels :</p>
+        
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="padding:10px; border:1px solid var(--sand-deep); border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--forest)"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              <span style="font-size:12.5px; font-weight:600;">Google Calendar</span>
+            </div>
+            <span class="status-badge" id="gcal-status" style="background:#FBDADA; color:var(--rose); border:1px solid var(--rose); cursor:pointer;" onclick="toggleSync('gcal')">Déconnecté</span>
+          </div>
+
+          <div style="padding:10px; border:1px solid var(--sand-deep); border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--forest)"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span style="font-size:12.5px; font-weight:600;">Microsoft Outlook</span>
+            </div>
+            <span class="status-badge" id="outlook-status" style="background:#FBDADA; color:var(--rose); border:1px solid var(--rose); cursor:pointer;" onclick="toggleSync('outlook')">Déconnecté</span>
+          </div>
+        </div>
+        <p style="font-size:11px; color:var(--stone); margin-top:12px; line-height:1.3;">Note : En environnement de développement local, les appels OAuth seront simulés par des jetons applicatifs sécurisés temporaires.</p>
+      </div>
+
+      <div class="settings-card">
+        <h3 style="font-family:'Lora',serif; font-size:16px; font-weight:700; color:var(--ink); margin-bottom:10px;">🧪 État de Persistance (MVP)</h3>
+        <p style="font-size:12.5px; color:var(--stone); margin-bottom:12px;">Toutes les actions CRM et modifications d'états de ce visualiseur interactif sont stockées au sein de la session locale sécurisée de votre navigateur Web.</p>
+        
+        <button class="action-btn-sm" style="width:100%; border-color:var(--rose); color:var(--rose); background:#FFF8F7;" onclick="clearStateAndHardReset()">Réinitialiser complètement la Base de données</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const store = window.ImmoPilotStore;
+  if (!store) return;
+
+  function renderSwitcher() {
+    const listContainer = document.getElementById('settings-agent-switcher-list');
+    if (!listContainer) return;
+
+    const agents = store.getAgents();
+    const current = store.getCurrentAgent();
+
+    listContainer.innerHTML = agents.map(a => {
+      const isSelected = a.id === current.id;
+      return `
+        <div class="agent-option ${isSelected ? 'selected' : ''}" onclick="selectSystemAgent('${a.id}')">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="agent-avatar" style="background-image:url(${a.avatar}); width:28px; height:28px;"></div>
+            <div>
+              <strong style="font-size:13px; color:var(--ink);">${a.name}</strong>
+              <div style="font-size:10.5px; color:var(--stone); text-transform:uppercase; font-family:monospace;">${a.role === 'admin' ? 'Administrateur' : 'Conseiller Immobilier'}</div>
+            </div>
+          </div>
+          <div>
+            ${isSelected 
+              ? `<span style="font-size:11px; font-weight:700; color:var(--forest); font-family:monospace;">ACTIF ✔</span>`
+              : `<span style="font-size:11px; color:var(--stone-light); font-family:monospace;">Sélectionner</span>`
+            }
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Set system agent
+  window.selectSystemAgent = function(agentId) {
+    store.setCurrentAgent(agentId);
+    renderSwitcher();
+    
+    // Auto sync layout profiles
+    if (window.syncSidebarProfile) {
+      window.syncSidebarProfile();
+    }
+    
+    // Emit notification toast
+    const activeObj = store.getCurrentAgent();
+    const t = document.createElement('div');
+    t.style.cssText = "position:fixed; bottom:20px; right:20px; background:var(--forest); color:#FFFDF7; padding:12px 20px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12.5px; box-shadow:3px 3px 0 var(--ink); z-index:9999;";
+    t.textContent = `CRM : Profil actif commuté vers [${activeObj.name.toUpperCase()}].`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
+  };
+
+  // Toggle dynamic calendar integrations
+  window.toggleSync = function(service) {
+    const el = document.getElementById(`${service}-status`);
+    if (!el) return;
+
+    const isConnected = el.textContent === 'Connecté';
+    if (isConnected) {
+      el.textContent = 'Déconnecté';
+      el.style.cssText = "background:#FBDADA; color:var(--rose); border:1px solid var(--rose); cursor:pointer;";
+    } else {
+      el.textContent = 'Connecté';
+      el.style.cssText = "background:#EAF5ED; color:var(--forest); border:1px solid var(--forest); cursor:pointer;";
+    }
+  };
+
+  // Database Reset
+  window.clearStateAndHardReset = function() {
+    if (confirm('Voulez-vous vraiment écraser l\'état applicatif local ? Toutes vos modifications et nouveaux deals simulés seront définitivement perdus.')) {
+      localStorage.clear();
+      window.location.reload();
+    }
+  };
+
+  // Initial render
+  renderSwitcher();
+})();
+</script>

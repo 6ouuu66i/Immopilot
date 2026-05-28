@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone *)",
+      "Read(//c/Users/souss/.claude/skills/gstack/**)",
+      "Bash(./setup)",
+      "Bash(npm run *)",
+      "Bash(npx vite *)",
+      "Bash(npm install *)",
+      "WebFetch(domain:localhost)",
+      "Bash(npx skills *)",
+      "Bash(ln -sf __CMDSUB_OUTPUT__/.agents/skills/__TRACKED_VAR__ __TRACKED_VAR__/.claude/skills/__TRACKED_VAR__)",
+      "Bash(Get-ChildItem -Path \"c:\\\\IMMOPILOT\" -Recurse -Depth 2)",
+      "Bash(Select-Object FullName)",
+      "Bash(Head -50)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}

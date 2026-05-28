@@ -1,0 +1,1484 @@
+<!-- 
+  ImmoPilot - Laboratoire de Direction Artistique de la Grande Fiche
+  3 Déclinaisons de la DA Croquis/Sketchy/Dessin appliquées sur le même Layout
+-->
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Architects+Daughter&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap');
+
+<div class="sketchy-lab-wrapper">
+  
+  <!-- Interactive Laboratory Header -->
+  <header class="blueprint-header">
+    <div class="header-stamp">LAB #04</div>
+    <div class="header-main-desc">
+      <h1 class="heading-serif">L'Atelier des Croquis · Grande Fiche Bien</h1>
+      <p class="desc-mono">Évaluation de 3 pistes graphiques "Fait Main" appliquées à la structure finale de la fiche. Les positions, contenus et couleurs de notre site sont rigoureusement préservés.</p>
+    </div>
+    
+    <!-- DA Switcher Panel -->
+    <div class="da-switcher-panel">
+      <span class="switcher-label">Choisir une piste :</span>
+      <div class="switcher-buttons">
+        <button class="switcher-btn active" onclick="switchTheme('da-prop1')" id="btn-da-prop1">
+          <span class="btn-num">01</span>
+          <span class="btn-title">Crayon d’Architecte 📐</span>
+          <span class="btn-desc">Traits fins, prolongements de coupe, fond quadrillé technique</span>
+        </button>
+        <button class="switcher-btn" onclick="switchTheme('da-prop2')" id="btn-da-prop2">
+          <span class="btn-num">02</span>
+          <span class="btn-title">Carnet Griffonné 📒</span>
+          <span class="btn-desc">Double traits d'encre vibrants, étiquettes adhésives "Scotch", croquis gras</span>
+        </button>
+        <button class="switcher-btn" onclick="switchTheme('da-prop3')" id="btn-da-prop3">
+          <span class="btn-num">03</span>
+          <span class="btn-title">Aquarelle & Surligneur 🎨</span>
+          <span class="btn-desc">Traits fluides, ombres d'aquarelle diffuses, surlignages de feutre</span>
+        </button>
+      </div>
+    </div>
+    
+    <div class="decision-bar" id="decision-toast" style="display:none;">
+      <div class="toast-checkmark">✔</div>
+      <div class="toast-content">
+        <strong>Piste sélectionnée !</strong> Votre choix pour <span id="chosen-da-title" class="font-bold underline">...</span> a été enregistré dans le studio de création ImmoPilot.
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive Sandbox Workspace simulating the modal background -->
+  <main class="fiche-simulator-frame">
+    <div id="active-proposal-indicator" class="active-badge-tag">Piste active : Crayon d'Architecte (01)</div>
+    
+    <!-- THE GRANDE FICHE ELEMENT (Structure directly cloned from biens.html) -->
+    <section class="fiche da-prop1" id="mock-grande-fiche">
+      
+      <!-- Mock Close Button on Top -->
+      <button class="fiche-close-top" onclick="alert('Action : Fermetures de la Grande Fiche')" aria-label="Fermer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+      
+      <div class="fiche-scroll">
+        <!-- HERO AREA + right stats column (header + properties) -->
+        <div class="hero-wrap">
+          <div class="hero" id="hero">
+            <img id="gf-main-img" src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&amp;q=85" alt="Villa basse énergie">
+            <button class="hero-nav prev" id="hero-prev" onclick="changeMockPhoto(-1)" aria-label="Précédente">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </button>
+            <button class="hero-nav next" id="hero-next" onclick="changeMockPhoto(1)" aria-label="Suivante">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+            <span class="hero-counter" id="gf-gallery-counter">1 / 5</span>
+            <div class="hero-hover-zone"></div>
+            <div class="hero-thumbs" id="hero-thumbs">
+              <div class="hero-thumb active" onclick="selectMockPhoto(0)" data-index="0">
+                <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=150&amp;q=80" alt="">
+              </div>
+              <div class="hero-thumb" onclick="selectMockPhoto(1)" data-index="1">
+                <img src="https://images.unsplash.com/photo-1600566753086-00f18fe6ede1?w=150&amp;q=80" alt="">
+              </div>
+              <div class="hero-thumb" onclick="selectMockPhoto(2)" data-index="2">
+                <img src="https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=150&amp;q=80" alt="">
+              </div>
+              <div class="hero-thumb" onclick="selectMockPhoto(3)" data-index="3">
+                <img src="https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=150&amp;q=80" alt="">
+              </div>
+              <div class="hero-thumbs-all" onclick="alert('Impression technique au format PDF')" aria-label="Voir toutes les photos">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>
+                +5
+              </div>
+            </div>
+          </div>
+          
+          <aside class="hero-side">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:14px;width:100%;">
+              <div class="hero-side-title font-sans">Villa basse énergie</div>
+              <div class="premium-price">895 000 €</div>
+            </div>
+            <div class="hero-side-signals">
+              <span class="signal-chip fresh">Publié il y a 5 j</span>
+              <span class="signal-chip fsbo">Particulier (FSBO)</span>
+              <span class="signal-chip baisse">-10.7% vs locale</span>
+            </div>
+            <div class="hero-side-loc">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"><path d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8z"></path><circle cx="12" cy="10" r="2.5" fill="#FFFFFF" stroke="none"></circle></svg>
+              Lasne · Brabant wallon
+            </div>
+            
+            <!-- Caractéristiques Card -->
+            <div class="mc retractable expanded" style="width:100%;margin-top:6px;">
+              <div class="mc-label" onclick="toggleLocalBlock(this)">Caractéristiques</div>
+              <div class="mc-content">
+                <div style="display:flex;flex-direction:column;font-size:12.5px;">
+                  <div class="char-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg><span class="label-muted">Type</span><span class="val-bold">Villa</span></div>
+                  <div class="char-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="1"></rect></svg><span class="label-muted">Surface habitable</span><span class="val-bold">210 m²</span></div>
+                  <div class="char-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 20h20M4 20V8l8-5 8 5v12"></path></svg><span class="label-muted">Terrain</span><span class="val-bold">1 050 m²</span></div>
+                  <div class="char-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 11V5h18v6M3 18v3M21 18v3M3 14h18M5 14v4M19 14v4"></path></svg><span class="label-muted">Chambres</span><span class="val-bold">4</span></div>
+                  <div class="char-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 6V4a2 2 0 0 1 4 0v2M3 11h18M5 11v7a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-7"></path></svg><span class="label-muted">Salles de bain</span><span class="val-bold">2</span></div>
+                  <div class="char-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="9" width="20" height="11" rx="1"></rect><circle cx="7" cy="14" r="1"></circle><circle cx="17" cy="14" r="1"></circle></svg><span class="label-muted">Garages</span><span class="val-bold">1 box fermé</span></div>
+                  <div class="char-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line></svg><span class="label-muted">Année</span><span class="val-bold">2018</span></div>
+                  <div class="char-row">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+                    <span class="label-muted">PEB</span>
+                    <span style="text-align:right">
+                      <span class="peb-badge font-bold">A</span>
+                      <span class="peb-details font-mono text-[11px]">(56 kWh/m².an)</span>
+                    </span>
+                  </div>
+                  <div class="char-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v6m0 12v-6M4.93 4.93l4.24 4.24m5.66 5.66l4.24 4.24M2 12h6m12 0h-6"></path></svg><span class="label-muted">Chauffage</span><span class="val-bold">Pompe à chaleur</span></div>
+                  <div class="char-row"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="label-muted">Disponibilité</span><span class="val-bold">À l'acte</span></div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <!-- TWO COLUMN GRID BODY -->
+        <div class="body">
+          
+          <!-- Column 1 -->
+          <div class="col">
+            <!-- DESCRIPTION -->
+            <div class="mc retractable expanded">
+              <div class="mc-label" onclick="toggleLocalBlock(this)">Description</div>
+              <div class="mc-content">
+                <p class="description-text">
+                  Magnifique villa récente basse énergie construite en 2018 sur un terrain paysager de 1 050 m² à Lasne. Cette propriété d'exception offre 210 m² habitables répartis sur de superbes volumes, avec 4 chambres lumineuses, 2 salles de bain modernes et un grand séjour ouvert sur cuisine équipée. Pompe à chaleur, triple vitrage et PEB A garantissent une consommation énergétique minimale.
+                  <br><br>
+                  Le bien dispose de stationnement ou garage privatif, d'une grande terrasse et d'un jardin idéal pour une famille. Situé dans un quartier résidentiel particulièrement calme de Lasne, à proximité immédiate des commodités et des transports.
+                </p>
+              </div>
+            </div>
+
+            <!-- VENDEUR -->
+            <div class="mc retractable expanded">
+              <div class="mc-label" onclick="toggleLocalBlock(this)">Vendeur</div>
+              <div class="mc-content">
+                <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;">
+                  <div>
+                    <div style="font-size:13.5px;font-weight:700;color:#1D1F1E;" class="font-sans font-bold">Jean Dupont</div>
+                    <div style="font-size:11.5px;font-weight:600;color:#C8553D;margin:1px 0 6px;" class="font-mono text-[11px] font-bold">Particulier (FSBO)</div>
+                    <div style="display:flex;flex-direction:column;gap:3px;font-size:12px;color:#6B6F6D;" class="font-mono text-xs">
+                      <span style="display:flex;align-items:center;gap:6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>+32 475 12 34 56</span>
+                      <span style="display:flex;align-items:center;gap:6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>jean.dupont@email.be</span>
+                    </div>
+                  </div>
+                  <div class="vendor-initials-badge font-bold">JD</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 2 -->
+          <div class="col">
+            <!-- SCORE IA -->
+            <div class="mc retractable expanded">
+              <div class="mc-label" onclick="toggleLocalBlock(this)">Score IA</div>
+              <div class="mc-content">
+                <div style="display:grid;grid-template-columns:90px 1fr;gap:12px;align-items:center;">
+                  <div class="score-radial-wrap" style="--sc:85;">
+                    <div class="score-outer-circle"></div>
+                    <strong class="score-inside-text font-bold">85</strong>
+                  </div>
+                  <div>
+                    <span class="ai-label font-bold">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"></path></svg>
+                      Résumé IA
+                    </span>
+                    <p style="font-size:12.5px;line-height:1.45;color:#1D1F1E;margin:0;">Excellente valorisation et situation très attractive à <strong>Lasne</strong>. Très bon état général certifié, performances énergétiques idéales et équipements d'actualité.</p>
+                  </div>
+                </div>
+                <div class="ai-tags-wrap" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;padding-top:10px;border-top:1px solid #EDE8DD;">
+                  <span class="ai-badge-tag">Emplacement premium</span>
+                  <span class="ai-badge-tag text-emerald-800 bg-emerald-50 border-emerald-200">PEB A</span>
+                  <span class="ai-badge-tag">Qualité certifiée</span>
+                  <span class="ai-badge-tag">Jardin</span>
+                  <span class="ai-badge-tag">Calme</span>
+                  <span class="ai-badge-tag">Forte rentabilité</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid #EDE8DD;">
+                  <span class="ai-sub-stamp text-xs">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C8893B" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    Annonce référencée activement
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- HISTORIQUE DES PRIX -->
+            <div class="mc retractable expanded">
+              <div class="mc-label" onclick="toggleLocalBlock(this)">Historique des prix</div>
+              <div class="mc-content">
+                <div style="display:flex;flex-direction:column;">
+                  <div class="price-timeline-row">
+                    <span class="timeline-dot bg-stone-500"></span>
+                    <span class="timeline-meta font-mono text-[10.5px]">Mise en ligne</span>
+                    <span class="timeline-price font-bold">945 000 €</span>
+                    <span class="timeline-badge bg-stone-100 text-stone-700">Initiale</span>
+                  </div>
+                  <div class="price-timeline-row">
+                    <span class="timeline-dot bg-red-650"></span>
+                    <span class="timeline-meta font-mono text-[10.5px]">Dernière variation</span>
+                    <span class="timeline-price font-bold text-ink"><span style="text-decoration:line-through;color:#8E8B83;font-weight:500;">920 000 €</span> → 895 000 €</span>
+                    <span class="timeline-badge bg-red-50 text-red-700">-2,7%</span>
+                  </div>
+                  <div class="price-timeline-row">
+                    <span class="timeline-dot bg-sky-650"></span>
+                    <span class="timeline-meta font-mono text-[10.5px]">Suivi robot</span>
+                    <span class="timeline-price font-bold text-ink"><span style="text-decoration:line-through;color:#8E8B83;font-weight:500;">945 000 €</span> → 920 000 €</span>
+                    <span class="timeline-badge bg-sky-50 text-sky-800">Ajusté</span>
+                  </div>
+                </div>
+                <div style="height:1px;background:#EDE8DD;margin:12px 0;"></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <div style="display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:10.5px;color:#6B6F6D;font-weight:500;" class="font-mono text-[10.5px]">Prix au m²</span>
+                    <span style="display:flex;align-items:center;gap:7px;">
+                      <span style="font-size:14px;color:#1D1F1E;font-weight:700;" class="font-bold">4 262 €</span>
+                      <span class="price-perf-badge">-10.7%</span>
+                    </span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:10.5px;color:#6B6F6D;font-weight:500;" class="font-mono text-[10.5px]">Fiche de marché Lasne</span>
+                    <span style="font-size:14px;color:#1D1F1E;font-weight:700;" class="font-bold">3 850 €/m²</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 3 -->
+          <div class="col">
+            <!-- SOURCE -->
+            <div class="mc retractable expanded">
+              <div class="mc-label" onclick="toggleLocalBlock(this)">Source</div>
+              <div class="mc-content">
+                <div style="display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:stretch;">
+                  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding-right:14px;border-right:1px solid #EDE8DD;">
+                    <a href="#" target="_blank" class="source-link font-bold">
+                      <span class="source-dot"></span>Zimmo
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    </a>
+                  </div>
+                  <div style="display:grid;grid-template-columns:auto auto;column-gap:10px;row-gap:6px;justify-content:end;align-items:center;" class="font-mono text-xs text-right">
+                    <span style="color:#6B6F6D;">Référence :</span><span class="ref-num font-bold">REF-3515904</span>
+                    <span style="color:#6B6F6D;">Publié le :</span><span class="pub-date font-bold">18/05/2026</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- LOCALISATION -->
+            <div class="mc retractable expanded">
+              <div class="mc-label" onclick="toggleLocalBlock(this)">Localisation</div>
+              <div class="mc-content">
+                <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#1D1F1E;font-weight:500;margin-top:0;" class="font-medium">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8B83" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                  Chemin du Try 14 · 1380 Lasne
+                </div>
+                <div class="map-container-mock" id="tests-map-container" style="position: relative;">
+                  <div style="display:flex; align-items:center; justify-content:center; height:100%; background:#FAF7F2; font-family:monospace; font-size:11px; color:#5C5A53;">
+                    Initialisation de la carte...
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ACTIONS -->
+            <div class="mc actions-card">
+              <div class="mc-label">Actions</div>
+              <div class="actions-grid">
+                <button class="btn btn-primary" onclick="alert('Deal créé !')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  Créer un deal
+                </button>
+                <button class="btn btn-secondary" onclick="alert('Demande de transfert de l\'annonce initiée.')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M17 1l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 23l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                  Demander transfert
+                </button>
+                <button class="btn btn-secondary" id="fav-trigger" onclick="toggleMockFavorite()">
+                  <svg width="14" height="14" id="fav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                  <span id="fav-text">Favori</span>
+                </button>
+                <button class="btn btn-secondary" onclick="alert('Action d\'exclusion / Ignorer')">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  Ignorer
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- NOTES CARD (Persistent interactive list in current simulation) -->
+          <div class="mc notes-card">
+            <div class="mc-label">Notes d'évaluation technique</div>
+            <div class="gf-notes-log" id="gf-notes-log">
+              <!-- Dynamically populated -->
+            </div>
+            <div class="note-row">
+              <input class="note-input" id="tests-note-input" placeholder="Ajouter une note de visite interne…">
+              <button class="note-save" onclick="addMockNote()" aria-label="Enregistrer">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+              </button>
+            </div>
+          </div>
+
+        </div> <!-- /.body -->
+      </div> <!-- /.fiche-scroll -->
+      
+    </section>
+  </main>
+</div>
+
+<!-- ========================================== -->
+<!-- EXQUISE SELECTION ET DÉCORATIONS DU LAB CSS -->
+<!-- ========================================== -->
+<style>
+/* Grid sandbox backdrop resembling a studio drafting table */
+.sketchy-lab-wrapper {
+  padding: 30px;
+  background-color: #FAF5EE; /* Fine sketch canvas beige */
+  background-image: radial-gradient(#E5DACE 1.3px, transparent 1.3px);
+  background-size: 20px 20px;
+  min-height: 100%;
+  height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow-y: scroll !important;
+}
+
+/* Base custom definitions */
+.blueprint-header {
+  background: #FFFFFF;
+  border: 2px solid #1D1F1E;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 25px;
+  position: relative;
+  box-shadow: 4px 6px 0px rgba(29, 31, 30, 0.08);
+}
+.header-stamp {
+  position: absolute;
+  top: 15px; right: 15px;
+  background: #1E5A3A;
+  color: #FFFFFF;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+.heading-serif {
+  font-family: 'Lora', 'Georgia', serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1D1F1E;
+}
+.desc-mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: #6B6F6D;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+/* DA Switcher design options */
+.da-switcher-panel {
+  margin-top: 20px;
+  border-top: 1px dashed #E5DACE;
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.switcher-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #8E8B83;
+  font-weight: 700;
+}
+.switcher-buttons {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 768px) {
+  .switcher-buttons {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+.switcher-btn {
+  background: #FFFFFF;
+  border: 1.5px solid #E3DED2;
+  border-radius: 8px;
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 180ms ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.switcher-btn:hover {
+  border-color: #1E5A3A;
+  background-color: #FAFBF9;
+  transform: translateY(-1px);
+}
+.switcher-btn.active {
+  background: #FFFFFF;
+  border-color: #1E5A3A;
+  border-width: 2px;
+  box-shadow: 4px 5px 0px rgba(30, 90, 58, 0.15);
+}
+.btn-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: #8E8B83;
+  font-weight: bold;
+}
+.btn-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1D1F1E;
+  margin-bottom: 3px;
+}
+.btn-desc {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: #6B6F6D;
+  line-height: 1.4;
+}
+
+/* Decision confirmation toast banner */
+.decision-bar {
+  margin-top: 15px;
+  background: #CFE1D2;
+  border: 1.5px solid #1E5A3A;
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toast-checkmark {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #1E5A3A;
+  color: #FFFFFF;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: bold;
+}
+.toast-content {
+  font-size: 12px;
+  color: #1E5A3A;
+}
+
+/* Simulator overlay viewport */
+.fiche-simulator-frame {
+  background: #FAF6ED;
+  border: 2.5px solid #1D1F1E;
+  border-radius: 12px;
+  padding: 24px;
+  position: relative;
+  box-shadow: 5px 8px 0px rgba(29, 31, 30, 0.1);
+}
+.active-badge-tag {
+  position: absolute;
+  top: -12px; left: 24px;
+  background: #1D1F1E;
+  color: #FFFFFF;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: bold;
+  letter-spacing: 0.02em;
+}
+
+/* ────────────────────────────────────────────────────────── */
+/* THE GRANDE FICHE REAL-ESTATE GRID SYSTEM                   */
+/* ────────────────────────────────────────────────────────── */
+.fiche {
+  background: #FFFFFF;
+  border-radius: 14px;
+  width: 100%;
+  padding: 24px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.fiche-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.hero-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+@media (min-width: 1024px) {
+  .hero-wrap {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+  }
+}
+.hero {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  height: 380px;
+  background: #EBE6DA;
+}
+#gf-main-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  color: #1D1F1E;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border: none;
+  z-index: 10;
+  transition: all 150ms ease;
+}
+.hero-nav:hover {
+  background: #FFFFFF;
+  transform: translateY(-50%) scale(1.06);
+}
+.hero-nav.prev { left: 14px; }
+.hero-nav.next { right: 14px; }
+.hero-counter {
+  position: absolute;
+  top: 14px; right: 14px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(29, 31, 30, 0.72);
+  color: #FFFFFF;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.hero-thumbs {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.65), transparent);
+  padding: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  overflow-x: auto;
+}
+.hero-thumb {
+  width: 48px;
+  height: 36px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.hero-thumb.active {
+  border-color: #FFFFFF;
+  opacity: 1;
+}
+.hero-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero-thumbs-all {
+  margin-left: auto;
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: white;
+  border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #1D1F1E;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Metadata Panel */
+.hero-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: flex-start;
+}
+.hero-side-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1D1F1E;
+  letter-spacing: -0.015em;
+  margin-bottom: 2px;
+}
+.premium-price {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1D1F1E;
+}
+.hero-side-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.signal-chip {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.signal-chip.fresh { background: #CFE1D2; color: #1E5A3A; }
+.signal-chip.fsbo { background: #EBE6DA; color: #6B6F6D; }
+.signal-chip.baisse { background: #FAF1E7; color: #C8553D; }
+
+.hero-side-loc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6B6F6D;
+  margin-top: 3px;
+}
+
+/* Micro Cards Structural Elements */
+.mc {
+  background: #FFFFFF;
+  border: 1.5px solid #EDE8DD;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+.mc-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8E8B83;
+  font-weight: 700;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+.mc-content {
+  display: block;
+}
+.retractable.collapsed .mc-content {
+  display: none;
+}
+.char-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px dotted #EDE8DD;
+}
+.char-row:last-child {
+  border-bottom: none;
+}
+.label-muted { color: #6B6F6D; }
+.val-bold { color: #1D1F1E; font-weight: 600; }
+.peb-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: #FFFFFF;
+  background: #1E5A3A;
+  margin-right: 6px;
+}
+
+/* Column Structure */
+.body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+@media (min-width: 1024px) {
+  .body {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.description-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #1D1F1E;
+}
+
+/* Vendeur particulars */
+.vendor-initials-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #EBE6DA;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: #6B6F6D;
+}
+
+/* Score radial circle indicator */
+.score-radial-wrap {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #7FA68E 0%, #3D7A52 34%, #1E5A3A 85%, #CFE1D2 0);
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.score-outer-circle {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: #FFFFFF;
+}
+.score-inside-text {
+  position: relative;
+  font-size: 24px;
+  color: #1D1F1E;
+  line-height: 1;
+}
+
+.ai-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #1E5A3A;
+  margin-bottom: 4px;
+}
+.ai-badge-tag {
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  background: #FFFFFF;
+  border: 1px solid #E3DED2;
+  color: #1D1F1E;
+}
+.ai-sub-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #FAF1E7;
+  border: 1px solid #EFE0CB;
+  color: #7A5128;
+}
+
+/* Price Timeline Rows */
+.price-timeline-row {
+  display: grid;
+  grid-template-columns: 10px auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #F1ECDF;
+  font-size: 12px;
+}
+.timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.timeline-meta { color: #6B6F6D; }
+.timeline-price { color: #1D1F1E; }
+.timeline-badge {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.price-perf-badge {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: #F2DAD0;
+  color: #A04A2E;
+}
+
+/* Source badge logo */
+.source-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #E3DED2;
+  background: #FFFFFF;
+  color: #1D1F1E;
+  font-size: 12.5px;
+  text-decoration: none;
+}
+.source-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #1E5A3A;
+}
+
+/* Map frame mockup */
+.map-container-mock {
+  margin-top: 10px;
+  height: 150px;
+  border-radius: 10px;
+  border: 1px solid #EDE8DD;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(135deg, #F5F2ED 0%, #ECE5D5 100%);
+}
+.map-pulse-node {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: rgba(30, 90, 58, 0.22);
+}
+.mock-map-pin {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -100%);
+  width: 26px; height: 34px;
+  filter: drop-shadow(0 2px 6px rgba(29,31,30,0.25));
+}
+.map-coordinates {
+  position: absolute;
+  bottom: 8px; left: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 10px;
+  color: #5C5A53;
+}
+.map-btn {
+  position: absolute;
+  bottom: 8px; right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #E3DED2;
+  font-size: 11px;
+  color: #1D1F1E;
+  cursor: pointer;
+}
+
+/* Actions Card buttons */
+.actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8.5px;
+}
+.btn {
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 150ms ease;
+  border: none;
+}
+.btn-primary {
+  background: #1E5A3A;
+  color: #FFFFFF;
+}
+.btn-primary:hover {
+  background: #143F28;
+}
+.btn-secondary {
+  background: #FFFFFF;
+  border: 1px solid #E3DED2;
+  color: #1D1F1E;
+}
+.btn-secondary:hover {
+  background: #FAF8F5;
+}
+
+/* Notes Section Styles */
+.note-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.note-input {
+  flex: 1;
+  border: 1.5px solid #EDE8DD;
+  background: #FFFFFF;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  outline: none;
+}
+.note-save {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: #1E5A3A;
+  color: #FFFFFF;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  border: none;
+}
+.gf-notes-log {
+  max-height: 140px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.logged-note-box {
+  background: #FCFCFA;
+  border: 1px solid #EEE9DF;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  position: relative;
+  line-height: 1.4;
+}
+.note-time-stamp {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: #8E8B83;
+  display: block;
+  margin-bottom: 2px;
+}
+.delete-mock-note {
+  position: absolute;
+  top: 6px; right: 6px;
+  background: none; border: none;
+  font-size: 13px; font-weight: 700;
+  color: #8E8B83;
+  cursor: pointer;
+}
+
+
+
+/* ────────────────────────────────────────────────────────── */
+/* THE INTERACTIVE ARTWORK THEME PROPERTIES (THE 3 OPTIONS)    */
+/* ────────────────────────────────────────────────────────── */
+
+/* ── INTERACTIVE ANIMATION TRICKS ── */
+@keyframes slideInDown {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ────────────────────────────────────────────────────────── */
+/* OPTION 1 : CRAYON D'ARCHITECTE (01)                      */
+/* ────────────────────────────────────────────────────────── */
+.fiche.da-prop1 {
+  background-color: #FAFAF6;
+  background-image: 
+    linear-gradient(#EDE8DD 0.6px, transparent 0.6px), 
+    linear-gradient(90deg, #EDE8DD 0.6px, transparent 0.6px);
+  background-size: 12px 12px;
+  border: 1.5px solid #1D1F1E;
+  box-shadow: 4px 4px 0px rgba(29, 31, 30, 0.08);
+}
+.fiche.da-prop1 .mc {
+  border: 1px solid #1E5A3A;
+  border-radius: 1px;
+  background: #FFFFFF;
+  position: relative;
+  /* Architectural extending margins simulated via double alignment lines */
+  box-shadow: 2px 2px 0px rgba(30, 90, 58, 0.08);
+}
+.fiche.da-prop1 .mc-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: #1E5A3A;
+  background: #F0F5F2;
+  border-left: 3px solid #1E5A3A;
+  padding: 2px 6px;
+  letter-spacing: 0.04em;
+  width: fit-content;
+}
+.fiche.da-prop1 .hero {
+  border: 1.5px solid #1D1F1E;
+  border-radius: 2px;
+}
+.fiche.da-prop1 .btn-primary {
+  background: #1E5A3A;
+  border: 1.5px solid #1D1F1E;
+  border-radius: 1px;
+  box-shadow: 2px 2px 0px #1D1F1E;
+}
+.fiche.da-prop1 .btn-secondary {
+  background: #FFFFFF;
+  border: 1.2px solid #6B6F6D;
+  border-radius: 1px;
+  box-shadow: 1.5px 1.5px 0px #6B6F6D;
+}
+.fiche.da-prop1 .vendor-initials-badge {
+  background: #F0F5F2;
+  border: 1px solid #1E5A3A;
+  border-radius: 2px;
+  color: #1E5A3A;
+}
+.fiche.da-prop1 .score-radial-wrap {
+  background: conic-gradient(from 0deg, #1E5A3A 0%, #7FA68E 60%, #FFFFFF 100%);
+  border: 1px solid #1D1F1E;
+}
+.fiche.da-prop1 .score-outer-circle {
+  border-radius: 0;
+  border: 1px dashed #1E5A3A;
+}
+.fiche.da-prop1 .ai-badge-tag {
+  border: 1px solid #1E5A3A;
+  border-radius: 1px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.fiche.da-prop1 .source-link {
+  border: 1px solid #1E5A3A;
+  border-radius: 1px;
+  background: #FFFFFF;
+}
+.fiche.da-prop1 .map-container-mock {
+  border: 1px solid #1D1F1E;
+  border-radius: 1px;
+}
+.fiche.da-prop1 .note-input {
+  border: 1px solid #1E5A3A;
+  border-radius: 1px;
+}
+.fiche.da-prop1 .note-save {
+  border-radius: 1px;
+  border: 1px solid #1D1F1E;
+  box-shadow: 2px 2px 0px #1D1F1E;
+}
+
+
+/* ────────────────────────────────────────────────────────── */
+/* OPTION 2 : CARNET GRIFFONNÉ (02)                          */
+/* ────────────────────────────────────────────────────────── */
+.fiche.da-prop2 {
+  background-color: #FFFFFF;
+  border: 2px solid #1D1F1E;
+  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px; /* Skew wavy bounding border */
+  box-shadow: 3px 6px 0px rgba(29, 31, 30, 0.12);
+}
+.fiche.da-prop2 .mc {
+  border: 2px solid #1D1F1E;
+  border-radius: 180px 15px 210px 12px/12px 210px 15px 180px;
+  background-color: #FCFAF6;
+  box-shadow: 3px 3px 0px rgba(142, 139, 131, 0.25);
+}
+.fiche.da-prop2 .mc-label {
+  font-family: 'Caveat', cursive, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: capitalize;
+  letter-spacing: 0.01em;
+  color: #7A5128;
+  background: #FDF4E3; /* Masking tape representation */
+  border: 1.2px dashed rgba(161, 98, 7, 0.45);
+  box-shadow: 2px 3px 6px rgba(120, 53, 15, 0.06);
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 3px;
+  transform: rotate(-1.5deg);
+  width: fit-content;
+  position: relative;
+}
+.fiche.da-prop2 .mc-label::before {
+  content: '';
+  position: absolute;
+  left: -4px; top: 0; bottom: 0; width: 4px;
+  background-size: 2px 4px;
+  background-image: linear-gradient(45deg, transparent 50%, #FAF3E0 50%), linear-gradient(-45deg, transparent 50%, #FAF3E0 50%);
+}
+.fiche.da-prop2 .mc-label::after {
+  content: '';
+  position: absolute;
+  right: -4px; top: 0; bottom: 0; width: 4px;
+  background-size: 2px 4px;
+  background-image: linear-gradient(45deg, #FAF3E0 50%, transparent 50%), linear-gradient(-45deg, #FAF3E0 50%, transparent 50%);
+}
+.fiche.da-prop2 .hero {
+  border: 2px solid #1D1F1E;
+  border-radius: 220px 20px 180px 20px/20px 160px 20px 220px;
+}
+.fiche.da-prop2 .btn-primary {
+  background: #1E5A3A;
+  border: 2px solid #1D1F1E;
+  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+  box-shadow: 3px 3px 0px #1D1F1E;
+}
+.fiche.da-prop2 .btn-secondary {
+  background: #FFFFFF;
+  border: 2px solid #1D1F1E;
+  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+  box-shadow: 2px 2px 0px #1D1F1E;
+}
+.fiche.da-prop2 .btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #1D1F1E;
+}
+.fiche.da-prop2 .description-text {
+  font-family: 'Architects Daughter', cursive;
+  font-size: 12.5px;
+  color: #2D2F2E;
+  line-height: 1.6;
+}
+.fiche.da-prop2 .vendor-initials-badge {
+  background: #FFFFFF;
+  border: 1.8px solid #1D1F1E;
+  border-radius: 50% 48% 52% 48%;
+  color: #1D1F1E;
+}
+.fiche.da-prop2 .score-radial-wrap {
+  border: 2px solid #1D1F1E;
+  border-radius: 51% 49% 52% 48%;
+  background: conic-gradient(from 15deg, #1E5A3A 0%, #7FA68E 45%, #DFD3C3 85%, #EFE6DD 100%);
+}
+.fiche.da-prop2 .score-outer-circle {
+  border-radius: 50% 48% 52% 48%;
+  border: 1.5px solid #1D1F1E;
+}
+.fiche.da-prop2 .ai-badge-tag {
+  border: 1.5px solid #1D1F1E;
+  border-radius: 4px 8px 4px 6px;
+  font-family: 'Caveat', cursive;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+.fiche.da-prop2 .source-link {
+  border: 2px solid #1D1F1E;
+  border-radius: 4px 8px;
+  transform: rotate(0.5deg);
+}
+.fiche.da-prop2 .map-container-mock {
+  border: 2px solid #1D1F1E;
+  border-radius: 12px 4px 12px 4px;
+}
+.fiche.da-prop2 .note-input {
+  border: 1.8px solid #1D1F1E;
+  border-radius: 8px 4px;
+  font-family: 'Architects Daughter', cursive;
+}
+.fiche.da-prop2 .note-save {
+  border-radius: 4px 8px;
+  border: 1.8px solid #1D1F1E;
+  box-shadow: 2.5px 2.5px 0px #1D1F1E;
+}
+
+
+/* ────────────────────────────────────────────────────────── */
+/* OPTION 3 : AQUARELLE & SURLIGNEUR (03)                    */
+/* ────────────────────────────────────────────────────────── */
+.fiche.da-prop3 {
+  background-color: #FAF8F5;
+  border: 1px solid #EFE6DD;
+  box-shadow: 
+    0px 10px 30px rgba(30, 90, 58, 0.04), 
+    0px 1px 3px rgba(0, 0, 0, 0.02);
+}
+.fiche.da-prop3 .mc {
+  border: none;
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0px 4px 14px rgba(223, 211, 195, 0.3);
+  position: relative;
+}
+.fiche.da-prop3 .mc-label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  color: #1D1F1E;
+  letter-spacing: -0.01em;
+  /* Glowing fluorescent highlight background stroke underlying title text */
+  background: linear-gradient(180deg, transparent 55%, rgba(207, 225, 210, 0.75) 55%, rgba(207, 225, 210, 0.75) 92%);
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 1px;
+}
+/* Highlight variation for action headers or special cards */
+.fiche.da-prop3 .actions-card .mc-label,
+.fiche.da-prop3 .notes-card .mc-label {
+  background: linear-gradient(180deg, transparent 55%, rgba(239, 230, 221, 0.85) 55%, rgba(239, 230, 221, 0.85) 92%);
+}
+.fiche.da-prop3 .hero {
+  border-radius: 12px;
+  box-shadow: 0px 10px 25px rgba(30, 90, 58, 0.08);
+}
+.fiche.da-prop3 .btn-primary {
+  background: #1E5A3A;
+  border-radius: 20px;
+  box-shadow: 0px 4px 10px rgba(30, 90, 58, 0.22);
+}
+.fiche.da-prop3 .btn-secondary {
+  background: #FFFFFF;
+  border: 1px solid #EFE6DD;
+  border-radius: 20px;
+  box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.02);
+}
+.fiche.da-prop3 .btn-secondary:hover {
+  background: #FAF8F5;
+  border-color: #DFD3C3;
+}
+.fiche.da-prop3 .vendor-initials-badge {
+  background: #CFE1D2;
+  border: 1px solid #CFE1D2;
+  color: #1E5A3A;
+}
+.fiche.da-prop3 .score-radial-wrap {
+  background: conic-gradient(from 0deg, #1E5A3A 0%, #7FA68E 70%, #CFE1D2 100%);
+  filter: drop-shadow(0px 3px 8px rgba(30, 90, 58, 0.12));
+}
+.fiche.da-prop3 .score-outer-circle {
+  background: #FFFFFF;
+  inset: 5px;
+}
+.fiche.da-prop3 .ai-badge-tag {
+  background: #FFFFFF;
+  border: 1px solid #EFE6DD;
+  box-shadow: 0px 2px 6px rgba(223, 211, 195, 0.2);
+  border-radius: 20px;
+}
+.fiche.da-prop3 .source-link {
+  border: 1.2px solid #EFE6DD;
+  border-radius: 20px;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.03);
+}
+.fiche.da-prop3 .map-container-mock {
+  border: 1px solid #EFE6DD;
+  border-radius: 12px;
+}
+.fiche.da-prop3 .note-input {
+  border: 1.2px solid #EFE6DD;
+  border-radius: 20px;
+}
+.fiche.da-prop3 .note-save {
+  border-radius: 50%;
+  box-shadow: 0px 3px 8px rgba(30, 90, 58, 0.18);
+}
+</style>
+
+<!-- ========================================== -->
+<!-- SCRIPTS TO HANDLE DESK TESTING BEHAVIORS   -->
+<!-- ========================================== -->
+<script>
+(function() {
+  
+  // Theme Switching Manager
+  window.switchTheme = function(proposalId) {
+    var sheet = document.getElementById("mock-grande-fiche");
+    var indicator = document.getElementById("active-proposal-indicator");
+    
+    // Reset active buttons inside switcher panel
+    var buttons = document.querySelectorAll(".switcher-btn");
+    buttons.forEach(function(btn) {
+      btn.classList.remove("active");
+    });
+    
+    // Set target active button highlit
+    var activeBtn = document.getElementById("btn-" + proposalId);
+    if (activeBtn) activeBtn.classList.add("active");
+    
+    // Mutate class on structural block
+    if (sheet) {
+      sheet.className = "fiche " + proposalId;
+    }
+    
+    // Update active badge name
+    var readableName = "Crayon d'Architecte (01)";
+    if (proposalId === "da-prop2") readableName = "Carnet Griffonné (02)";
+    if (proposalId === "da-prop3") readableName = "Aquarelle & Surligneur (03)";
+    
+    if (indicator) {
+      indicator.innerHTML = "Piste active : " + readableName;
+    }
+    
+    // Custom satisfy confirmation toast
+    var toast = document.getElementById("decision-toast");
+    var toastTitle = document.getElementById("chosen-da-title");
+    
+    if (toast && toastTitle) {
+      toastTitle.innerHTML = readableName;
+      toast.style.display = "flex";
+      
+      // Persist choice in LocalStorage
+      localStorage.setItem("immo_selected_da_piste", proposalId);
+      
+      // Auto fadeout indicator
+      setTimeout(function() {
+        // Double checked if active route didn't change in between
+        if (localStorage.getItem("immo_selected_da_piste") === proposalId) {
+          toast.style.borderColor = "#1E5A3A";
+        }
+      }, 5000);
+    }
+  };
+  
+  // Initialize from LocalStorage of previously clicked proposal
+  var savedDa = localStorage.getItem("immo_selected_da_piste");
+  if (savedDa && (savedDa === "da-prop1" || savedDa === "da-prop2" || savedDa === "da-prop3")) {
+    setTimeout(function() {
+      window.switchTheme(savedDa);
+    }, 50);
+  }
+
+  // --- HIGHLIGHT COLLAPSIBLE MC BLOCKS ---
+  window.toggleLocalBlock = function(headerElement) {
+    var parentBlock = headerElement.closest(".mc");
+    if (parentBlock) {
+      parentBlock.classList.toggle("collapsed");
+    }
+  };
+
+  // --- CAROUSEL SLIDER ENGINE ---
+  var mockPhotos = [
+    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=85",
+    "https://images.unsplash.com/photo-1600566753086-00f18fe6ede1?w=1200&q=85",
+    "https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=1200&q=85",
+    "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=1200&q=85",
+    "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=1200&q=85"
+  ];
+  var activePhotoIndex = 0;
+
+  window.selectMockPhoto = function(index) {
+    activePhotoIndex = index;
+    updateMockCarousel();
+  };
+
+  window.changeMockPhoto = function(delta) {
+    activePhotoIndex += delta;
+    if (activePhotoIndex >= mockPhotos.length) activePhotoIndex = 0;
+    if (activePhotoIndex < 0) activePhotoIndex = mockPhotos.length - 1;
+    updateMockCarousel();
+  };
+
+  function updateMockCarousel() {
+    var img = document.getElementById("gf-main-img");
+    var counter = document.getElementById("gf-gallery-counter");
+    if (img) {
+      img.src = mockPhotos[activePhotoIndex];
+    }
+    if (counter) {
+      counter.innerHTML = (activePhotoIndex + 1) + " / " + mockPhotos.length;
+    }
+    
+    // Highlight thumbnail boundary
+    var thumbs = document.querySelectorAll(".hero-thumb");
+    thumbs.forEach(function(th, i) {
+      if (i === activePhotoIndex) {
+        th.classList.add("active");
+      } else {
+        th.classList.remove("active");
+      }
+    });
+  }
+
+  // --- PERSISTENT EVALUATION NOTES INTERACTION ---
+  var mockNotes = [
+    { text: "L'isolation thermique de la toiture a été refaite à neuf en 2019 (vérifié avec facture de l'entreprise).", date: "23/05/2026 14:15" },
+    { text: "La pompe à chaleur a fait l'objet d'un examen d'entretien en février de cette année. Excellent entretien général.", date: "23/05/2026 15:40" }
+  ];
+
+  window.renderMockNotes = function() {
+    var container = document.getElementById("gf-notes-log");
+    if (!container) return;
+    
+    if (mockNotes.length === 0) {
+      container.innerHTML = '<div style="text-align:center; color:#8E8B83; font-size:11px; padding:12px; font-family:\'JetBrains Mono\',monospace;">Aucun rapport technique enregistré.</div>';
+      return;
+    }
+    
+    var html = "";
+    mockNotes.forEach(function(note, idx) {
+      html += '<div class="logged-note-box">';
+      html += '  <span class="note-time-stamp">' + note.date + '</span>';
+      html += '  <div>' + note.text + '</div>';
+      html += '  <button class="delete-mock-note" onclick="deleteMockNote(' + idx + ')">&times;</button>';
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  };
+
+  window.addMockNote = function() {
+    var input = document.getElementById("tests-note-input");
+    if (!input || !input.value.trim()) return;
+    
+    var text = input.value.trim();
+    var now = new Date();
+    var dateString = now.toLocaleDateString('fr-BE') + " " + now.toLocaleTimeString('fr-BE', {hour: '2-digit', minute:'2-digit'});
+    
+    mockNotes.push({ text: text, date: dateString });
+    input.value = "";
+    window.renderMockNotes();
+  };
+
+  window.deleteMockNote = function(index) {
+    mockNotes.splice(index, 1);
+    window.renderMockNotes();
+  };
+
+  // --- FAVORITE ANIMATED STATE LOGIC ---
+  var mockFavorite = false;
+  window.toggleMockFavorite = function() {
+    mockFavorite = !mockFavorite;
+    var svg = document.getElementById("fav-svg");
+    var txt = document.getElementById("fav-text");
+    if (svg && txt) {
+      if (mockFavorite) {
+        svg.setAttribute("fill", "currentColor");
+        txt.innerHTML = "Favori ✔";
+        txt.style.color = "#1E5A3A";
+      } else {
+        svg.setAttribute("fill", "none");
+        txt.innerHTML = "Favori";
+        txt.style.color = "";
+      }
+    }
+  };
+
+  // Initial rendering of components
+  window.renderMockNotes();
+
+  // Load interactive Google Map for local address
+  if (window.renderInteractiveMap) {
+    window.renderInteractiveMap('tests-map-container', 'Lasne', 'Chemin du Try 14, 1380 Lasne');
+  }
+
+})();
+</script>

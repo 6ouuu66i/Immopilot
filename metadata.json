@@ -1,0 +1,6 @@
+{
+  "name": "ImmoPilot",
+  "description": "SaaS CRM immobilier B2B pour agents indépendants en Belgique avec détection de signaux faibles, scoring IA et pipeline de transactions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

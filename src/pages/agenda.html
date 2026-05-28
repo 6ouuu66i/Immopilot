@@ -1,0 +1,1866 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<style>
+:root {
+  --forest: #1E5A3A;
+  --forest-soft: #CFE1D2;
+  --forest-tint: #ECF1E8;
+  --sand: #F4EFE5;
+  --sand-deep: #E3DED2;
+  --bone: #FBF9F4;
+  --ink: #1D1F1E;
+  --stone: #6B6F6D;
+  --stone-light: #8E8B83;
+  --moss: #7FA68E;
+  --rose: #C8553D;
+  --amber: #C8983D;
+  --blue: #4A7AA5;
+}
+
+/* ── INTERFACES BASE ── */
+.agenda-page {
+  display: flex;
+  flex-direction: column;
+  padding: 18px 22px 40px;
+  min-width: 0;
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  
+  background-color: #FBF9F4 !important; /* Premium warm paper sheet background */
+  background-image: 
+    /* Soft red margin vertical line typical of high-quality notebooks */
+    linear-gradient(90deg, transparent 55px, rgba(200, 85, 61, 0.24) 55px, rgba(200, 85, 61, 0.24) 57px, transparent 57px),
+    /* Delicate forest-green grid lines to emphasize the sketched vibe */
+    linear-gradient(rgba(30, 90, 58, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 90, 58, 0.08) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 20px 20px, 20px 20px !important;
+}
+
+.agenda-header {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.agenda-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+}
+
+.agenda-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agenda-title h1 {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0;
+  color: var(--ink);
+}
+
+.agenda-title h1::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 18px;
+  background: var(--forest);
+  margin-right: 10px;
+  vertical-align: -2px;
+  border-radius: 99px;
+}
+
+.agenda-subtitle {
+  font-size: 13px;
+  color: var(--stone);
+  margin-left: 14px;
+}
+
+/* ── KPI DASHBOARD (SOBRE & MATCHING BIENS/DASHBOARD EXACT) ── */
+.kpi-dashboard {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  background: #FFFFFF;
+  border: 1.5px solid var(--stone);
+  border-radius: 255px 12px 240px 12px/12px 240px 12px 255px;
+  box-shadow: 2.2px 2.5px 0px var(--sand-deep);
+  padding: 12px 20px;
+  margin-bottom: 24px;
+}
+
+.kpi-item {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.kpi-item:last-child {
+  flex: 1.1;
+}
+
+.kpi-divider {
+  width: 1.5px;
+  height: 42px;
+  border-left: 1.5px dashed var(--sand-deep);
+  margin: 0 20px;
+}
+
+.kpi-title {
+  font-size: 11.5px;
+  color: var(--stone);
+  font-weight: 500;
+  margin-bottom: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.kpi-trend {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--stone-light);
+  margin-top: 5px;
+  gap: 4px;
+}
+
+.trend-urgent {
+  color: var(--rose);
+  font-weight: 600;
+}
+
+.trend-good {
+  color: var(--forest);
+  font-weight: 600;
+}
+
+/* ── AGENDA MAIN GRID ── */
+.agenda-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(360px, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+@media(max-width: 1024px) {
+  .agenda-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── ACTIONS BAR & FILTERS ── */
+.filter-card {
+  background: #FFFFFF;
+  border: 1.5px solid var(--stone);
+  border-radius: 12px;
+  box-shadow: 2px 2px 0px var(--sand-deep);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.time-tabs {
+  display: inline-flex;
+  background: var(--bone);
+  border: 1.5px solid var(--stone);
+  border-radius: 180px 15px 150px 15px/15px 150px 15px 180px !important;
+  padding: 3px;
+  gap: 3px;
+}
+
+.time-tabs button {
+  background: transparent;
+  border: none;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--stone);
+  cursor: pointer;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 160ms ease;
+}
+
+.time-tabs button.active {
+  background: var(--forest);
+  color: #FFFFFF;
+  box-shadow: 1px 1.5px 0px rgba(0,0,0,0.15);
+  font-weight: 600;
+}
+
+.search-input-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 240px;
+}
+
+.search-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 12px 0 32px;
+  border: 1.5px solid var(--stone);
+  border-radius: 250px 15px 230px 15px/15px 230px 15px 250px;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+  background: #FFFFFF url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%236B6F6D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>') 10px center no-repeat;
+  transition: all 140ms;
+}
+
+.search-input:focus {
+  border-color: var(--forest);
+  box-shadow: 1.5px 1.5px 0 var(--forest);
+}
+
+.type-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.type-pill {
+  background: var(--bone);
+  border: 1.2px solid var(--stone-light);
+  border-radius: 120px 20px 100px 20px/20px 100px 20px 120px !important;
+  padding: 4px 11px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--stone);
+  cursor: pointer;
+  transition: all 150ms;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.type-pill:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.type-pill.active {
+  background: #FFFFFF;
+  color: var(--ink);
+  border-color: var(--forest);
+  box-shadow: 2px 2px 0px var(--forest);
+  font-weight: 600;
+}
+
+.type-pill.active[data-type="deal"] { border-color: var(--blue); box-shadow: 2px 2px 0px var(--blue); }
+.type-pill.active[data-type="bien"] { border-color: var(--forest); box-shadow: 2px 2px 0px var(--forest); }
+.type-pill.active[data-type="contact"] { border-color: var(--amber); box-shadow: 2px 2px 0px var(--amber); }
+.type-pill.active[data-type="perso"] { border-color: var(--stone); box-shadow: 2px 2px 0px var(--stone); }
+
+/* ── TASK LIST ── */
+.tasks-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.task-group-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--stone);
+  letter-spacing: 0.05em;
+  margin: 14px 0 4px 4px;
+}
+
+.task-card {
+  background: #FFFFFF;
+  border: 1.5px solid var(--stone);
+  border-radius: 12px 255px 12px 240px/10px 12px 10px 12px;
+  box-shadow: 2.2px 2.2px 0px var(--sand-deep);
+  padding: 14px 16px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  transition: all 180ms ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.task-card:hover {
+  transform: translateY(-1.5px) rotate(-0.1deg);
+  border-color: var(--forest);
+  box-shadow: 3.5px 4px 0px var(--forest-soft);
+}
+
+.task-card.selected-active {
+  border-color: var(--forest);
+  box-shadow: 4px 4.5px 0px var(--forest);
+  background: var(--forest-tint);
+}
+
+.task-checkbox-wrapper {
+  padding-top: 2px;
+}
+
+.task-checkbox {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--stone);
+  border-radius: 4px;
+  background: #FFFFFF;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: all 120ms;
+}
+
+.task-checkbox:checked {
+  background: var(--forest);
+  border-color: var(--forest);
+}
+
+.task-checkbox:checked::after {
+  content: '';
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid #FFFFFF;
+  border-bottom: 2px solid #FFFFFF;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+.task-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.task-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.35;
+  margin-bottom: 6px;
+  transition: all 140ms;
+}
+
+.task-card.completed .task-title {
+  text-decoration: line-through;
+  color: var(--stone-light);
+}
+
+.task-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+/* Entity labels */
+.badge-rel {
+  font-size: 10.5px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--stone);
+  background: var(--bone);
+  border: 1px solid var(--sand-deep);
+  padding: 1px 7px;
+  border-radius: 4px;
+}
+
+.badge-rel svg {
+  stroke-width: 2px;
+}
+
+.badge-rel span {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* Priority tags */
+.priority-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.priority-tag.urgent {
+  background: #FFF0ED;
+  color: var(--rose);
+  border: 1px solid rgba(200, 85, 61, 0.25);
+}
+
+.priority-tag.normal {
+  background: #FFF9ED;
+  color: var(--amber);
+  border: 1px solid rgba(200, 152, 61, 0.25);
+}
+
+.priority-tag.faible {
+  background: #EDF3FC;
+  color: var(--blue);
+  border: 1px solid rgba(74, 122, 165, 0.25);
+}
+
+.time-tag {
+  font-size: 11px;
+  color: var(--stone);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.time-tag.overdue {
+  color: var(--rose);
+  font-weight: 700;
+}
+
+.time-tag.today {
+  color: var(--forest);
+  font-weight: 600;
+}
+
+/* ── CALENDAR & QUICK FORM COLUMN (RIGHT) ── */
+.aside-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.calendar-card {
+  background: #FFFFFF;
+  border: 1.5px solid var(--stone);
+  border-radius: 12px;
+  box-shadow: 2.2px 2.5px 0px var(--sand-deep);
+  padding: 18px;
+}
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.cal-month-title {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.cal-arrows {
+  display: flex;
+  gap: 4px;
+}
+
+.cal-arrow-btn {
+  width: 28px;
+  height: 28px;
+  border: 1.2px solid var(--stone);
+  border-radius: 6px;
+  background: #FFFFFF;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  transition: all 120ms;
+}
+
+.cal-arrow-btn:hover {
+  background: var(--bone);
+  border-color: var(--forest);
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--stone-light);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.cal-day {
+  aspect-ratio: 1;
+  background: #FFFFFF;
+  border: 1px solid var(--sand);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--ink);
+  cursor: pointer;
+  position: relative;
+  transition: all 130ms ease;
+  padding: 4px;
+}
+
+.cal-day:hover {
+  background: var(--bone);
+  border-color: var(--sand-deep);
+  transform: translateY(-1px);
+  box-shadow: 1.5px 2px 0px var(--sand-deep);
+}
+
+.cal-day.muted {
+  color: var(--stone-light);
+  opacity: 0.35;
+  background: var(--bone);
+}
+
+/* Day number helper element inside */
+.cal-day-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  color: var(--stone);
+  transition: all 120ms;
+}
+
+.cal-day.active {
+  z-index: 2;
+  border-color: var(--forest);
+  box-shadow: 2px 2px 0px var(--forest-soft);
+}
+
+/* Circled active day effect for numeric label */
+.cal-day.active .cal-day-num {
+  background: var(--forest);
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+/* Dots container */
+.cal-day-dots {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  margin-top: 4px;
+  height: 6px;
+  width: 100%;
+}
+
+.cal-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.cal-dot.deal { background: var(--blue); }
+.cal-dot.bien { background: var(--forest); }
+.cal-dot.contact { background: var(--amber); }
+.cal-dot.perso { background: var(--stone); }
+.cal-dot.completed { opacity: 0.45; }
+
+/* ── CALENDAR TOOLTIP ── */
+.cal-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #FFFFFF;
+  border: 1.5px solid var(--stone);
+  border-radius: 10px;
+  box-shadow: 2.5px 3px 0px var(--sand-deep);
+  padding: 10px 12px;
+  width: 230px;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease, visibility 120ms;
+}
+
+/* Little speech-bubble indicator arrow */
+.cal-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: var(--stone) transparent transparent transparent;
+}
+
+/* On hover, reveal the tooltip cleanly */
+.cal-day:hover {
+  z-index: 10;
+}
+
+.cal-day:hover .cal-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.tooltip-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  color: var(--stone-light);
+  border-bottom: 1px dotted var(--sand-deep);
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.tooltip-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.tooltip-task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+
+.tooltip-task-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.tooltip-task-dot.deal { background: var(--blue); }
+.tooltip-task-dot.bien { background: var(--forest); }
+.tooltip-task-dot.contact { background: var(--amber); }
+.tooltip-task-dot.perso { background: var(--stone); }
+
+.tooltip-task-text {
+  flex: 1;
+  color: var(--ink);
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
+}
+
+.tooltip-task-item.completed .tooltip-task-text {
+  text-decoration: line-through;
+  color: var(--stone-light);
+  opacity: 0.6;
+}
+
+.tooltip-task-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--stone-light);
+  flex-shrink: 0;
+}
+
+/* ── QUICK ADD FORM ── */
+.form-card {
+  background: #FFFFFF;
+  border: 1.5px solid var(--stone);
+  border-radius: 12px;
+  box-shadow: 2.2px 2.5px 0px var(--sand-deep);
+  padding: 16px 18px;
+}
+
+.form-title {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-title svg {
+  color: var(--forest);
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.form-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--stone);
+  letter-spacing: 0.03em;
+}
+
+.form-input, .form-select {
+  height: 34px;
+  padding: 0 10px;
+  border: 1.5px solid var(--stone);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+  background: #FFFFFF;
+  color: var(--ink);
+  transition: all 140ms;
+}
+
+.form-input:focus, .form-select:focus {
+  border-color: var(--forest);
+  box-shadow: 1px 1.5px 0 var(--forest);
+}
+
+.form-radio-group {
+  display: flex;
+  gap: 6px;
+}
+
+.form-radio-btn {
+  flex: 1;
+  text-align: center;
+}
+
+.form-radio-btn input {
+  display: none;
+}
+
+.form-radio-label {
+  display: block;
+  padding: 6px 0;
+  border: 1.5px solid var(--stone);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #FFFFFF;
+  transition: all 140ms;
+}
+
+.form-radio-btn input:checked + .form-radio-label {
+  background: var(--forest-tint);
+  border-color: var(--forest);
+  color: var(--forest);
+  box-shadow: 1px 1.5px 0 var(--forest);
+}
+
+.btn-submit {
+  width: 100%;
+  height: 38px;
+  border: 1.5px solid var(--stone);
+  border-radius: 120px 20px 100px 20px/20px 100px 20px 120px !important;
+  box-shadow: 1.5px 1.5px 0px var(--stone);
+  background: var(--forest);
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 140ms;
+  margin-top: 6px;
+}
+
+.btn-submit:hover {
+  background: #174A2F;
+  box-shadow: 2px 2px 0px var(--forest);
+}
+
+/* ── ACTION DETAIL SIDEBAR (DRAWER SENS PREVIEW EN MODE MOCK) ── */
+.detail-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(29,31,30,0.4);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.detail-drawer {
+  background: #FFFFFF;
+  border: 1.8px solid var(--stone);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 4px 5px 0px var(--stone);
+  padding: 24px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  background: transparent;
+  border: none;
+  width: 26px; height: 26px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  color: var(--stone);
+  transition: all 120ms;
+}
+
+.detail-close:hover {
+  background: var(--bone);
+  color: var(--ink);
+}
+
+.detail-header {
+  border-bottom: 1.5px dashed var(--sand-deep);
+  padding-bottom: 14px;
+}
+
+.detail-category {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  color: var(--stone);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.detail-title {
+  font-family: 'Lora', Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
+.detail-info-grid {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  row-gap: 12px;
+  font-size: 12.5px;
+}
+
+.dig-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  color: var(--stone-light);
+  text-transform: uppercase;
+  align-self: center;
+}
+
+.dig-val {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.detail-entity-preview {
+  background: var(--bone);
+  border: 1.5px solid var(--stone);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dep-img {
+  width: 50px;
+  height: 50px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--sand-deep);
+  border: 1px solid var(--stone);
+}
+
+.dep-img img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+
+.dep-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.dep-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.dep-sub {
+  font-size: 11px;
+  color: var(--stone);
+}
+
+.drawer-actions {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.btn-open-fiche {
+  height: 38px;
+  background: var(--forest);
+  color: #FFFFFF;
+  border: 1.5px solid var(--forest);
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 140ms;
+}
+
+.btn-open-fiche:hover {
+  background: #174A2F;
+}
+
+.btn-delete-task {
+  height: 38px;
+  background: #FFFFFF;
+  color: var(--rose);
+  border: 1.5px solid var(--rose);
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 140ms;
+}
+
+.btn-delete-task:hover {
+  background: #FFF5F2;
+}
+
+/* Empty task list state design matching beautiful clipboard sketch */
+.empty-tasks-box {
+  background: #FFFFFF;
+  border: 1.5px dashed var(--stone);
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div class="agenda-page">
+  <!-- HEADER -->
+  <header class="agenda-header">
+    <div class="agenda-header-top">
+      <div class="agenda-title">
+        <h1>Agenda de l'Agent</h1>
+        <div class="agenda-subtitle">Cockpit opérationnel : gérez vos tâches, rendez-vous et relances commerciales.</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- KPI DASHBOARD (SOBRE & MATCHING) -->
+  <div class="kpi-dashboard">
+    <div class="kpi-item">
+      <div class="kpi-title">Actions aujourd'hui</div>
+      <div class="kpi-value" id="kpi-today">0</div>
+      <div class="kpi-trend">
+        <span class="trend-urgent" id="kpi-today-urgent">0 urgentes</span>
+      </div>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi-item">
+      <div class="kpi-title">Actions terminées</div>
+      <div class="kpi-value" id="kpi-done">0</div>
+      <div class="kpi-trend">
+        <span class="trend-good" id="kpi-completion-label">0% de complétion</span>
+      </div>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi-item">
+      <div class="kpi-title">En retard (Overdue)</div>
+      <div class="kpi-value" id="kpi-overdue" style="color: var(--rose);">0</div>
+      <div class="kpi-trend" style="color: var(--rose);">
+        <span id="kpi-overdue-caption">Attention requise</span>
+      </div>
+    </div>
+    <div class="kpi-divider"></div>
+    <div class="kpi-item">
+      <div class="kpi-title">Focus Relances</div>
+      <div class="kpi-value" id="kpi-linked">0</div>
+      <div class="kpi-trend">
+        <span>Tâches liées à des fiches</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN AGENDAL FRAMEWORK -->
+  <div class="agenda-grid">
+    
+    <!-- LEFT COLUMN: TASK BOARD -->
+    <div class="main-column">
+      
+      <!-- CONTROLS -->
+      <div class="filter-card">
+        <div class="filter-row">
+          <div class="time-tabs" id="time-tabs">
+            <button class="active" data-range="today">Aujourd'hui</button>
+            <button data-range="week">Cette semaine</button>
+            <button data-range="month">Ce mois-ci</button>
+            <button data-range="all">Toutes</button>
+          </div>
+          
+          <div class="search-input-wrap">
+            <input type="text" class="search-input" id="search-tasks" placeholder="Rechercher une action...">
+          </div>
+        </div>
+        
+        <div class="type-filters" id="type-filters">
+          <button class="type-pill active" data-type="all">Toutes</button>
+          <button class="type-pill" data-type="deal" style="--col: var(--blue);">📂 Deals</button>
+          <button class="type-pill" data-type="bien" style="--col: var(--forest);">🏡 Biens</button>
+          <button class="type-pill" data-type="contact" style="--col: var(--amber);">👤 Contacts</button>
+          <button class="type-pill" data-type="perso" style="--col: var(--stone);">📝 Personnelles</button>
+        </div>
+      </div>
+
+      <!-- TASK LIST DYNAMIC CONTAINER -->
+      <div id="tasks-list-root"></div>
+    </div>
+
+    <!-- RIGHT COLUMN: CALENDAR & FORM -->
+    <div class="aside-column">
+      
+      <!-- MONTHLY CALENDAR CARD -->
+      <div class="calendar-card">
+        <div class="cal-header">
+          <span class="cal-month-title">Mai 2026</span>
+          <div class="cal-arrows">
+            <button class="cal-arrow-btn" onclick="alert('Mois précédent : Simulation limitée au mois de Mai 2026')">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="cal-arrow-btn" onclick="alert('Mois suivant : Simulation limitée au mois de Mai 2026')">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+        
+        <div class="cal-weekdays">
+          <div>Lu</div><div>Ma</div><div>Me</div><div>Je</div><div>Ve</div><div>Sa</div><div>Di</div>
+        </div>
+        
+        <div class="cal-grid" id="calendar-grid-root">
+          <!-- Calendar Days generated dynamically -->
+        </div>
+      </div>
+
+      <!-- TASK PLANNIFICATION CARD -->
+      <div class="form-card">
+        <div class="form-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Planifier une Action
+        </div>
+        
+        <form id="action-creation-form" onsubmit="event.preventDefault(); addNewTask();">
+          <div class="form-row">
+            <span class="form-label">Titre de l'action / relance</span>
+            <input type="text" class="form-input" id="task-title-input" placeholder="Ex: Envoyer proposition d'achat..." required>
+          </div>
+          
+          <div class="form-row">
+            <span class="form-label">Associer à une entité</span>
+            <select class="form-select" id="task-assoc-input">
+              <option value="perso">📝 Action personnelle (aucune)</option>
+              <option value="deal-penthouse">📂 Deal : Penthouse vue parc (Uccle)</option>
+              <option value="deal-triplex">📂 Deal : Triplex art-déco (Ixelles)</option>
+              <option value="bien-lasne">🏡 Bien : Villa basse énergie (FSBO - Lasne)</option>
+              <option value="bien-maitre">🏡 Bien : Maison de maître (Saint-Gilles)</option>
+              <option value="contact-dupont">👤 Contact : Jean Dupont</option>
+            </select>
+          </div>
+
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div>
+              <span class="form-label">Échéance (Jour)</span>
+              <select class="form-select" id="task-day-input">
+                <option value="23">Aujourd'hui (23 Mai)</option>
+                <option value="24">Demain (24 Mai)</option>
+                <option value="25">Lundi 25 Mai</option>
+                <option value="28">Jeudi 28 Mai</option>
+              </select>
+            </div>
+            <div>
+              <span class="form-label">Heure</span>
+              <input type="text" class="form-input" id="task-time-input" placeholder="Ex: 14:30" value="10:00">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <span class="form-label">Priorité</span>
+            <div class="form-radio-group">
+              <div class="form-radio-btn">
+                <input type="radio" name="priority" id="prio-low" value="faible">
+                <label for="prio-low" class="form-radio-label">Faible</label>
+              </div>
+              <div class="form-radio-btn">
+                <input type="radio" name="priority" id="prio-normal" value="normal" checked>
+                <label for="prio-normal" class="form-radio-label">Normal</label>
+              </div>
+              <div class="form-radio-btn">
+                <input type="radio" name="priority" id="prio-urgent" value="urgent">
+                <label for="prio-urgent" class="form-radio-label">Urgent</label>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Planifier l'action
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- ACTION DRAWER/MODAL DETAIL -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDrawer()">
+  <div class="detail-drawer" onclick="event.stopPropagation()">
+    <button class="detail-close" onclick="closeDrawer()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    
+    <div class="detail-header">
+      <div id="detail-category" class="detail-category">📂 Catégorie</div>
+      <div id="detail-title" class="detail-title">Rappeler le vendeur pour un mandat exclusif</div>
+    </div>
+    
+    <div class="detail-info-grid">
+      <div class="dig-label">Priorité :</div>
+      <div class="dig-val" id="detail-priority">-</div>
+      
+      <div class="dig-label">Date :</div>
+      <div class="dig-val" id="detail-date">-</div>
+      
+      <div class="dig-label">Statut :</div>
+      <div class="dig-val" id="detail-status">-</div>
+    </div>
+
+    <!-- PREVIEW BOX -->
+    <div id="detail-entity-preview" class="detail-entity-preview" style="display: none;">
+      <div class="dep-img" id="detail-preview-img-wrap">
+        <img id="detail-preview-img" src="" alt="Element">
+      </div>
+      <div class="dep-meta">
+        <div id="detail-preview-title" class="dep-title">Villa de luxe basse énergie</div>
+        <div id="detail-preview-desc" class="dep-sub">Lasne, Belgique</div>
+      </div>
+    </div>
+    
+    <div class="drawer-actions">
+      <button class="btn-open-fiche" onclick="goToLink()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Ouvrir la fiche liée
+      </button>
+      <button class="btn-delete-task" onclick="deleteCurrentTask()">
+        Supprimer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- INTERACTIVE SCRIPT -->
+<script>
+(function() {
+  // Preinitialized tasks list in localStorage or defaults
+  var DEFAULT_TASKS = [
+    {
+      id: "task-1",
+      title: "Rappeler le vendeur pour fixer le prix définitif",
+      type: "deal",
+      entityKey: "deal-penthouse",
+      entityName: "Penthouse vue de parc (Uccle)",
+      entityDesc: "Lucas Martin • Budget 1.250.000 €",
+      priority: "urgent",
+      day: 23,
+      time: "10:30",
+      completed: false,
+      photoSeed: 2
+    },
+    {
+      id: "task-2",
+      title: "Contacter propriétaire FSBO sur Immoweb",
+      type: "bien",
+      entityKey: "bien-maitre",
+      entityName: "Maison de maître (Saint-Gilles)",
+      entityDesc: "Prospection FSBO • À vendre 1.080.000 €",
+      priority: "urgent",
+      day: 23,
+      time: "14:00",
+      completed: false,
+      photoSeed: 1
+    },
+    {
+      id: "task-3",
+      title: "Vérifier les diagnostics PEB & dossier amiante",
+      type: "bien",
+      entityKey: "bien-lasne",
+      entityName: "La Villa basse énergie (Lasne)",
+      entityDesc: "Julie Bernard • En attente de documents",
+      priority: "normal",
+      day: 21, // Overdue task
+      time: "09:00",
+      completed: false,
+      photoSeed: 4
+    },
+    {
+      id: "task-4",
+      title: "Préparer l'Avis de Valeur / ACM comparative",
+      type: "deal",
+      entityKey: "deal-triplex",
+      entityName: "Triplex art-déco (Ixelles)",
+      entityDesc: "Adam Dubois • Estimation souhaitée",
+      priority: "normal",
+      day: 24,
+      time: "11:15",
+      completed: false,
+      photoSeed: 3
+    },
+    {
+      id: "task-5",
+      title: "Envoyer le mandat d'exclusivité par email",
+      type: "contact",
+      entityKey: "contact-dupont",
+      entityName: "Jean Dupont (Acheteur qualifié)",
+      entityDesc: "Coordonnées qualifiées • Relance régulière",
+      priority: "faible",
+      day: 23,
+      time: "16:45",
+      completed: true,
+      photoSeed: 0
+    },
+    {
+      id: "task-6",
+      title: "Rédaction de l'annonce immobilière finale",
+      type: "perso",
+      entityKey: "perso",
+      entityName: "Tâche personnelle",
+      entityDesc: "Aucun lien de bien",
+      priority: "faible",
+      day: 28,
+      time: "14:00",
+      completed: false,
+      photoSeed: -1
+    }
+  ];
+
+  var PHOTOS = [
+    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=100&q=80',
+    'https://images.unsplash.com/photo-1600566753086-00f18fe6ede1?w=100&q=80',
+    'https://images.unsplash.com/photo-1600573472550-8090b5e0745e?w=100&q=80',
+    'https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=100&q=80',
+    'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=100&q=80',
+  ];
+
+  var tasks = [];
+  var activeRange = "today";
+  var activeType = "all";
+  var searchQuery = "";
+  var selectedDay = 23; // Today is 23 (May 2026)
+  var activeDetailTaskId = null;
+
+  function loadTasks() {
+    var stored = localStorage.getItem("immopilot_agenda_tasks_v1");
+    if (stored) {
+      try {
+        tasks = JSON.parse(stored);
+      } catch (e) {
+        tasks = DEFAULT_TASKS;
+      }
+    } else {
+      tasks = DEFAULT_TASKS;
+      saveTasks();
+    }
+  }
+
+  function saveTasks() {
+    localStorage.setItem("immopilot_agenda_tasks_v1", JSON.stringify(tasks));
+    window.dispatchEvent(new Event('ip-state-changed'));
+  }
+
+  window.addNewTask = function() {
+    var title = document.getElementById("task-title-input").value;
+    var assoc = document.getElementById("task-assoc-input").value;
+    var day = parseInt(document.getElementById("task-day-input").value, 10);
+    var time = document.getElementById("task-time-input").value || "10:00";
+    
+    var prio = "normal";
+    if (document.getElementById("prio-low").checked) prio = "faible";
+    else if (document.getElementById("prio-urgent").checked) prio = "urgent";
+
+    // Set entity descriptions according to options
+    var entityName = "Tâche personnelle";
+    var entityDesc = "Aucune fiche liée";
+    var type = "perso";
+    var photoSeed = -1;
+
+    if (assoc === "deal-penthouse") {
+      type = "deal";
+      entityName = "Penthouse vue de parc (Uccle)";
+      entityDesc = "Deal actif • Lucas Martin";
+      photoSeed = 2;
+    } else if (assoc === "deal-triplex") {
+      type = "deal";
+      entityName = "Triplex art-déco (Ixelles)";
+      entityDesc = "Deal actif • Adam Dubois";
+      photoSeed = 3;
+    } else if (assoc === "bien-lasne") {
+      type = "bien";
+      entityName = "La Villa basse énergie (Lasne)";
+      entityDesc = "Bien Mandaté • Julie Bernard";
+      photoSeed = 4;
+    } else if (assoc === "bien-maitre") {
+      type = "bien";
+      entityName = "Maison de maître (Saint-Gilles)";
+      entityDesc = "Bien libre • FSBO";
+      photoSeed = 1;
+    } else if (assoc === "contact-dupont") {
+      type = "contact";
+      entityName = "Jean Dupont";
+      entityDesc = "Client Acquéreur";
+      photoSeed = 0;
+    }
+
+    var newTask = {
+      id: "task-" + Date.now(),
+      title: title,
+      type: type,
+      entityKey: assoc,
+      entityName: entityName,
+      entityDesc: entityDesc,
+      priority: prio,
+      day: day,
+      time: time,
+      completed: false,
+      photoSeed: photoSeed
+    };
+
+    tasks.push(newTask);
+    saveTasks();
+    
+    // Reset form
+    document.getElementById("task-title-input").value = "";
+    document.getElementById("task-assoc-input").value = "perso";
+    document.getElementById("prio-normal").checked = true;
+
+    // Refresh views & calendar dots
+    render();
+  };
+
+  window.deleteCurrentTask = function() {
+    if (activeDetailTaskId) {
+      tasks = tasks.filter(function(t) { return t.id !== activeDetailTaskId; });
+      saveTasks();
+      closeDrawer();
+      render();
+    }
+  };
+
+  window.toggleTaskCompletion = function(taskId, event) {
+    if (event) event.stopPropagation();
+    var task = tasks.find(function(t) { return t.id === taskId; });
+    if (task) {
+      task.completed = !task.completed;
+      saveTasks();
+      render();
+    }
+  };
+
+  window.openTaskDetails = function(taskId) {
+    var task = tasks.find(function(t) { return t.id === taskId; });
+    if (!task) return;
+
+    activeDetailTaskId = taskId;
+    
+    // Set text elements inside the drawer
+    document.getElementById("detail-title").textContent = task.title;
+    
+    var iconCode = "📝";
+    if (task.type === "deal") iconCode = "📂";
+    if (task.type === "bien") iconCode = "🏡";
+    if (task.type === "contact") iconCode = "👤";
+
+    document.getElementById("detail-category").textContent = iconCode + " Catégorie : " + task.type.toUpperCase();
+    
+    var prioLabel = "Normal";
+    if (task.priority === "urgent") prioLabel = "🔴 Urgent";
+    if (task.priority === "faible") prioLabel = "🔵 Faible";
+    
+    document.getElementById("detail-priority").innerHTML = '<span class="priority-tag ' + task.priority + '">' + prioLabel + '</span>';
+    document.getElementById("detail-date").textContent = "Mai " + task.day + ", 2026 à " + task.time;
+    document.getElementById("detail-status").innerHTML = task.completed ? '<span style="color: var(--forest); font-weight: 700;">Terminé</span>' : '<span style="color: var(--amber); font-weight: 700;">En cours</span>';
+
+    // Preview area
+    var preview = document.getElementById("detail-entity-preview");
+    if (task.photoSeed >= 0) {
+      preview.style.display = "flex";
+      document.getElementById("detail-preview-img").src = PHOTOS[task.photoSeed];
+      document.getElementById("detail-preview-title").textContent = task.entityName;
+      document.getElementById("detail-preview-desc").textContent = task.entityDesc;
+    } else {
+      preview.style.display = "none";
+    }
+
+    document.getElementById("detail-overlay").style.display = "flex";
+  };
+
+  window.closeDrawer = function() {
+    document.getElementById("detail-overlay").style.display = "none";
+    activeDetailTaskId = null;
+  };
+
+  window.goToLink = function() {
+    if (!activeDetailTaskId) return;
+    var task = tasks.find(function(t) { return t.id === activeDetailTaskId; });
+    if (task) {
+      closeDrawer();
+      if (task.type === "deal") {
+        window.location.hash = "#pipeline";
+      } else if (task.type === "bien") {
+        window.location.hash = "#biens";
+      } else if (task.type === "contact") {
+        window.location.hash = "#contacts";
+      }
+    }
+  };
+
+  // Switch Active Calendar view date
+  window.selectCalDay = function(day) {
+    selectedDay = day;
+    activeRange = "all"; // Change search focus to look up specific day 
+    
+    // update calendar styles
+    var elDayBtns = document.querySelectorAll(".cal-day");
+    elDayBtns.forEach(function(btn) {
+      if (parseInt(btn.dataset.day, 10) === day) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+
+    // Reset active filters to reflect the focused day
+    var tabs = document.querySelectorAll("#time-tabs button");
+    tabs.forEach(function(t) { t.classList.remove("active"); });
+    
+    renderTaskList();
+  };
+
+  function updateDashboardKPIs() {
+    var todayTasks = tasks.filter(function(t) { return t.day === 23; });
+    var todayUrgent = todayTasks.filter(function(t) { return t.priority === "urgent" && !t.completed; });
+    var allOverdue = tasks.filter(function(t) { return t.day < 23 && !t.completed; });
+    var allCompleted = tasks.filter(function(t) { return t.completed; });
+    var linkedCount = tasks.filter(function(t) { return t.type !== "perso"; });
+
+    // Populate Values
+    document.getElementById("kpi-today").textContent = todayTasks.length;
+    document.getElementById("kpi-today-urgent").textContent = todayUrgent.length + " non faites";
+    document.getElementById("kpi-done").textContent = allCompleted.length;
+    
+    var rate = tasks.length > 0 ? Math.round((allCompleted.length / tasks.length) * 100) : 0;
+    document.getElementById("kpi-completion-label").textContent = rate + "% de taux de complétion";
+    
+    document.getElementById("kpi-overdue").textContent = allOverdue.length;
+    document.getElementById("kpi-linked").textContent = linkedCount.length;
+  }
+
+  function renderTaskList() {
+    var listRoot = document.getElementById("tasks-list-root");
+    listRoot.innerHTML = "";
+
+    // Filter logic
+    var filtered = tasks.filter(function(task) {
+      // 1. Filter by categories: deal, bien, contact, perso
+      if (activeType !== "all" && task.type !== activeType) return false;
+
+      // 2. Filter by search text query
+      if (searchQuery) {
+        var query = searchQuery.toLowerCase();
+        var matchesTitle = task.title.toLowerCase().indexOf(query) !== -1;
+        var matchesEntity = task.entityName.toLowerCase().indexOf(query) !== -1;
+        return matchesTitle || matchesEntity;
+      }
+
+      // 3. Filter by Time Range
+      if (activeRange === "today") {
+        // Show today (day 23) + overdue (day < 23 and not completed)
+        return (task.day === 23) || (task.day < 23 && !task.completed);
+      } else if (activeRange === "week") {
+        // Show tasks for days 18 to 26
+        return task.day >= 18 && task.day <= 26;
+      } else if (activeRange === "month") {
+        // Show all
+        return true;
+      } else {
+        // Custom selection on Calendar Day
+        if (selectedDay) {
+          return task.day === selectedDay;
+        }
+      }
+      return true;
+    });
+
+    // Separating into "En cours" (includes overdue) and "Terminées"
+    var ongoingTasks = filtered.filter(function(t) { return !t.completed; });
+    var completedTasks = filtered.filter(function(t) { return t.completed; });
+
+    // Handle empty state
+    if (filtered.length === 0) {
+      var emptyBox = document.createElement("div");
+      emptyBox.className = "empty-tasks-box";
+      emptyBox.innerHTML = `
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="var(--stone-light)" stroke-width="1.5" style="margin: 0 auto 12px; display: block;">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+        <div style="font-weight: 700; color: var(--ink); font-size: 14px; margin-bottom: 4px;">Aucune tâche programmée</div>
+        <div style="font-size: 11.5px; color: var(--stone);">Ajustez vos filtres ou planifiez une nouvelle action.</div>
+      `;
+      listRoot.appendChild(emptyBox);
+      return;
+    }
+
+    // Sort order: Overdue first, then urgent, then standard order
+    var sortTasks = function(a, b) {
+      // overdue high
+      var aOverdue = a.day < 23 && !a.completed;
+      var bOverdue = b.day < 23 && !b.completed;
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
+
+      // urgent next
+      if (a.priority === "urgent" && b.priority !== "urgent") return -1;
+      if (a.priority !== "urgent" && b.priority === "urgent") return 1;
+
+      return a.day - b.day;
+    };
+
+    ongoingTasks.sort(sortTasks);
+
+    // Create container for active actions
+    if (ongoingTasks.length > 0) {
+      var ongoingTitle = document.createElement("div");
+      ongoingTitle.className = "task-group-title";
+      ongoingTitle.textContent = "Actions à mener (" + ongoingTasks.length + ")";
+      listRoot.appendChild(ongoingTitle);
+
+      ongoingTasks.forEach(function(task) {
+        listRoot.appendChild(createTaskCard(task));
+      });
+    }
+
+    // Create container for completed actions
+    if (completedTasks.length > 0) {
+      var completedTitle = document.createElement("div");
+      completedTitle.className = "task-group-title";
+      completedTitle.textContent = "Actions terminées (" + completedTasks.length + ")";
+      listRoot.appendChild(completedTitle);
+
+      completedTasks.forEach(function(task) {
+        listRoot.appendChild(createTaskCard(task));
+      });
+    }
+  }
+
+  function createTaskCard(task) {
+    var card = document.createElement("div");
+    card.className = "task-card" + (task.completed ? " completed" : "");
+    if (task.id === activeDetailTaskId) {
+      card.classList.add("selected-active");
+    }
+
+    // Generate date caption
+    var dateCaption = "";
+    var dateClass = "";
+    if (task.day === 23) {
+      dateCaption = "Aujourd'hui à " + task.time;
+      dateClass = "today";
+    } else if (task.day < 23) {
+      dateCaption = "RETARD (le " + task.day + " Mai)";
+      dateClass = "overdue";
+    } else if (task.day === 24) {
+      dateCaption = "Demain à " + task.time;
+    } else {
+      dateCaption = "Le " + task.day + " Mai à " + task.time;
+    }
+
+    // Entity icons
+    var iconSvg = "";
+    if (task.type === "deal") {
+      iconSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>';
+    } else if (task.type === "bien") {
+      iconSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>';
+    } else if (task.type === "contact") {
+      iconSvg = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+    }
+
+    card.innerHTML = `
+      <div class="task-checkbox-wrapper">
+        <input type="checkbox" class="task-checkbox" ${task.completed ? "checked" : ""} onclick="toggleTaskCompletion('${task.id}', event)">
+      </div>
+      <div class="task-content">
+        <div class="task-header-row">
+          <div class="task-title">${task.title}</div>
+          <span class="time-tag ${task.completed ? '' : dateClass}">${dateCaption}</span>
+        </div>
+        
+        <div class="task-badge-row">
+          <span class="priority-tag ${task.priority}">${task.priority}</span>
+          ${task.type !== 'perso' ? `
+            <span class="badge-rel">
+              ${iconSvg} 
+              <span>${task.entityName}</span>
+            </span>
+          ` : '<span class="badge-rel">📝 Action perso</span>'}
+        </div>
+      </div>
+    `;
+
+    card.addEventListener("click", function() {
+      openTaskDetails(task.id);
+    });
+
+    return card;
+  }
+
+  function renderCalendar() {
+    var calRoot = document.getElementById("calendar-grid-root");
+    calRoot.innerHTML = "";
+
+    // Month layout (Simulated for May 2026 starting on Friday. Day 1 is index 4 if Monday = 0)
+    // We add 4 blank days (27, 28, 29, 30 of April) or just draw offset numbers muted
+    var daysCount = 31;
+    var startOffset = 4; // Friday
+
+    // Add prefix muted days
+    for (var i = 27; i <= 30; i++) {
+      var d = document.createElement("div");
+      d.className = "cal-day muted";
+      var numSpan = document.createElement("span");
+      numSpan.className = "cal-day-num";
+      numSpan.textContent = i;
+      d.appendChild(numSpan);
+      calRoot.appendChild(d);
+    }
+
+    // Add May days
+    for (var day = 1; day <= 31; day++) {
+      var dayBtn = document.createElement("div");
+      dayBtn.className = "cal-day";
+      dayBtn.dataset.day = day;
+
+      var numSpan = document.createElement("span");
+      numSpan.className = "cal-day-num";
+      numSpan.textContent = day;
+      dayBtn.appendChild(numSpan);
+
+      if (day === selectedDay) {
+        dayBtn.classList.add("active");
+      }
+
+      // Check for tasks on this day and add dots + hover tooltip
+      var dayTasks = tasks.filter(function(t) { return t.day === day; });
+      if (dayTasks.length > 0) {
+        // 1. Dot indicator list (under the day number)
+        var dotsContainer = document.createElement("div");
+        dotsContainer.className = "cal-day-dots";
+        
+        // Render up to 3 dots in the cell row
+        dayTasks.slice(0, 3).forEach(function(t) {
+          var dot = document.createElement("span");
+          dot.className = "cal-dot " + t.type + (t.completed ? " completed" : "");
+          dotsContainer.appendChild(dot);
+        });
+        dayBtn.appendChild(dotsContainer);
+
+        // 2. Beautiful speech-bubble tooltip with full lists
+        var tooltip = document.createElement("div");
+        tooltip.className = "cal-tooltip";
+        
+        var tooltipTitle = document.createElement("div");
+        tooltipTitle.className = "tooltip-title";
+        tooltipTitle.textContent = dayTasks.length + " action" + (dayTasks.length > 1 ? "s" : "") + " le " + day + " Mai";
+        tooltip.appendChild(tooltipTitle);
+        
+        var listContainer = document.createElement("div");
+        listContainer.className = "tooltip-tasks";
+        
+        dayTasks.forEach(function(t) {
+          var item = document.createElement("div");
+          item.className = "tooltip-task-item" + (t.completed ? " completed" : "");
+          
+          var dot = document.createElement("span");
+          dot.className = "tooltip-task-dot " + t.type;
+          
+          var textSpan = document.createElement("span");
+          textSpan.className = "tooltip-task-text";
+          textSpan.textContent = t.title;
+          
+          var timeSpan = document.createElement("span");
+          timeSpan.className = "tooltip-task-time";
+          timeSpan.textContent = t.time;
+          
+          item.appendChild(dot);
+          item.appendChild(textSpan);
+          item.appendChild(timeSpan);
+          
+          listContainer.appendChild(item);
+        });
+        
+        tooltip.appendChild(listContainer);
+        dayBtn.appendChild(tooltip);
+      }
+
+      // Closure binding
+      (function(currentDay) {
+        dayBtn.addEventListener("click", function() {
+          selectCalDay(currentDay);
+        });
+      })(day);
+
+      calRoot.appendChild(dayBtn);
+    }
+  }
+
+  function setupFilters() {
+    // Range switcher
+    var tabs = document.querySelectorAll("#time-tabs button");
+    tabs.forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        tabs.forEach(function(t) { t.classList.remove("active"); });
+        btn.classList.add("active");
+        activeRange = btn.dataset.range;
+        selectedDay = null; // Unfocus calendar day highlights
+        
+        // Remove active calendar markings
+        document.querySelectorAll(".cal-day").forEach(function(c) {
+          c.classList.remove("active");
+        });
+
+        renderTaskList();
+      });
+    });
+
+    // Search input
+    var search = document.getElementById("search-tasks");
+    search.addEventListener("input", function() {
+      searchQuery = search.value;
+      renderTaskList();
+    });
+
+    // Type pills
+    var pills = document.querySelectorAll("#type-filters button");
+    pills.forEach(function(p) {
+      p.addEventListener("click", function() {
+        pills.forEach(function(p1) { p1.classList.remove("active"); });
+        p.classList.add("active");
+        activeType = p.dataset.type;
+        renderTaskList();
+      });
+    });
+  }
+
+  function render() {
+    updateDashboardKPIs();
+    renderTaskList();
+    renderCalendar();
+  }
+
+  // Initial loader
+  loadTasks();
+  setupFilters();
+  render();
+
+})();
+</script>
+
+</body>
+</html>
