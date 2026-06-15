@@ -222,7 +222,7 @@ export function Dashboard({ store }: DashboardProps) {
             <ListFilter size={24} />
           </span>
           <div>
-            <h1>Dashboard</h1>
+            <h1>Tableau de bord</h1>
             <p>Bonjour Thomas, voici vos opportunités du jour.</p>
           </div>
         </div>

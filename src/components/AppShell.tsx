@@ -37,7 +37,7 @@ interface NavItem {
 }
 
 const mainNav: NavItem[] = [
-  { key: 'dashboard', label: 'Dashboard', href: '#dashboard', icon: Home },
+  { key: 'dashboard', label: 'Tableau de bord', href: '#dashboard', icon: Home },
 ];
 
 const prospectNav: NavItem[] = [
