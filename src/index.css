@@ -2356,20 +2356,12 @@ body,
   padding: 13px 14px;
 }
 
-.ip-wow-kpi.accent-blue {
-  background: #f2f8ff;
-}
-
-.ip-wow-kpi.accent-green {
-  background: #f4fbf1;
-}
-
-.ip-wow-kpi.accent-amber {
-  background: #fff8e7;
-}
-
+/* Sober KPI cards — no multicolor backgrounds (matches Biens/Pipeline/Agenda) */
+.ip-wow-kpi.accent-blue,
+.ip-wow-kpi.accent-green,
+.ip-wow-kpi.accent-amber,
 .ip-wow-kpi.accent-violet {
-  background: #f8f5ff;
+  background: #fff;
 }
 
 .ip-wow-kpi-icon {
@@ -2378,23 +2370,8 @@ body,
   border-radius: 10px;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.78);
-}
-
-.accent-blue .ip-wow-kpi-icon {
-  color: #2c6fa3;
-}
-
-.accent-green .ip-wow-kpi-icon {
-  color: #3c8b4e;
-}
-
-.accent-amber .ip-wow-kpi-icon {
-  color: #c47a00;
-}
-
-.accent-violet .ip-wow-kpi-icon {
-  color: #6755b7;
+  background: #f3f2ef;
+  color: #6b6b6b;
 }
 
 .ip-wow-kpi p {
