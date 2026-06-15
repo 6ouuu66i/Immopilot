@@ -110,6 +110,23 @@ export function Pipeline({ store }: PipelineProps) {
         backgroundSize="100% auto"
       />
 
+      {/* ── Page title ── */}
+      <div style={{ padding: '0 32px', marginTop: -4, marginBottom: 16 }}>
+        <h1 style={{
+          margin: 0,
+          fontFamily: 'var(--notion-serif)',
+          fontSize: 32,
+          fontWeight: 700,
+          lineHeight: 1.05,
+          color: '#1F1F1F',
+        }}>
+          Opportunités
+        </h1>
+        <p style={{ margin: '6px 0 0', fontSize: 15, color: '#474943' }}>
+          Suivi commercial de vos dossiers actifs.
+        </p>
+      </div>
+
       {/* ── KPI row + actions ── */}
       <div style={{ padding: '0 32px', marginTop: -8, display: 'flex', alignItems: 'stretch', gap: 12, position: 'relative', zIndex: 2 }}>
         {/* KPI container */}
