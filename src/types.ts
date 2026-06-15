@@ -1,5 +1,9 @@
+export type ID = string;
+export type ISODate = string;
+export type ISODateTime = string;
+
 export interface Agency {
-  id: string;
+  id: ID;
   name: string;
   org: string;
 }
@@ -7,7 +11,7 @@ export interface Agency {
 export type UserRole = 'admin' | 'agent';
 
 export interface Agent {
-  id: string;
+  id: ID;
   name: string;
   role: UserRole;
   avatar: string;
@@ -15,9 +19,14 @@ export interface Agent {
 }
 
 export interface PriceHistory {
-  date: string;
+  date: ISODate;
   price: number;
 }
+
+export type PropertyTag = 'FSBO' | 'Baisse de prix' | 'Republié' | 'Coup de cœur' | 'Nouveau';
+export type PropertySource = 'Immoweb' | 'Zimmo' | 'Immovlan' | 'Biddit' | string;
+export type FloodZone = 'Sûre' | 'Faible' | 'Moyenne' | 'Élevée';
+export type PropertyInternalStatus = 'disponible' | 'réservé' | 'archivé';
 
 export interface Property {
   id: number;
@@ -25,129 +34,212 @@ export interface Property {
   city: string;
   price: number;
   photos: string[];
-  tag: string; // 'FSBO' | 'Baisse de prix' | 'Republié' | 'Coup de cœur' | 'Nouveau'
+  tag: PropertyTag | string;
   score: number;
   peb: string;
   surface: number;
   bedrooms: number;
   bathrooms: number;
-  source: string;
+  source: PropertySource;
   reserved: boolean;
-  ownerId: string | null; // Agent ID if reserved
+  ownerId: ID | null;
   fsbo: boolean;
   publishedDays: number;
-  floodZone: 'Sûre' | 'Faible' | 'Moyenne' | 'Élevée';
+  floodZone: FloodZone;
   notes: string[];
   yieldEstimate: string;
   description: string;
   priceHistory: PriceHistory[];
+  status?: PropertyInternalStatus;
 }
 
+export type SignalType = 'fsbo' | 'drop' | 'repub' | 'old' | 'high' | 'new';
+export type SignalStatus = 'nouveau' | 'traité' | 'ignoré';
+
 export interface PropertySignal {
-  id: string;
-  type: 'fsbo' | 'drop' | 'repub' | 'old' | 'high' | 'new';
+  id: ID;
+  type: SignalType;
   propertyId: number;
   heading: string;
   info: string;
-  date: string;
+  date: ISODate;
   time: string;
   value?: string;
-  source?: string;
-  ignoredByAgents: string[]; // Agent IDs who ignored this signal
+  source?: PropertySource;
+  status?: SignalStatus;
+  ignoredByAgents: ID[];
 }
+
+export type ActivityType =
+  | 'creation'
+  | 'stage_change'
+  | 'note'
+  | 'task_done'
+  | 'transfer'
+  | 'signal'
+  | 'status_change'
+  | 'contact'
+  | string;
+
+export type ActivityEntityType = 'property' | 'contact' | 'deal' | 'task' | 'signal';
 
 export interface Activity {
-  id: string;
-  type: string; // 'stage_change' | 'note' | 'task_done' | 'transfer' | 'creation'
+  id: ID;
+  type: ActivityType;
   text: string;
-  date: string;
-  agentId: string;
+  date: ISODate;
+  agentId: ID;
   agentName: string;
+  entityType?: ActivityEntityType;
+  entityId?: string | number;
 }
 
+export type DealStage =
+  | 'Nouveau'
+  | 'Qualifié'
+  | 'Contact'
+  | 'Visite'
+  | 'Proposition'
+  | 'Mandat potentiel'
+  | 'Mandat signé'
+  | 'Bien vendu'
+  | 'Perdu'
+  | string;
+
+export type CommissionStatus = 'brouillon' | 'prévue' | 'payable' | 'payée';
+
 export interface Deal {
-  id: string;
+  id: ID;
   propertyId: number;
-  contactId: string;
-  ownerId: string; // Agent ID
-  stage: string; // 'Nouveau' | 'Qualifié' | 'Contact' | 'Visite' | 'Proposition' | 'Mandat signé' | 'Bien vendu' | 'Perdu'
+  contactId: ID;
+  ownerId: ID;
+  stage: DealStage;
   activities: Activity[];
   notes: string[];
-  tasks: string[]; // Task IDs linked
-  commissionStatus: 'brouillon' | 'prévue' | 'payable' | 'payée';
+  tasks: ID[];
+  commissionStatus: CommissionStatus;
   commissionAmount: number;
   title: string;
   price: number;
-  activeTransferId?: string | null;
+  activeTransferId?: ID | null;
 }
 
+export type ContactRole = 'vendeur' | 'acheteur' | 'prospect' | 'investisseur' | 'propriétaire';
+
 export interface Contact {
-  id: string;
+  id: ID;
   name: string;
   email: string;
   phone: string;
-  roles: ('vendeur' | 'acheteur' | 'prospect' | 'investisseur' | 'propriétaire')[];
+  roles: ContactRole[];
   notes: string[];
-  assignedDeals: string[];
+  assignedDeals: ID[];
   assignedProperties: number[];
 }
 
+export type TaskPriority = 'haute' | 'moyenne' | 'basse';
+
 export interface Task {
-  id: string;
+  id: ID;
   title: string;
-  date: string; // YYYY-MM-DD
+  date: ISODate;
   time: string;
-  priority: 'haute' | 'moyenne' | 'basse';
+  priority: TaskPriority;
   done: boolean;
-  agentId: string;
+  agentId: ID;
   propertyId?: number | null;
-  dealId?: string | null;
-  contactId?: string | null;
+  dealId?: ID | null;
+  contactId?: ID | null;
   place?: string;
 }
 
+export type TransferStatus = 'en_attente' | 'accepté' | 'refusé';
+
 export interface TransferRequest {
-  id: string;
+  id: ID;
   propertyId: number;
-  dealId: string;
-  fromAgentId: string;
-  toAgentId: string;
-  status: 'en_attente' | 'accepté' | 'refusé';
-  date: string;
+  dealId: ID;
+  fromAgentId: ID;
+  toAgentId: ID;
+  status: TransferStatus;
+  date: ISODate;
 }
 
+export type NotificationType =
+  | 'transfer_pending'
+  | 'transfer_accepted'
+  | 'transfer_refused'
+  | 'task_due'
+  | 'deal_moved'
+  | 'property_reserved'
+  | 'commission_ready'
+  | string;
+
 export interface Notification {
-  id: string;
-  type: string; // 'transfer_pending' | 'transfer_accepted' | 'transfer_refused' | 'task_due' | 'deal_moved' | 'property_reserved' | 'commission_ready'
+  id: ID;
+  type: NotificationType;
   title: string;
   text: string;
-  date: string;
+  date: ISODate | ISODateTime | string;
   read: boolean;
-  actionLink: string; // e.g. '#pipeline?dealId=xxx'
+  actionLink: string;
+  agentId?: ID;
 }
 
 export interface Commission {
-  id: string;
-  dealId: string;
-  agentId: string;
+  id: ID;
+  dealId: ID;
+  agentId: ID;
   amount: number;
-  status: 'brouillon' | 'prévue' | 'payable' | 'payée';
-  date: string;
+  status: CommissionStatus;
+  date: ISODate;
   propertyTitle: string;
   agentName: string;
 }
 
 export interface UserPropertyMark {
   propertyId: number;
-  agentId: string;
+  agentId: ID;
   favorite: boolean;
   ignored: boolean;
 }
 
 export interface AuditLog {
-  id: string;
-  timestamp: string;
+  id: ID;
+  timestamp: ISODateTime | string;
   action: string;
   agentName: string;
   details: string;
+}
+
+export interface PipelineStage {
+  id: ID;
+  name: DealStage;
+  icon?: string;
+  color?: string;
+}
+
+export interface PropertyRelations {
+  property: Property;
+  contact?: Contact;
+  deal?: Deal;
+  tasks: Task[];
+  signals: PropertySignal[];
+  activities: Activity[];
+}
+
+export interface DealRelations {
+  deal: Deal;
+  property?: Property;
+  contact?: Contact;
+  tasks: Task[];
+  activities: Activity[];
+}
+
+export interface ContactRelations {
+  contact: Contact;
+  properties: Property[];
+  deals: Deal[];
+  tasks: Task[];
+  activities: Activity[];
 }

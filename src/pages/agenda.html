@@ -42,8 +42,8 @@
 .agenda-header {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin-bottom: 18px;
 }
 
 .agenda-header-top {
@@ -84,76 +84,6 @@
   font-size: 13px;
   color: var(--stone);
   margin-left: 14px;
-}
-
-/* ── KPI DASHBOARD (SOBRE & MATCHING BIENS/DASHBOARD EXACT) ── */
-.kpi-dashboard {
-  display: flex;
-  align-items: center;
-  flex: 1 1 auto;
-  min-width: 0;
-  background: #FFFFFF;
-  border: 1.5px solid var(--stone);
-  border-radius: 255px 12px 240px 12px/12px 240px 12px 255px;
-  box-shadow: 2.2px 2.5px 0px var(--sand-deep);
-  padding: 12px 20px;
-  margin-bottom: 24px;
-}
-
-.kpi-item {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-
-.kpi-item:last-child {
-  flex: 1.1;
-}
-
-.kpi-divider {
-  width: 1.5px;
-  height: 42px;
-  border-left: 1.5px dashed var(--sand-deep);
-  margin: 0 20px;
-}
-
-.kpi-title {
-  font-size: 11.5px;
-  color: var(--stone);
-  font-weight: 500;
-  margin-bottom: 6px;
-  font-family: 'JetBrains Mono', monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.kpi-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ink);
-  line-height: 1;
-  letter-spacing: -0.01em;
-}
-
-.kpi-trend {
-  display: flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--stone-light);
-  margin-top: 5px;
-  gap: 4px;
-}
-
-.trend-urgent {
-  color: var(--rose);
-  font-weight: 600;
-}
-
-.trend-good {
-  color: var(--forest);
-  font-weight: 600;
 }
 
 /* ── AGENDA MAIN GRID ── */
@@ -1019,6 +949,482 @@
   padding: 40px 20px;
   text-align: center;
 }
+
+/* ── NOTION/TWENTY AGENDA REFRESH - VARIANT B ── */
+:root {
+  --agenda-bg: #F7F6F3;
+  --agenda-surface: #FFFFFF;
+  --agenda-surface-muted: #F3F2EF;
+  --agenda-border: #E6E4DF;
+  --agenda-border-soft: #EFEDE8;
+  --agenda-text: #1D1F1E;
+  --agenda-muted: #626966;
+  --agenda-faint: #9A9A9A;
+  --agenda-green: #1E5A3A;
+  --agenda-green-soft: #E7F1E6;
+  --agenda-blue: #2F6FA3;
+  --agenda-blue-soft: #E8F0FA;
+  --agenda-amber: #B7791F;
+  --agenda-amber-soft: #FFF1D9;
+  --agenda-red: #B94A3A;
+  --agenda-red-soft: #FBE5DF;
+}
+
+.agenda-page {
+  width: 100%;
+  min-height: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--agenda-bg) !important;
+  background-image: none !important;
+  color: var(--agenda-text);
+  font-family: var(--notion-sans), Inter, system-ui, sans-serif;
+  padding: 0 16px 24px 24px;
+}
+
+.agenda-header {
+  gap: 0;
+  margin-bottom: 18px;
+}
+
+.agenda-illustration-slot {
+  height: 150px;
+  flex: 0 0 150px;
+  width: 100%;
+  margin-top: 10px;
+  background: var(--agenda-bg);
+  background-image: url('/agenda-header-illustration.png');
+  background-repeat: no-repeat;
+  background-position: center 50%;
+  background-size: 100% 100%;
+}
+
+.agenda-header-top {
+  align-items: end;
+  padding-top: 0;
+}
+
+.agenda-title h1 {
+  font-family: var(--notion-serif), Lora, Georgia, serif;
+  font-size: 38px;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+  color: var(--agenda-text);
+}
+
+.agenda-title h1::before {
+  display: none;
+}
+
+.agenda-subtitle {
+  margin: 7px 0 0;
+  color: #58605D;
+  font-size: 15px;
+}
+
+
+.agenda-grid {
+  grid-template-columns: minmax(0, 1.62fr) minmax(360px, 0.78fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.main-column,
+.aside-column {
+  min-width: 0;
+}
+
+.aside-column {
+  gap: 12px;
+}
+
+.filter-card,
+.calendar-card,
+.form-card,
+.task-card,
+.detail-drawer,
+.detail-entity-preview,
+.empty-tasks-box {
+  border: 1px solid var(--agenda-border);
+  box-shadow: 0 1px 2px rgba(31, 31, 31, 0.03);
+  border-radius: 10px;
+  background: var(--agenda-surface);
+}
+
+.filter-card {
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  gap: 9px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.filter-row {
+  gap: 10px;
+}
+
+.time-tabs {
+  border: 1px solid var(--agenda-border);
+  border-radius: 8px !important;
+  background: var(--agenda-surface);
+  padding: 2px;
+}
+
+.time-tabs button {
+  height: 32px;
+  border-radius: 6px;
+  padding: 0 12px;
+  color: var(--agenda-muted);
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.time-tabs button.active {
+  background: var(--agenda-green);
+  color: #FFFFFF;
+  box-shadow: none;
+}
+
+.search-input-wrap {
+  max-width: 330px;
+}
+
+.search-input {
+  height: 36px;
+  border: 1px solid var(--agenda-border);
+  border-radius: 8px;
+  background-color: var(--agenda-surface);
+  font-size: 13px;
+  color: var(--agenda-text);
+}
+
+.search-input:focus {
+  border-color: rgba(30, 90, 58, 0.45);
+  box-shadow: 0 0 0 3px rgba(30, 90, 58, 0.08);
+}
+
+.type-filters {
+  gap: 8px;
+}
+
+.type-pill {
+  height: 32px;
+  border: 1px solid var(--agenda-border);
+  border-radius: 7px !important;
+  background: var(--agenda-surface);
+  color: var(--agenda-text);
+  font-size: 12px;
+  padding: 0 12px;
+  box-shadow: none;
+}
+
+.type-pill::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--agenda-green);
+}
+
+.type-pill[data-type="all"]::before { background: #A7A29A; }
+.type-pill[data-type="deal"]::before { background: var(--agenda-blue); }
+.type-pill[data-type="bien"]::before { background: var(--agenda-green); }
+.type-pill[data-type="contact"]::before { background: var(--agenda-amber); }
+.type-pill[data-type="perso"]::before { background: #8E8B83; }
+
+.type-pill:hover {
+  background: var(--agenda-surface-muted);
+  border-color: #D8D5CE;
+}
+
+.type-pill.active,
+.type-pill.active[data-type="deal"],
+.type-pill.active[data-type="bien"],
+.type-pill.active[data-type="contact"],
+.type-pill.active[data-type="perso"] {
+  color: var(--agenda-green);
+  border-color: rgba(30, 90, 58, 0.24);
+  background: var(--agenda-green-soft);
+  box-shadow: none;
+}
+
+.tasks-container {
+  gap: 8px;
+}
+
+.task-group-title {
+  margin: 14px 0 7px 2px;
+  font-family: var(--notion-sans), Inter, system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--agenda-muted);
+  letter-spacing: 0.025em;
+}
+
+.task-card {
+  position: relative;
+  min-height: 68px;
+  padding: 13px 15px 13px 16px;
+  gap: 13px;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.task-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: var(--agenda-green);
+  opacity: 0.55;
+}
+
+.task-card:hover {
+  transform: translateY(-1px);
+  border-color: #D7D4CE;
+  background: #FBFAF7;
+  box-shadow: 0 8px 20px rgba(31, 31, 31, 0.045);
+}
+
+.task-card.selected-active {
+  border-color: rgba(30, 90, 58, 0.25);
+  box-shadow: 0 8px 24px rgba(30, 90, 58, 0.08);
+  background: #F1F7F0;
+}
+
+.task-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #C9C6BF;
+  border-radius: 4px;
+}
+
+.task-title {
+  color: var(--agenda-text);
+  font-size: 13.5px;
+  line-height: 1.35;
+  font-weight: 650;
+  margin-bottom: 5px;
+}
+
+.badge-rel {
+  height: 22px;
+  border: 1px solid var(--agenda-border);
+  border-radius: 6px;
+  background: #F8F7F4;
+  color: var(--agenda-muted);
+  font-size: 11px;
+}
+
+.badge-rel span {
+  color: var(--agenda-text);
+}
+
+.priority-tag {
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  padding: 0 7px;
+  font-family: var(--notion-sans), Inter, system-ui, sans-serif;
+  font-size: 10.5px;
+  letter-spacing: 0.015em;
+}
+
+.priority-tag.urgent {
+  background: var(--agenda-red-soft);
+  color: var(--agenda-red);
+}
+
+.priority-tag.normal {
+  background: var(--agenda-amber-soft);
+  color: var(--agenda-amber);
+}
+
+.priority-tag.faible {
+  background: var(--agenda-blue-soft);
+  color: var(--agenda-blue);
+}
+
+.time-tag {
+  font-size: 11.5px;
+  color: var(--agenda-muted);
+}
+
+.calendar-card,
+.form-card {
+  padding: 16px;
+}
+
+.cal-header {
+  margin-bottom: 12px;
+}
+
+.cal-month-title,
+.form-title,
+.detail-title {
+  font-family: var(--notion-serif), Lora, Georgia, serif;
+  letter-spacing: -0.02em;
+}
+
+.cal-month-title {
+  font-size: 17px;
+}
+
+.cal-arrow-btn {
+  border: 1px solid var(--agenda-border);
+  border-radius: 7px;
+  background: var(--agenda-surface);
+}
+
+.cal-arrow-btn:hover {
+  background: var(--agenda-surface-muted);
+  border-color: #D8D5CE;
+}
+
+.cal-weekdays {
+  font-family: var(--notion-sans), Inter, system-ui, sans-serif;
+  font-size: 11px;
+  color: var(--agenda-faint);
+}
+
+.cal-grid {
+  gap: 5px;
+}
+
+.cal-day {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #FAF9F6;
+  color: var(--agenda-text);
+}
+
+.cal-day:hover {
+  transform: translateY(-1px);
+  background: var(--agenda-surface);
+  border-color: var(--agenda-border);
+  box-shadow: 0 6px 16px rgba(31, 31, 31, 0.045);
+}
+
+.cal-day.muted {
+  background: transparent;
+  color: var(--agenda-faint);
+}
+
+.cal-day-num {
+  font-family: var(--notion-mono), 'JetBrains Mono', monospace;
+  color: var(--agenda-muted);
+}
+
+.cal-day.active {
+  border-color: rgba(30, 90, 58, 0.22);
+  background: var(--agenda-green-soft);
+  box-shadow: none;
+}
+
+.cal-day.active .cal-day-num {
+  background: var(--agenda-green);
+  color: #FFFFFF;
+}
+
+.cal-tooltip {
+  border: 1px solid var(--agenda-border);
+  border-radius: 10px;
+  box-shadow: 0 14px 32px rgba(31, 31, 31, 0.12);
+}
+
+.cal-tooltip::after {
+  border-color: var(--agenda-border) transparent transparent transparent;
+}
+
+.form-title {
+  font-size: 17px;
+  margin-bottom: 14px;
+}
+
+.form-label {
+  font-family: var(--notion-sans), Inter, system-ui, sans-serif;
+  font-size: 11px;
+  color: var(--agenda-muted);
+  letter-spacing: 0.025em;
+}
+
+.form-input,
+.form-select {
+  height: 36px;
+  border: 1px solid var(--agenda-border);
+  border-radius: 8px;
+  background: var(--agenda-surface);
+  color: var(--agenda-text);
+  font-size: 12.5px;
+}
+
+.form-input:focus,
+.form-select:focus {
+  border-color: rgba(30, 90, 58, 0.45);
+  box-shadow: 0 0 0 3px rgba(30, 90, 58, 0.08);
+}
+
+.form-radio-label {
+  border: 1px solid var(--agenda-border);
+  border-radius: 8px;
+  background: var(--agenda-surface);
+  color: var(--agenda-muted);
+}
+
+.form-radio-btn input:checked + .form-radio-label {
+  background: var(--agenda-green-soft);
+  border-color: rgba(30, 90, 58, 0.24);
+  color: var(--agenda-green);
+  box-shadow: none;
+}
+
+.btn-submit {
+  height: 38px;
+  border: 1px solid var(--agenda-green);
+  border-radius: 8px !important;
+  background: var(--agenda-green);
+  box-shadow: none;
+}
+
+.btn-submit:hover {
+  background: #174A2F;
+  box-shadow: none;
+}
+
+.detail-overlay {
+  background: rgba(29, 31, 30, 0.28);
+  backdrop-filter: blur(2px);
+}
+
+.detail-drawer {
+  max-width: 500px;
+  padding: 22px;
+  box-shadow: 0 24px 70px rgba(31, 31, 31, 0.18);
+}
+
+.detail-header {
+  border-bottom: 1px solid var(--agenda-border);
+}
+
+.detail-category,
+.dig-label,
+.tooltip-title {
+  font-family: var(--notion-sans), Inter, system-ui, sans-serif;
+  color: var(--agenda-muted);
+}
+
+.detail-entity-preview {
+  background: #FAF9F6;
+}
+
+.empty-tasks-box {
+  border-style: dashed;
+  border-color: var(--agenda-border);
+  color: var(--agenda-muted);
+}
 </style>
 </head>
 <body>
@@ -1026,48 +1432,14 @@
 <div class="agenda-page">
   <!-- HEADER -->
   <header class="agenda-header">
+    <div class="agenda-illustration-slot" aria-hidden="true"></div>
     <div class="agenda-header-top">
       <div class="agenda-title">
-        <h1>Agenda de l'Agent</h1>
-        <div class="agenda-subtitle">Cockpit opérationnel : gérez vos tâches, rendez-vous et relances commerciales.</div>
+        <h1>Agenda</h1>
+        <div class="agenda-subtitle">Actions, rendez-vous et relances commerciales à traiter.</div>
       </div>
     </div>
   </header>
-
-  <!-- KPI DASHBOARD (SOBRE & MATCHING) -->
-  <div class="kpi-dashboard">
-    <div class="kpi-item">
-      <div class="kpi-title">Actions aujourd'hui</div>
-      <div class="kpi-value" id="kpi-today">0</div>
-      <div class="kpi-trend">
-        <span class="trend-urgent" id="kpi-today-urgent">0 urgentes</span>
-      </div>
-    </div>
-    <div class="kpi-divider"></div>
-    <div class="kpi-item">
-      <div class="kpi-title">Actions terminées</div>
-      <div class="kpi-value" id="kpi-done">0</div>
-      <div class="kpi-trend">
-        <span class="trend-good" id="kpi-completion-label">0% de complétion</span>
-      </div>
-    </div>
-    <div class="kpi-divider"></div>
-    <div class="kpi-item">
-      <div class="kpi-title">En retard (Overdue)</div>
-      <div class="kpi-value" id="kpi-overdue" style="color: var(--rose);">0</div>
-      <div class="kpi-trend" style="color: var(--rose);">
-        <span id="kpi-overdue-caption">Attention requise</span>
-      </div>
-    </div>
-    <div class="kpi-divider"></div>
-    <div class="kpi-item">
-      <div class="kpi-title">Focus Relances</div>
-      <div class="kpi-value" id="kpi-linked">0</div>
-      <div class="kpi-trend">
-        <span>Tâches liées à des fiches</span>
-      </div>
-    </div>
-  </div>
 
   <!-- MAIN AGENDAL FRAMEWORK -->
   <div class="agenda-grid">
@@ -1092,10 +1464,10 @@
         
         <div class="type-filters" id="type-filters">
           <button class="type-pill active" data-type="all">Toutes</button>
-          <button class="type-pill" data-type="deal" style="--col: var(--blue);">📂 Deals</button>
-          <button class="type-pill" data-type="bien" style="--col: var(--forest);">🏡 Biens</button>
-          <button class="type-pill" data-type="contact" style="--col: var(--amber);">👤 Contacts</button>
-          <button class="type-pill" data-type="perso" style="--col: var(--stone);">📝 Personnelles</button>
+          <button class="type-pill" data-type="deal" style="--col: var(--blue);">Deals</button>
+          <button class="type-pill" data-type="bien" style="--col: var(--forest);">Biens</button>
+          <button class="type-pill" data-type="contact" style="--col: var(--amber);">Contacts</button>
+          <button class="type-pill" data-type="perso" style="--col: var(--stone);">Personnelles</button>
         </div>
       </div>
 
@@ -1145,12 +1517,12 @@
           <div class="form-row">
             <span class="form-label">Associer à une entité</span>
             <select class="form-select" id="task-assoc-input">
-              <option value="perso">📝 Action personnelle (aucune)</option>
-              <option value="deal-penthouse">📂 Deal : Penthouse vue parc (Uccle)</option>
-              <option value="deal-triplex">📂 Deal : Triplex art-déco (Ixelles)</option>
-              <option value="bien-lasne">🏡 Bien : Villa basse énergie (FSBO - Lasne)</option>
-              <option value="bien-maitre">🏡 Bien : Maison de maître (Saint-Gilles)</option>
-              <option value="contact-dupont">👤 Contact : Jean Dupont</option>
+              <option value="perso">Action personnelle (aucune)</option>
+              <option value="deal-penthouse">Deal : Penthouse vue parc (Uccle)</option>
+              <option value="deal-triplex">Deal : Triplex art-déco (Ixelles)</option>
+              <option value="bien-lasne">Bien : Villa basse énergie (FSBO - Lasne)</option>
+              <option value="bien-maitre">Bien : Maison de maître (Saint-Gilles)</option>
+              <option value="contact-dupont">Contact : Jean Dupont</option>
             </select>
           </div>
 
@@ -1208,7 +1580,7 @@
     </button>
     
     <div class="detail-header">
-      <div id="detail-category" class="detail-category">📂 Catégorie</div>
+      <div id="detail-category" class="detail-category">Catégorie</div>
       <div id="detail-title" class="detail-title">Rappeler le vendeur pour un mandat exclusif</div>
     </div>
     
@@ -1462,12 +1834,12 @@
     // Set text elements inside the drawer
     document.getElementById("detail-title").textContent = task.title;
     
-    var iconCode = "📝";
-    if (task.type === "deal") iconCode = "📂";
-    if (task.type === "bien") iconCode = "🏡";
-    if (task.type === "contact") iconCode = "👤";
+    var typeLabel = "Action personnelle";
+    if (task.type === "deal") typeLabel = "Deal";
+    if (task.type === "bien") typeLabel = "Bien";
+    if (task.type === "contact") typeLabel = "Contact";
 
-    document.getElementById("detail-category").textContent = iconCode + " Catégorie : " + task.type.toUpperCase();
+    document.getElementById("detail-category").textContent = "Catégorie : " + typeLabel;
     
     var prioLabel = "Normal";
     if (task.priority === "urgent") prioLabel = "🔴 Urgent";
@@ -1532,25 +1904,6 @@
     
     renderTaskList();
   };
-
-  function updateDashboardKPIs() {
-    var todayTasks = tasks.filter(function(t) { return t.day === 23; });
-    var todayUrgent = todayTasks.filter(function(t) { return t.priority === "urgent" && !t.completed; });
-    var allOverdue = tasks.filter(function(t) { return t.day < 23 && !t.completed; });
-    var allCompleted = tasks.filter(function(t) { return t.completed; });
-    var linkedCount = tasks.filter(function(t) { return t.type !== "perso"; });
-
-    // Populate Values
-    document.getElementById("kpi-today").textContent = todayTasks.length;
-    document.getElementById("kpi-today-urgent").textContent = todayUrgent.length + " non faites";
-    document.getElementById("kpi-done").textContent = allCompleted.length;
-    
-    var rate = tasks.length > 0 ? Math.round((allCompleted.length / tasks.length) * 100) : 0;
-    document.getElementById("kpi-completion-label").textContent = rate + "% de taux de complétion";
-    
-    document.getElementById("kpi-overdue").textContent = allOverdue.length;
-    document.getElementById("kpi-linked").textContent = linkedCount.length;
-  }
 
   function renderTaskList() {
     var listRoot = document.getElementById("tasks-list-root");
@@ -1699,7 +2052,7 @@
               ${iconSvg} 
               <span>${task.entityName}</span>
             </span>
-          ` : '<span class="badge-rel">📝 Action perso</span>'}
+          ` : '<span class="badge-rel">Action perso</span>'}
         </div>
       </div>
     `;
@@ -1849,7 +2202,6 @@
   }
 
   function render() {
-    updateDashboardKPIs();
     renderTaskList();
     renderCalendar();
   }

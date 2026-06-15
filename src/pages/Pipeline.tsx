@@ -1,10 +1,11 @@
 // src/pages/Pipeline.tsx
 import { useEffect, useMemo, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { LayoutGrid, List, Plus } from 'lucide-react';
 import type { store as appStore } from '../lib/store';
 import { KanbanBoard }        from '../components/pipeline/KanbanBoard';
 import { PipelineListView }   from '../components/pipeline/PipelineListView';
 import { DealFichePanel }     from '../components/pipeline/DealFichePanel';
+import { PageIllustrationHeader } from '../components/ui';
 import '../components/pipeline/pipeline.css';
 
 type Store = typeof appStore;
@@ -44,41 +45,31 @@ function KpiCell({ label, value, delta, last }: KpiCellProps) {
   );
 }
 
-interface ViewBtnProps { active: boolean; onClick: () => void; title: string; bordered?: boolean; children: React.ReactNode; }
-
-function ViewBtn({ active, onClick, title, bordered, children }: ViewBtnProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      style={{
-        background: active ? '#1E5A3A' : '#fff',
-        border: 'none',
-        borderLeft: bordered ? '1px solid #E6E4DF' : 'none',
-        padding: '8px 12px',
-        cursor: 'pointer',
-        display: 'flex', alignItems: 'center',
-        color: active ? '#fff' : '#6B6B6B',
-        transition: 'background 140ms, color 140ms',
-      }}
-    >
-      {children}
-    </button>
-  );
-}
 
 // ── Pipeline Page ──────────────────────────────────────────────────────────────
 
 export function Pipeline({ store }: PipelineProps) {
   const [viewMode, setViewMode]             = useState<ViewMode>('kanban');
-  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
+    return params.get('dealId');
+  });
   const [, forceUpdate]                     = useState(0);
 
   useEffect(() => {
     const handler = () => forceUpdate(n => n + 1);
+    const syncSelectedDeal = () => {
+      const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
+      const dealId = params.get('dealId');
+      if (dealId) setSelectedDealId(dealId);
+    };
     window.addEventListener('ip-state-changed', handler);
-    return () => window.removeEventListener('ip-state-changed', handler);
+    window.addEventListener('hashchange', syncSelectedDeal);
+    syncSelectedDeal();
+    return () => {
+      window.removeEventListener('ip-state-changed', handler);
+      window.removeEventListener('hashchange', syncSelectedDeal);
+    };
   }, []);
 
   const deals  = store.getDeals();
@@ -108,22 +99,19 @@ export function Pipeline({ store }: PipelineProps) {
       background: '#F7F6F3',
       fontFamily: 'var(--notion-sans)',
       position: 'relative',
-      paddingRight: panelOpen ? 480 : 0,
-      transition: 'padding-right 180ms ease',
     }}>
 
-      {/* ── Page header ── */}
-      <div style={{ padding: '24px 32px 0' }}>
-        <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, fontFamily: 'var(--notion-serif)', color: '#1D1F1E', letterSpacing: '-0.02em' }}>
-          Opportunités
-        </h1>
-        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B6B6B' }}>
-          Suivi commercial de vos dossiers actifs
-        </p>
-      </div>
+      {/* ── Illustration header ── */}
+      <PageIllustrationHeader
+        imageUrl="/pipeline-header-illustration.png"
+        height={150}
+        padding="12px 32px 0"
+        backgroundPosition="center 48%"
+        backgroundSize="100% auto"
+      />
 
       {/* ── KPI row + actions ── */}
-      <div style={{ padding: '16px 32px 0', display: 'flex', alignItems: 'stretch', gap: 12 }}>
+      <div style={{ padding: '0 32px', marginTop: -8, display: 'flex', alignItems: 'stretch', gap: 12, position: 'relative', zIndex: 2 }}>
         {/* KPI container */}
         <div style={{ flex: 1, background: '#fff', border: '1px solid #E6E4DF', borderRadius: 10, display: 'flex', alignItems: 'stretch' }}>
           <KpiCell label="Deals actifs"       value={kpis.active}               delta="Pipeline en cours" />
@@ -134,24 +122,39 @@ export function Pipeline({ store }: PipelineProps) {
 
         {/* Action buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {/* View toggle */}
+          {/* View toggle — same as Biens */}
           <div style={{ display: 'flex', border: '1px solid #E6E4DF', borderRadius: 8, overflow: 'hidden' }}>
-            <ViewBtn active={viewMode === 'kanban'} onClick={() => setViewMode('kanban')} title="Vue Kanban">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <rect x="3" y="3" width="7" height="18" rx="1" />
-                <rect x="14" y="3" width="7" height="18" rx="1" />
-              </svg>
-            </ViewBtn>
-            <ViewBtn active={viewMode === 'list'} onClick={() => setViewMode('list')} title="Vue Liste" bordered>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <line x1="8"  y1="6"  x2="21" y2="6"  />
-                <line x1="8"  y1="12" x2="21" y2="12" />
-                <line x1="8"  y1="18" x2="21" y2="18" />
-                <line x1="3"  y1="6"  x2="3.01" y2="6"  />
-                <line x1="3"  y1="12" x2="3.01" y2="12" />
-                <line x1="3"  y1="18" x2="3.01" y2="18" />
-              </svg>
-            </ViewBtn>
+            <button
+              type="button"
+              onClick={() => setViewMode('kanban')}
+              title="Vue Kanban"
+              style={{
+                background: viewMode === 'kanban' ? '#1E5A3A' : '#fff',
+                border: 'none',
+                padding: '8px 12px',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center',
+                color: viewMode === 'kanban' ? '#fff' : '#6B6F6D',
+              }}
+            >
+              <LayoutGrid size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              title="Vue Liste"
+              style={{
+                background: viewMode === 'list' ? '#1E5A3A' : '#fff',
+                border: 'none',
+                borderLeft: '1px solid #E6E4DF',
+                padding: '8px 12px',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center',
+                color: viewMode === 'list' ? '#fff' : '#6B6F6D',
+              }}
+            >
+              <List size={15} />
+            </button>
           </div>
 
           {/* Filtres */}
@@ -179,36 +182,46 @@ export function Pipeline({ store }: PipelineProps) {
       </div>
 
       {/* ── Main content ── */}
-      <div style={{ padding: '16px 32px 32px' }}>
-        {viewMode === 'kanban' ? (
-          <KanbanBoard
-            deals={deals}
-            stages={stages}
-            onSelectDeal={handleSelectDeal}
+      <div
+        className="pipeline-workarea"
+        style={{
+          padding: '16px 32px 32px',
+          display: 'grid',
+          gridTemplateColumns: panelOpen ? 'minmax(0, 1fr) 480px' : 'minmax(0, 1fr)',
+          gap: 12,
+          alignItems: 'start',
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          {viewMode === 'kanban' ? (
+            <KanbanBoard
+              deals={deals}
+              stages={stages}
+              onSelectDeal={handleSelectDeal}
+              onMoveDeal={handleMoveDeal}
+              selectedDealId={selectedDealId}
+              store={store}
+            />
+          ) : (
+            <PipelineListView
+              deals={deals}
+              stages={stages}
+              onSelectDeal={handleSelectDeal}
+              selectedDealId={selectedDealId}
+              store={store}
+            />
+          )}
+        </div>
+
+        {panelOpen && selectedDeal && (
+          <DealFichePanel
+            deal={selectedDeal}
+            store={store}
+            onClose={() => setSelectedDealId(null)}
             onMoveDeal={handleMoveDeal}
-            selectedDealId={selectedDealId}
-            store={store}
-          />
-        ) : (
-          <PipelineListView
-            deals={deals}
-            stages={stages}
-            onSelectDeal={handleSelectDeal}
-            selectedDealId={selectedDealId}
-            store={store}
           />
         )}
       </div>
-
-      {/* ── Fiche panel ── */}
-      {panelOpen && selectedDeal && (
-        <DealFichePanel
-          deal={selectedDeal}
-          store={store}
-          onClose={() => setSelectedDealId(null)}
-          onMoveDeal={handleMoveDeal}
-        />
-      )}
     </div>
   );
 }

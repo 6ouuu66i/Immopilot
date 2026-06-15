@@ -6,3 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Review/work artifacts
+tmp/
+.codex-review-screens/
+src/assets/_asset_backups/
+*.original.png

@@ -191,6 +191,10 @@ function KanbanColumn({
 
 // ── Kanban Board ───────────────────────────────────────────────────────────────
 
+const SCROLL_EDGE = 80;
+const SCROLL_MAX  = 14;
+function edgeSpeed(dist: number) { return Math.ceil(Math.max(0, 1 - dist / SCROLL_EDGE) * SCROLL_MAX); }
+
 export function KanbanBoard({
   deals, stages, onSelectDeal, onMoveDeal, selectedDealId, store,
 }: KanbanBoardProps) {
@@ -199,10 +203,14 @@ export function KanbanBoard({
   const draggingRef = useRef<string | null>(null);
   const ghostRef    = useRef<HTMLDivElement | null>(null);
   const offsetRef   = useRef({ x: 0, y: 0 });
+  const cursorRef   = useRef({ x: 0, y: 0 });
+  const scrollRAF   = useRef<number | null>(null);
+  const boardRef    = useRef<HTMLDivElement | null>(null);
 
   // Follow cursor during drag via document-level dragover
   useEffect(() => {
     const move = (e: DragEvent) => {
+      cursorRef.current = { x: e.clientX, y: e.clientY };
       const ghost = ghostRef.current;
       if (!ghost) return;
       ghost.style.left = `${e.clientX - offsetRef.current.x}px`;
@@ -211,6 +219,29 @@ export function KanbanBoard({
     document.addEventListener('dragover', move);
     return () => document.removeEventListener('dragover', move);
   }, []);
+
+  const startAutoScroll = (board: HTMLElement | null) => {
+    const tick = () => {
+      const { x, y } = cursorRef.current;
+      const vh = window.innerHeight;
+      const vw = window.innerWidth;
+      const content = document.getElementById('app-content') ?? document.documentElement;
+      // Vertical
+      if (y < SCROLL_EDGE)        content.scrollTop -= edgeSpeed(y);
+      else if (y > vh - SCROLL_EDGE) content.scrollTop += edgeSpeed(vh - y);
+      // Horizontal (kanban board)
+      if (board) {
+        if (x < SCROLL_EDGE)        board.scrollLeft -= edgeSpeed(x);
+        else if (x > vw - SCROLL_EDGE) board.scrollLeft += edgeSpeed(vw - x);
+      }
+      scrollRAF.current = requestAnimationFrame(tick);
+    };
+    scrollRAF.current = requestAnimationFrame(tick);
+  };
+
+  const stopAutoScroll = () => {
+    if (scrollRAF.current !== null) { cancelAnimationFrame(scrollRAF.current); scrollRAF.current = null; }
+  };
 
   const startDrag = (dealId: string, e: React.DragEvent<HTMLElement>) => {
     // Suppress native ghost
@@ -245,9 +276,11 @@ export function KanbanBoard({
     draggingRef.current = dealId;
     // Delay opacity change so ghost paints before source fades
     requestAnimationFrame(() => setDraggingDealId(dealId));
+    startAutoScroll(boardRef.current);
   };
 
   const endDrag = () => {
+    stopAutoScroll();
     ghostRef.current?.remove();
     ghostRef.current    = null;
     draggingRef.current = null;
@@ -265,7 +298,7 @@ export function KanbanBoard({
   };
 
   return (
-    <div className="kanban-board">
+    <div className="kanban-board" ref={boardRef}>
       {stages.map(stage => {
         const stageId    = stageNameToId(stage.name);
         const stageDeals = deals.filter(d => stageNameToId(d.stage) === stageId);

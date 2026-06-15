@@ -1,7 +1,8 @@
 // src/components/pipeline/DealFichePanel.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { store as appStore } from '../../lib/store';
-import type { Deal } from '../../types';
+import type { Deal, DealStage } from '../../types';
+import { StatusBadge } from '../ui';
 
 type Store = typeof appStore;
 
@@ -19,11 +20,17 @@ function fmt(v: number) { return priceFormatter.format(v).replace(/\s?EUR/, ' �
 
 export function DealFichePanel({ deal, store, onClose, onMoveDeal }: DealFichePanelProps) {
   const [noteDraft, setNoteDraft] = useState('');
+  const [nextActionTitle, setNextActionTitle] = useState('');
+  const [selectedContactId, setSelectedContactId] = useState(deal.contactId);
+  const [selectedPropertyId, setSelectedPropertyId] = useState(String(deal.propertyId));
+  const [actionMessage, setActionMessage] = useState('');
 
   const property = store.getProperty(deal.propertyId);
   const contact  = store.getContact(deal.contactId);
   const tasks    = store.getTasks().filter(t => t.dealId === deal.id).slice(0, 5);
   const stages   = store.getPipelineStages();
+  const contacts = store.getContacts();
+  const properties = store.getProperties();
   const currentStageIdx = stages.findIndex(s => s.name === deal.stage);
   const isActive = !['Perdu', 'Bien vendu'].includes(deal.stage);
 
@@ -41,10 +48,48 @@ export function DealFichePanel({ deal, store, onClose, onMoveDeal }: DealFichePa
     setNoteDraft('');
   };
 
+  useEffect(() => {
+    setSelectedContactId(deal.contactId);
+    setSelectedPropertyId(String(deal.propertyId));
+    setNextActionTitle('');
+    setActionMessage('');
+  }, [deal.id, deal.contactId, deal.propertyId]);
+
   const handleAdvanceStage = () => {
     if (currentStageIdx < stages.length - 1) {
       onMoveDeal(deal.id, stages[currentStageIdx + 1].name);
     }
+  };
+
+  const handleCreateNextAction = () => {
+    const title = nextActionTitle.trim();
+    if (!title) {
+      setActionMessage('Ajoute une prochaine action.');
+      return;
+    }
+
+    store.createDealNextAction(deal.id, title);
+    setNextActionTitle('');
+    setActionMessage('Prochaine action ajoutée.');
+  };
+
+  const handleLinkContact = () => {
+    const linked = store.linkDealToContact(deal.id, selectedContactId);
+    setActionMessage(linked ? `Contact lié : ${linked.name}` : 'Contact introuvable.');
+  };
+
+  const handleLinkProperty = () => {
+    const linked = store.linkDealToProperty(deal.id, Number(selectedPropertyId));
+    setActionMessage(linked ? `Bien lié : ${linked.title}` : 'Bien introuvable.');
+  };
+
+  const handleMilestone = (milestone: 'rdv' | 'offre' | 'mandat_potentiel') => {
+    const updated = store.markDealMilestone(deal.id, milestone);
+    if (updated) setActionMessage(`Statut commercial : ${updated.stage}`);
+  };
+
+  const handleStageSelect = (stageName: DealStage) => {
+    if (stageName !== deal.stage) onMoveDeal(deal.id, stageName);
   };
 
   const dealRef = `D-2026-${deal.id.replace('deal-', '').padStart(4, '0')}`;
@@ -57,9 +102,9 @@ export function DealFichePanel({ deal, store, onClose, onMoveDeal }: DealFichePa
         <div className="fiche-head">
           <div className="fiche-head-left">
             <span className="deal-ref">Deal #{dealRef}</span>
-            <span className={`deal-status ${isActive ? 'actif' : 'inact'}`}>
+            <StatusBadge tone={isActive ? 'success' : 'neutral'} leadingDot>
               {deal.stage === 'Bien vendu' ? 'Vendu' : deal.stage === 'Perdu' ? 'Perdu' : 'Actif'}
-            </span>
+            </StatusBadge>
           </div>
           <button className="fiche-close" type="button" onClick={onClose} aria-label="Fermer">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -113,7 +158,7 @@ export function DealFichePanel({ deal, store, onClose, onMoveDeal }: DealFichePa
               <div
                 key={stage.id}
                 className={`step ${cls}`}
-                onClick={() => { if (stage.name !== deal.stage) onMoveDeal(deal.id, stage.name); }}
+                onClick={() => handleStageSelect(stage.name)}
               >
                 <div className="step-icon">
                   {idx < currentStageIdx && (
@@ -129,6 +174,13 @@ export function DealFichePanel({ deal, store, onClose, onMoveDeal }: DealFichePa
         </div>
 
         {/* ── Body ── */}
+        <div className="deal-quick-actions">
+          <button type="button" onClick={() => handleMilestone('rdv')}>Marquer RDV</button>
+          <button type="button" onClick={() => handleMilestone('offre')}>Marquer offre</button>
+          <button type="button" onClick={() => handleMilestone('mandat_potentiel')}>Mandat potentiel</button>
+        </div>
+        {actionMessage && <div className="deal-action-message">{actionMessage}</div>}
+
         <div className="fiche-body">
           <div className="body-grid-2">
 
@@ -158,11 +210,28 @@ export function DealFichePanel({ deal, store, onClose, onMoveDeal }: DealFichePa
                     </span>
                   </div>
                 )}
+                <div className="deal-link-row">
+                  <select value={selectedContactId} onChange={e => setSelectedContactId(e.target.value)}>
+                    {contacts.map(item => (
+                      <option key={item.id} value={item.id}>{item.name}</option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={handleLinkContact}>Lier</button>
+                </div>
               </div>
 
               {/* Tasks */}
               <div className="mc">
                 <div className="mc-label">Tâches liées</div>
+                <div className="deal-action-row">
+                  <input
+                    value={nextActionTitle}
+                    onChange={e => setNextActionTitle(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleCreateNextAction(); }}
+                    placeholder="Prochaine action..."
+                  />
+                  <button type="button" onClick={handleCreateNextAction}>Ajouter</button>
+                </div>
                 <div className="task-list">
                   {tasks.length === 0 ? (
                     <div className="task-empty">Aucune tâche liée</div>
@@ -240,6 +309,14 @@ export function DealFichePanel({ deal, store, onClose, onMoveDeal }: DealFichePa
                     <polyline points="9 18 15 12 9 6" />
                   </svg>
                 </a>
+                <div className="deal-link-row">
+                  <select value={selectedPropertyId} onChange={e => setSelectedPropertyId(e.target.value)}>
+                    {properties.map(item => (
+                      <option key={item.id} value={item.id}>{item.title} - {item.city}</option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={handleLinkProperty}>Lier</button>
+                </div>
               </div>
 
               {/* Commission */}

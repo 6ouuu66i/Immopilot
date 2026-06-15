@@ -1,505 +1,968 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
 <style>
 :root {
-  --forest: #1E5A3A; --forest-soft: #CFE1D2; --sand: #EFE6DD; --sand-deep: #DFD3C3;
-  --bone: #FBF2ED; --ink: #1D1F1E; --stone: #6B6F6D; --stone-light: #8E8B83; --moss: #7FA68E;
+  --ct-bg: #F7F6F3;
+  --ct-surface: #FFFFFF;
+  --ct-muted: #F3F2EF;
+  --ct-border: #E6E4DF;
+  --ct-border-soft: #EFEDE8;
+  --ct-text: #1D1F1E;
+  --ct-subtle: #6B6F6D;
+  --ct-faint: #9A9A9A;
+  --ct-green: #1E5A3A;
+  --ct-green-soft: #E7F1E6;
+  --ct-blue-soft: #E7F0FB;
+  --ct-amber-soft: #FFF1D9;
+  --ct-red-soft: #FBE4DF;
 }
 
-.page { 
-  display: flex; flex-direction: column; padding: 18px 24px 18px; min-width: 0; flex: 1; height: 100%; overflow: hidden; 
-  
-  background-color: #FBF9F4 !important; /* Premium warm paper sheet background */
-  background-image: 
-    /* Soft red margin vertical line typical of high-quality notebooks */
-    linear-gradient(90deg, transparent 55px, rgba(200, 85, 61, 0.24) 55px, rgba(200, 85, 61, 0.24) 57px, transparent 57px),
-    /* Delicate forest-green grid lines to emphasize the sketched vibe */
-    linear-gradient(rgba(30, 90, 58, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(30, 90, 58, 0.08) 1px, transparent 1px) !important;
-  background-size: 100% 100%, 20px 20px, 20px 20px !important;
+.contacts-page {
+  width: 100%;
+  min-height: 100%;
+  height: auto;
+  overflow: visible;
+  background: var(--ct-bg);
+  color: var(--ct-text);
+  font-family: var(--notion-sans), Inter, system-ui, sans-serif;
+  padding: 0 16px 16px 24px;
+  display: flex;
+  flex-direction: column;
 }
 
-.page-header { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
-.page-title h1 { font-family: 'Lora', Georgia, serif; font-size: 24px; font-weight: 700; letter-spacing: -0.015em; white-space: nowrap; }
-.page-title h1::before { content: ''; display: inline-block; width: 4px; height: 18px; background: var(--forest); margin-right: 10px; vertical-align: -2px; border-radius: 99px; }
-
-.search-box {
-  flex: 1; max-width: 520px;
-  height: 38px; padding: 0 50px 0 38px;
-  border: 1.5px solid var(--stone);
-  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px !important;
-  box-shadow: 1px 1px 0px var(--stone);
-  background: #FFFFFF url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%231E5A3A" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>') 12px center no-repeat;
-  font: inherit; font-size: 13px; color: var(--ink); outline: none; position: relative;
-  transition: all 160ms;
+.ip-legacy-content.contacts-scroll-page {
+  display: block;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
-.search-box:focus { border-color: var(--forest); box-shadow: 2px 2px 0px var(--forest) !important; }
-.search-wrap { flex: 1; position: relative; max-width: 520px; }
-.search-wrap .kbd { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 3px 7px; border: 1.5px dashed var(--stone-light); border-radius: 4px; color: var(--stone); background: var(--bone); pointer-events: none; }
 
-.toolbar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.f-btn { 
-  height: 34px; padding: 0 14px; 
-  border: 1.5px solid var(--stone); 
-  border-radius: 120px 20px 100px 20px/20px 100px 20px 120px;
-  box-shadow: 1px 1px 0px var(--stone);
-  background: #FFFFFF; font: inherit; font-size: 12.5px; font-weight: 500; color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 160ms; 
+.contacts-hero-slot {
+  height: 150px;
+  flex: 0 0 150px;
+  margin: 0 0 0;
+  background: var(--ct-bg);
+  background-image: url('/contacts-header-illustration.png');
+  background-repeat: no-repeat;
+  background-position: center 50%;
+  background-size: 100% auto;
 }
-.f-btn:hover { border-color: var(--forest); box-shadow: 2px 2px 0px var(--forest); color: var(--forest); transform: translate(-0.5px, -0.5px); }
-.f-btn svg { color: var(--stone); }
-.spacer { flex: 1; }
-.add-btn { 
-  background: var(--forest) !important; color: #FFFFFF; 
-  border: 1.5px solid var(--forest) !important;
-  border-radius: 255px 15px 225px 15px/15px 225px 15px 255px !important;
-  box-shadow: 2px 2px 0px var(--forest-soft) !important;
+
+.contacts-head {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(360px, 484px) auto auto;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
 }
-.add-btn:hover { background: #174A2F !important; box-shadow: 3px 3px 0px var(--forest-soft) !important; transform: translate(-0.5px, -0.5px); }
-.add-btn:active { transform: translate(1px, 1px); box-shadow: 0px 0px 0px var(--forest-soft) !important; }
 
-.table-wrap { flex: 1; min-height: 0; overflow: hidden; background: #FFFFFF; border: 1px solid #F1ECDF; border-radius: 4px; display: flex; flex-direction: column; }
-.table-scroll { flex: 1; overflow: auto; min-height: 0; }
-.table-toolbar { display: flex; align-items: center; padding: 10px 14px; border-bottom: 1px solid #F1ECDF; gap: 10px; }
-.view-toggle { display: inline-flex; background: #FCFAF5; border: 1px solid #F1ECDF; border-radius: 4px; padding: 2px; gap: 2px; }
-.view-toggle button { background: transparent; border: none; padding: 5px 8px; cursor: pointer; border-radius: 4px; display: grid; place-items: center; color: var(--stone); transition: all 160ms; }
-.view-toggle button.active { background: #FFFFFF; color: var(--ink); box-shadow: 0 1px 2px rgba(29,31,30,0.08); }
-.table-count { margin-left: auto; font-size: 12px; color: var(--stone); }
-.table-count strong { color: var(--ink); font-weight: 600; }
-.icon-btn { width: 30px; height: 30px; border-radius: 4px; background: transparent; border: none; cursor: pointer; display: grid; place-items: center; color: var(--stone); transition: all 140ms; }
-.icon-btn:hover { background: var(--bone); color: var(--ink); }
-
-table.contacts { width: 100%; border-collapse: collapse; }
-table.contacts thead th {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--stone);
-  font-weight: 500; padding: 10px 14px; text-align: left; border-bottom: 1px solid #F1ECDF; background: #FCFAF5; position: sticky; top: 0; z-index: 2;
+.contacts-title h1 {
+  margin: 0;
+  font-family: var(--notion-serif), Lora, Georgia, serif;
+  font-size: 38px;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  font-weight: 700;
 }
-table.contacts tbody tr { cursor: pointer; transition: background 120ms; border-bottom: 1px solid #F5F0E5; }
-table.contacts tbody tr:hover { background: #FCFAF5; }
-table.contacts tbody tr.selected { background: #F1F6EE; }
-table.contacts tbody tr.selected td:first-child { border-left: 3px solid var(--forest); padding-left: 11px; }
-table.contacts tbody td { padding: 11px 14px; font-size: 13px; color: var(--ink); vertical-align: middle; }
 
-.contact-cell { display: flex; align-items: center; gap: 10px; }
-.avatar-sm { width: 32px; height: 32px; border-radius: 999px; background: #EBE6DA; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--stone); flex-shrink: 0; }
-.contact-name { font-size: 13px; font-weight: 600; color: var(--ink); }
-.contact-email { font-size: 11.5px; color: var(--stone); margin-top: 1px; }
+.contacts-title p {
+  margin: 7px 0 0;
+  color: #58605D;
+  font-size: 15px;
+}
 
-.tel-cell { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink); }
+.contacts-search {
+  height: 38px;
+  border: 1px solid var(--ct-border);
+  border-radius: 8px;
+  background: var(--ct-surface);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  color: var(--ct-subtle);
+}
 
-.pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-.pill.discussion { background: #DCE9F1; color: #2E5C7A; }
-.pill.contacte { background: #D6E8D9; color: #2E5C3F; }
-.pill.pas { background: #EBE6DA; color: #6B6F6D; }
-.pill.converti { background: var(--forest); color: #FFFFFF; }
-.pill.perdu { background: #F2D6D0; color: #8C3D2E; }
+.contacts-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ct-text);
+}
 
-.num-cell { font-size: 13px; font-weight: 500; color: var(--ink); }
+.contacts-view-toggle,
+.contacts-export {
+  height: 38px;
+  display: inline-flex;
+  border-radius: 8px;
+  border: 1px solid var(--ct-border);
+  overflow: hidden;
+  background: var(--ct-surface);
+}
 
-.activity-cell { font-size: 12px; }
-.activity-cell .day { color: var(--ink); font-weight: 500; }
-.activity-cell .desc { color: var(--stone); margin-top: 1px; font-size: 11.5px; }
+.contacts-view-toggle button,
+.contacts-export button,
+.icon-action {
+  width: 42px;
+  height: 38px;
+  border: 0;
+  border-right: 1px solid var(--ct-border);
+  background: transparent;
+  color: #39413E;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
 
-.next-action { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 4px; background: var(--bone); border: 1px solid #F1ECDF; font-size: 11.5px; color: var(--ink); font-weight: 500; }
-.next-action svg { color: var(--forest); }
-.next-action.none { color: var(--stone-light); background: transparent; border-style: dashed; }
+.contacts-view-toggle button:last-child,
+.contacts-export button:last-child {
+  border-right: 0;
+}
 
-.pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px; border-top: 1px solid #F1ECDF; }
-.pagination button { min-width: 32px; height: 32px; padding: 0 10px; border: 1px solid var(--sand-deep); background: #FFFFFF; border-radius: 4px; font: inherit; font-size: 12.5px; font-weight: 500; color: var(--ink); cursor: pointer; transition: all 140ms; }
-.pagination button:hover:not(:disabled) { border-color: var(--forest); color: var(--forest); }
-.pagination button.active { background: var(--forest); color: #FFFFFF; border-color: var(--forest); }
-.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
-.pagination .gap { color: var(--stone); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-.pagination .per { margin-left: auto; font-size: 12px; color: var(--stone); }
-.pagination .per select { margin-left: 6px; height: 30px; padding: 0 8px; border-radius: 4px; border: 1px solid var(--sand-deep); background: #FFFFFF; font: inherit; font-size: 12px; }
+.contacts-view-toggle button.active,
+.contacts-filter-square {
+  background: var(--ct-green);
+  color: #FFFFFF;
+}
 
-/* RIGHT PANEL */
-.detail-panel { width: 380px; flex-shrink: 0; background: #FFFFFF; border-left: 1px solid #F1ECDF; overflow-y: auto; display: flex; flex-direction: column; padding-bottom: 24px; }
-.dp-section { padding: 18px 20px; border-bottom: 1px solid #F1ECDF; }
-.dp-section:last-child { border-bottom: none; }
+.contacts-export {
+  background: #EEEAE4;
+}
 
-.dp-header { display: flex; align-items: flex-start; gap: 14px; }
-.avatar-lg { width: 56px; height: 56px; border-radius: 999px; background: #EBE6DA; display: grid; place-items: center; font-size: 16px; font-weight: 700; color: var(--stone); flex-shrink: 0; }
-.dp-h-info { flex: 1; min-width: 0; }
-.dp-h-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.dp-h-title strong { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
-.dp-h-actions { display: flex; gap: 6px; }
-.dp-h-contact { display: flex; flex-direction: column; gap: 3px; }
-.dp-h-contact span { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--stone); }
-.dp-h-contact svg { color: var(--stone-light); }
+.contacts-body-grid {
+  min-height: calc(100vh - 274px);
+  flex: 1 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 384px;
+  gap: 12px;
+  align-items: stretch;
+}
 
-.fsbo-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; background: #F4E8D6; color: #8B6420; font-size: 11px; font-weight: 600; }
-.fsbo-badge svg { color: #B5872E; }
+.contacts-page.is-panel-closed .contacts-body-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
 
-.dp-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
-.dp-btn { height: 36px; border-radius: 4px; border: 1px solid var(--sand-deep); background: #FFFFFF; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; transition: all 160ms; position: relative; }
-.dp-btn:hover { border-color: #CFC8B7; background: var(--bone); }
-.dp-btn.with-caret { padding-right: 30px; }
-.dp-btn .caret { position: absolute; right: 0; top: 0; bottom: 0; width: 26px; display: grid; place-items: center; border-left: 1px solid var(--sand-deep); }
+.contacts-left {
+  min-width: 0;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
 
-.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.stat-card { padding: 10px 12px; border: 1px solid #F1ECDF; border-radius: 4px; background: #FCFAF5; }
-.stat-card .label { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--stone); font-weight: 500; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
-.stat-card .value { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
-.stat-card .value small { font-size: 10px; font-weight: 500; color: var(--stone); }
-.stat-card .value.danger { color: #A04A2E; }
+.filters-row {
+  min-height: 50px;
+  padding: 8px 12px;
+  border: 1px solid var(--ct-border);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.68);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
 
-.dp-block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.dp-block-head strong { font-size: 13px; font-weight: 600; color: var(--ink); }
-.dp-block-head .link { font-size: 11.5px; color: var(--forest); font-weight: 600; cursor: pointer; }
+.filters-active {
+  height: 34px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ct-green);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
 
-.bien-card { display: grid; grid-template-columns: 96px 1fr auto; gap: 12px; padding: 10px; border: 1px solid #F1ECDF; border-radius: 4px; cursor: pointer; transition: all 160ms; align-items: center; }
-.bien-card:hover { border-color: #CFC8B7; box-shadow: 0 4px 14px -6px rgba(29,31,30,0.10); }
-.bien-thumb { width: 96px; height: 70px; border-radius: 4px; overflow: hidden; background: var(--sand-deep); }
-.bien-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.bien-info-title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
-.bien-info-meta { display: flex; gap: 8px; font-size: 11px; color: var(--stone); margin-bottom: 4px; flex-wrap: wrap; }
-.bien-info-price { font-size: 14px; font-weight: 700; color: var(--ink); }
-.bien-info-old { font-size: 11px; color: var(--stone); text-decoration: line-through; margin-left: 4px; font-weight: 400; }
-.bien-info-source { font-size: 10.5px; color: var(--stone); margin-top: 4px; display: flex; gap: 8px; align-items: center; }
-.score-circle { width: 38px; height: 38px; border-radius: 999px; background: #FFFFFF; display: grid; place-items: center; position: relative; flex-shrink: 0; border: 1.5px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 1.5px; }
+.filter-pill {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--ct-border);
+  border-radius: 7px;
+  background: var(--ct-surface);
+  color: var(--ct-text);
+  font: inherit;
+  font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
 
-.deal-card-mini { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; padding: 10px; border: 1px solid #F1ECDF; border-radius: 4px; cursor: pointer; align-items: center; transition: all 160ms; }
-.deal-card-mini:hover { border-color: #CFC8B7; }
-.deal-thumb { width: 56px; height: 56px; border-radius: 4px; overflow: hidden; background: var(--sand-deep); }
-.deal-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.deal-mini-title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
-.deal-mini-ref { font-size: 11px; color: var(--stone); font-family: 'JetBrains Mono', monospace; }
-.deal-mini-stage { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.stage-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; background: #E1E8F0; color: #2E5C7A; font-size: 10.5px; font-weight: 600; }
-.deal-mini-step { font-size: 10.5px; color: var(--stone); font-family: 'JetBrains Mono', monospace; }
+.reset-link {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: #59615E;
+  text-decoration: underline;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
 
-.timeline { display: flex; flex-direction: column; gap: 10px; }
-.timeline-item { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: flex-start; }
-.timeline-icon { width: 22px; height: 22px; border-radius: 999px; background: #ECEFE9; display: grid; place-items: center; color: var(--forest); flex-shrink: 0; margin-top: 2px; }
-.timeline-title { font-size: 12px; color: var(--ink); font-weight: 500; }
-.timeline-desc { font-size: 11px; color: var(--stone); margin-top: 2px; word-break: break-word; }
-.timeline-date { font-size: 10.5px; color: var(--stone-light); font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
-.timeline-duration { font-size: 10px; color: var(--stone-light); font-family: 'JetBrains Mono', monospace; }
+.contacts-filter-square {
+  width: 38px;
+  height: 34px;
+  border: 0;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+}
 
-.notes-list { display: flex; flex-direction: column; gap: 10px; }
-.note-item { padding: 10px 12px; border: 1px solid #F1ECDF; border-radius: 4px; background: #FCFAF5; }
-.note-text { font-size: 12px; color: var(--ink); line-height: 1.45; word-break: break-word; }
-.note-meta { font-size: 10.5px; color: var(--stone); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+.contacts-table-shell {
+  min-height: 0;
+  flex: 1 0 auto;
+  border: 1px solid var(--ct-border);
+  border-radius: 10px;
+  background: var(--ct-surface);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 
-.task-row { display: grid; grid-template-columns: 16px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid #F5F0E5; }
-.task-row:last-child { border-bottom: none; }
-.task-check { width: 16px; height: 16px; border: 1.5px solid var(--sand-deep); border-radius: 4px; background: #FFFFFF; cursor: pointer; position: relative; transition: all 140ms; }
-.task-check.checked { background: var(--forest); border-color: var(--forest); }
-.task-check.checked::after { content: ''; position: absolute; left: 4px; top: 1px; width: 5px; height: 9px; border-right: 1.5px solid #FFFFFF; border-bottom: 1.5px solid #FFFFFF; transform: rotate(45deg); }
-.task-name { font-size: 12px; color: var(--ink); font-weight: 500; }
-.task-row.done .task-name { text-decoration: line-through; color: var(--stone); }
-.task-due { font-size: 10.5px; color: var(--stone); font-family: 'JetBrains Mono', monospace; }
-.task-avatar { width: 22px; height: 22px; border-radius: 999px; background: #C9C0AE url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&q=80') center/cover; }
+.table-count {
+  height: 44px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--ct-border);
+  font-size: 13px;
+  color: var(--ct-text);
+}
 
-.add-task { margin-top: 8px; padding-top: 10px; border-top: 1px solid #F5F0E5; display: inline-flex; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; font: inherit; font-size: 11.5px; font-weight: 600; color: var(--forest); width: 100%; justify-content: center; }
+.table-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow: visible;
+}
 
-.notes-input-row { display: flex; gap: 8px; margin-top: 10px; }
-.notes-input { flex: 1; height: 32px; padding: 0 10px; border: 1px solid var(--sand-deep); border-radius: 4px; font: inherit; font-size: 12px; outline: none; background: var(--bone); }
-.notes-input:focus { border-color: var(--forest); background: #FFFFFF; box-shadow: 0 0 0 3px rgba(30,90,58,0.10); }
+table.contacts-table {
+  width: 100%;
+  min-width: 1020px;
+  border-collapse: collapse;
+}
 
-@keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-.detail-panel { animation: fade-in 320ms cubic-bezier(0.32, 0.72, 0, 1); }
-.dp-section { animation: fade-in 400ms cubic-bezier(0.32, 0.72, 0, 1) both; }
-.dp-section:nth-child(1) { animation-delay: 40ms; }
-.dp-section:nth-child(2) { animation-delay: 100ms; }
-.dp-section:nth-child(3) { animation-delay: 160ms; }
-.dp-section:nth-child(4) { animation-delay: 220ms; }
-.dp-section:nth-child(5) { animation-delay: 280ms; }
+.contacts-table th {
+  height: 43px;
+  padding: 0 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--ct-border);
+  color: #5D6662;
+  font-size: 11.5px;
+  font-weight: 500;
+  background: #FFFFFF;
+  white-space: nowrap;
+}
+
+.contacts-table td {
+  height: 66px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--ct-border-soft);
+  font-size: 12.5px;
+  color: #222725;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.contacts-table tr.selected {
+  background: #F5F7F1;
+}
+
+.contacts-table tr:hover {
+  background: #FAFAF8;
+}
+
+.check {
+  width: 15px;
+  height: 15px;
+  border: 1px solid #C9C9C4;
+  border-radius: 3px;
+  display: inline-grid;
+  place-items: center;
+  color: #FFFFFF;
+}
+
+.check.checked {
+  background: var(--ct-green);
+  border-color: var(--ct-green);
+}
+
+.contact-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar-sm,
+.avatar-lg {
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(29, 31, 30, 0.08);
+  background: #EDF1E8;
+  color: #27342F;
+  font-weight: 600;
+}
+
+.avatar-sm {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+
+.avatar-lg {
+  width: 58px;
+  height: 58px;
+  font-size: 21px;
+}
+
+.contact-name {
+  font-size: 12.8px;
+  font-weight: 650;
+  color: #121614;
+}
+
+.contact-role,
+.muted-line {
+  margin-top: 3px;
+  color: #5F6864;
+  font-size: 11.5px;
+}
+
+.status {
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.status.active { background: var(--ct-green-soft); color: #1E5A3A; }
+.status.new { background: var(--ct-blue-soft); color: #245E9F; }
+.status.contacted { background: var(--ct-amber-soft); color: #9A5B13; }
+.status.lead { background: #EEEAFB; color: #5A4A91; }
+.status.sent { background: #E6F0FE; color: #285D9B; }
+.status.talk { background: #FBEADB; color: #9A4F1C; }
+
+.next-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.table-footer {
+  height: 44px;
+  padding: 0 14px;
+  border-top: 1px solid var(--ct-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.add-contact-link {
+  color: var(--ct-green);
+  font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #4F5754;
+  font-size: 12px;
+}
+
+.pager .page-num {
+  width: 20px;
+  height: 22px;
+  border: 1px solid var(--ct-border);
+  border-radius: 5px;
+  display: inline-grid;
+  place-items: center;
+  background: #FFFFFF;
+}
+
+.contact-panel {
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  border: 1px solid var(--ct-border);
+  border-radius: 10px;
+  background: var(--ct-surface);
+  box-shadow: 0 8px 24px rgba(29, 31, 30, 0.035);
+  padding-bottom: 12px;
+}
+
+.contacts-page.is-panel-closed .contact-panel {
+  display: none;
+}
+
+.panel-top {
+  padding: 18px 18px 13px;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.panel-name {
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.panel-role {
+  margin-top: 6px;
+  color: #5E6763;
+  font-size: 12.5px;
+}
+
+.panel-star {
+  color: #E29A1F;
+}
+
+.close-btn {
+  border: 0;
+  background: transparent;
+  color: #333A37;
+  cursor: pointer;
+}
+
+.panel-badge {
+  margin-top: 7px;
+  width: max-content;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--ct-green-soft);
+  color: var(--ct-green);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.panel-actions {
+  padding: 0 18px 12px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.panel-action {
+  height: 30px;
+  border: 1px solid var(--ct-border);
+  border-radius: 7px;
+  background: #FFFFFF;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #1F2723;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.panel-stats {
+  margin: 0 18px 14px;
+  border: 1px solid var(--ct-border);
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  overflow: hidden;
+}
+
+.panel-stat {
+  padding: 9px 8px;
+  text-align: center;
+  border-right: 1px solid var(--ct-border);
+  font-size: 11.5px;
+  color: #616A66;
+}
+
+.panel-stat:last-child {
+  border-right: 0;
+}
+
+.panel-stat strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #131816;
+}
+
+.panel-section {
+  padding: 0 18px 16px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 9px;
+}
+
+.section-head strong {
+  font-size: 13px;
+}
+
+.section-head a,
+.section-head button {
+  border: 0;
+  background: transparent;
+  color: #4F5754;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.info-list {
+  display: grid;
+  gap: 8px;
+}
+
+.info-line {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: center;
+  gap: 7px;
+  color: #2E3632;
+  font-size: 12.2px;
+}
+
+.linked-card {
+  border: 1px solid var(--ct-border);
+  border-radius: 8px;
+  padding: 9px;
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #AFB99D, #EFE4D5);
+  overflow: hidden;
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.linked-title {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.linked-meta {
+  margin-top: 3px;
+  font-size: 11.2px;
+  color: #5E6763;
+}
+
+.mini-tag {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--ct-green-soft);
+  color: var(--ct-green);
+  font-size: 10.8px;
+  font-weight: 600;
+}
+
+.activity {
+  display: grid;
+  gap: 9px;
+}
+
+.activity-row {
+  display: grid;
+  grid-template-columns: 16px 58px 1fr;
+  gap: 8px;
+  font-size: 11.8px;
+  color: #2F3834;
+}
+
+.activity-row span {
+  color: #5E6763;
+}
+
+.note-box {
+  border: 1px solid var(--ct-border);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 12.2px;
+  line-height: 1.38;
+  color: #2C332F;
+  background: #FFFDF9;
+}
+
+.task-mini {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 8px;
+  align-items: start;
+  font-size: 12px;
+}
+
+.priority {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--ct-red-soft);
+  color: #A43C31;
+  font-size: 11px;
+}
 </style>
-</head>
-<body>
 
-<div class="app">
-  <main class="page">
-    <header class="page-header">
-      <div class="page-title"><h1>Contacts</h1></div>
-      <div class="search-wrap">
-        <input type="text" class="search-box" id="search-contacts-input" placeholder="Rechercher un contact, téléphone, email…">
-        <span class="kbd">⌘ K</span>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;margin-left:auto">
-      </div>
-    </header>
+<main class="contacts-page">
+  <div class="contacts-hero-slot" aria-label="Emplacement illustration Contacts"></div>
 
-    <div class="toolbar-row">
-      <button class="f-btn">Statut vendeur<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>
-      <button class="f-btn">Source<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>
-      <button class="f-btn">Agent<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>
-      <button class="f-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>Filtres avancés</button>
-      <div class="spacer"></div>
-      <button class="f-btn add-btn" onclick="window.addNewContactPrompt()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter contact</button>
+  <header class="contacts-head">
+    <div class="contacts-title">
+      <h1>Contacts</h1>
+      <p>Gérez vos relations et suivez vos échanges.</p>
     </div>
 
-    <div class="table-wrap">
-      <div class="table-toolbar">
-        <div class="view-toggle">
-          <button class="active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
-          <button><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></button>
+    <label class="contacts-search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>
+      <input id="search-contacts-input" type="search" placeholder="Rechercher un contact...">
+    </label>
+
+    <div class="contacts-view-toggle" aria-label="Mode d'affichage">
+      <button type="button" title="Grille"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+      <button type="button" class="active" title="Liste"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+    </div>
+
+    <div class="contacts-export" aria-label="Export">
+      <button type="button" title="Exporter"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></button>
+      <button type="button" title="Options"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+  </header>
+
+  <section class="contacts-body-grid">
+    <div class="contacts-left">
+      <div class="filters-row">
+        <div class="filters-active">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+          Filtres actifs
         </div>
-        <div class="table-count"><strong>128</strong> contacts</div>
-        <button class="icon-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
-        <button class="icon-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
+        <button class="filter-pill">Statut (Tous)<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="filter-pill">Source (Toutes)<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="filter-pill">Tag (Tous)<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="filter-pill">Propriétaire (Tous)<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button class="reset-link">Réinitialiser</button>
+        <button class="contacts-filter-square" title="Colonnes"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
       </div>
 
-      <div class="table-scroll">
-      <table class="contacts">
-        <thead>
-          <tr>
-            <th>Contact</th>
-            <th>Téléphone</th>
-            <th>Statut vendeur</th>
-            <th>Biens liés</th>
-            <th>Deals liés</th>
-            <th>Dernière activité</th>
-            <th>Prochaine action</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="contacts-body"></tbody>
-      </table>
-      </div>
-
-      <div class="pagination">
-        <button>‹‹</button><button>‹</button>
-        <button class="active">1</button><button>2</button><button>3</button>
-        <span class="gap">…</span><button>54</button>
-        <button>›</button><button>››</button>
-        <div class="per">Par page <select><option>24</option><option>48</option><option>96</option></select></div>
-      </div>
-    </div>
-  </main>
-
-  <!-- DETAIL PANEL -->
-  <aside class="detail-panel" id="detail">
-    <div class="dp-section">
-      <div class="dp-header">
-        <div class="avatar-lg">JD</div>
-        <div class="dp-h-info">
-          <div class="dp-h-title">
-            <strong>Jean Dupont</strong>
-            <span class="fsbo-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8z"/></svg>Particulier (FSBO)</span>
-          </div>
-          <div class="dp-h-contact">
-            <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>+32 475 12 34 56</span>
-            <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>jean.dupont@email.be</span>
-          </div>
+      <div class="contacts-table-shell">
+        <div class="table-count"><strong>62</strong>&nbsp; contacts</div>
+        <div class="table-scroll">
+          <table class="contacts-table">
+            <thead>
+              <tr>
+                <th style="width: 34px"><span class="check"></span></th>
+                <th>Contact</th>
+                <th>Téléphone</th>
+                <th>Email</th>
+                <th>Statut</th>
+                <th>Biens</th>
+                <th>Deals</th>
+                <th>Dernière activité</th>
+                <th>Prochaine action</th>
+                <th style="width: 38px"></th>
+              </tr>
+            </thead>
+            <tbody id="contacts-body"></tbody>
+          </table>
         </div>
-        <div class="dp-h-actions">
-          <button class="icon-btn" title="Favori"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>
-          <button class="icon-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
-        </div>
-      </div>
-      <div class="dp-actions">
-        <button class="dp-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Appeler</button>
-        <button class="dp-btn with-caret"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Envoyer email<span class="caret"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg></span></button>
-      </div>
-    </div>
-
-    <div class="dp-section">
-      <div class="stats-row">
-        <div class="stat-card"><div class="label"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#A04A2E" stroke-width="2.4"><polyline points="6 15 12 9 18 15"/></svg>Baisse de prix</div><div class="value danger">−5,3%</div></div>
-        <div class="stat-card"><div class="label"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Annonce ancienne</div><div class="value">58 <small>jours</small></div></div>
-        <div class="stat-card"><div class="label"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>Score IA</div><div class="value"><u>88</u><small>/100</small></div></div>
+        <footer class="table-footer">
+          <button class="add-contact-link" onclick="window.addNewContactPrompt()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Ajouter un contact
+          </button>
+          <div class="pager">Page <span class="page-num">1</span> sur 4 <span>‹</span><span>›</span></div>
+        </footer>
       </div>
     </div>
 
-    <div class="dp-section">
-      <div class="dp-block-head"><strong>Biens liés (2)</strong><span class="link">Voir tous</span></div>
-      <div class="bien-card">
-        <div class="bien-thumb"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&q=85" alt=""></div>
+    <aside class="contact-panel" id="detail">
+      <div class="panel-top">
+        <div class="avatar-lg">ML</div>
         <div>
-          <div class="bien-info-title">Villa basse énergie</div>
-          <div class="bien-info-meta"><span>Lasne</span><span>210 m²</span><span>4 ch.</span><span>2 sdb</span></div>
-          <div class="bien-info-price">895.000 €<span class="bien-info-old">945.000 €</span></div>
-          <div class="bien-info-source"><span style="display:inline-block;width:5px;height:5px;background:var(--forest);border-radius:999px"></span>Zimmo · Publiée le 23/05/2024</div>
+          <div class="panel-name">Mme Lambert</div>
+          <div class="panel-role">Propriétaire</div>
         </div>
-        <div class="score-circle score-excellent">
-          <svg viewBox="0 0 100 100" class="sketch-double-score">
-            <path d="M 50,11 C 71,9 87,25 89,49 C 91,73 75,89 50,87 C 25,85 9,69 11,49 C 13,29 29,13 50,11 Z" class="sketch-bg-fill" />
-            <path d="M 50,11 C 71,9 87,25 89,49 C 91,73 75,89 50,87 C 25,85 9,69 11,49 C 13,29 29,13 50,11 Z" class="sketch-circle-back-1" />
-            <path d="M 51,9 C 73,12 89,29 86,52 C 83,75 66,90 43,88 C 21,86 7,67 10,41 C 13,15 29,5 51,9 Z" class="sketch-circle-back-2" />
-            <path class="sketch-progress-ribbon" d="M 22,70 C 13,50 17,29 37,18 C 57,7 78,13 86,33 C 94,53 85,74 65,83" stroke-dasharray="180" stroke-dashoffset="27" />
-            <text x="50" y="52" class="sketch-text-score" style="font-size: 32px;">85</text>
-          </svg>
+        <div class="panel-star">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <div class="panel-badge">Client actif</div>
         </div>
+        <button class="close-btn" title="Fermer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
-    </div>
 
-    <div class="dp-section">
-      <div class="dp-block-head"><strong>Deal lié (1)</strong></div>
-      <div class="deal-card-mini">
-        <div class="deal-thumb"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=200&q=85" alt=""></div>
-        <div>
-          <div class="deal-mini-title">Villa basse énergie – Lasne</div>
-          <div class="deal-mini-ref">Deal #D-1024</div>
-        </div>
-        <div class="deal-mini-stage">
-          <span class="stage-pill"><span style="width:5px;height:5px;background:#2E5C7A;border-radius:999px"></span>Visite</span>
-          <span class="deal-mini-step">Étape 4/8</span>
-        </div>
+      <div class="panel-actions">
+        <button class="panel-action"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Appeler</button>
+        <button class="panel-action"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 4h16v16H4z"/><path d="m22 6-10 7L2 6"/></svg>Email</button>
+        <button class="panel-action"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 8.5-8.5h.5a8.5 8.5 0 0 1 8 8.5z"/></svg>WhatsApp</button>
+        <button class="panel-action"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
       </div>
-    </div>
 
-    <div class="dp-section">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-        <div>
-          <div class="dp-block-head"><strong>Historique des échanges</strong></div>
-          <div class="timeline">
-            <div class="timeline-item">
-              <div class="timeline-icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
-              <div><div class="timeline-title">Aujourd'hui 09:12</div><div class="timeline-desc">Appel sortant</div></div>
-              <div class="timeline-duration">Durée 05:32</div>
-            </div>
-            <div class="timeline-item">
-              <div class="timeline-icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div>
-              <div><div class="timeline-title">Hier 16:45</div><div class="timeline-desc">Message WhatsApp<br><span style="color:var(--stone)">Bonjour Jean, avez-vous eu le temps…</span></div></div>
-              <div class="timeline-date"></div>
-            </div>
-            <div class="timeline-item">
-              <div class="timeline-icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
-              <div><div class="timeline-title">18/05/2024 11:30</div><div class="timeline-desc">Email envoyé<br><span style="color:var(--stone)">Estimation de votre bien Lasne</span></div></div>
-              <div class="timeline-date"></div>
-            </div>
+      <div class="panel-stats">
+        <div class="panel-stat">Biens<strong>2</strong></div>
+        <div class="panel-stat">Deals<strong>1</strong></div>
+        <div class="panel-stat">Visites<strong>1</strong></div>
+        <div class="panel-stat">Offres<strong>0</strong></div>
+      </div>
+
+      <section class="panel-section">
+        <div class="section-head"><strong>Informations</strong><button>✎</button></div>
+        <div class="info-list">
+          <div class="info-line"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>+32 475 44 22 11</span></div>
+          <div class="info-line"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="m22 6-10 7L2 6"/></svg><span>m.lambert@gmail.com</span></div>
+          <div class="info-line"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg><span>Av. Brugmann 379, 1180 Uccle</span></div>
+          <div class="info-line"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg><span>Propriétaire occupant</span></div>
+          <div class="info-line"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Ajouté le 12 mars 2025 par Thomas D.</span></div>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-head"><strong>Liens</strong><a>Voir tout</a></div>
+        <div class="linked-card">
+          <div class="thumb"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=160&q=80" alt=""></div>
+          <div>
+            <div class="linked-title">Bien lié</div>
+            <div class="linked-meta">Av. Brugmann 379<br>1 180 Uccle<br><strong>895 000 €</strong></div>
           </div>
-          <div style="margin-top:12px;text-align:center"><span class="link" style="color:var(--forest);font-size:11.5px;font-weight:600;cursor:pointer">Voir tout l'historique</span></div>
+          <span class="mini-tag">Disponible</span>
         </div>
-        <div>
-          <div class="dp-block-head"><strong>Notes</strong><span class="link" onclick="window.addContactNotePrompt()">+ Ajouter note</span></div>
-          <div class="notes-list">
-            <div class="note-item">
-              <div class="note-text">Intéressé par une vente rapide. Souhaite une estimation précise. Maison entretenue, travaux récents.</div>
-              <div class="note-meta">Thomas Martin · 18/05/2024</div>
-            </div>
+        <div style="height: 8px"></div>
+        <div class="linked-card">
+          <div class="thumb" style="display:grid;place-items:center;background:#F0EAFB;color:#5B4F91"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9l8-6 8 6v10"/><path d="M9 22V12h6v10"/></svg></div>
+          <div>
+            <div class="linked-title">Deal lié</div>
+            <div class="linked-meta">Villa basse énergie<br>Mandat potentiel</div>
           </div>
+          <span class="mini-tag" style="background:#EEEAFB;color:#5A4A91">RDV planifié</span>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <div class="dp-section">
-      <div class="dp-block-head"><strong>Tâches</strong></div>
-      <div class="task-row">
-        <div class="task-check" onclick="this.classList.toggle('checked');this.closest('.task-row').classList.toggle('done')"></div>
-        <div class="task-name">Relancer pour fixer visite</div>
-        <div class="task-due">Demain 10:00</div>
-        <div class="task-avatar"></div>
-      </div>
-      <div class="task-row">
-        <div class="task-check" onclick="this.classList.toggle('checked');this.closest('.task-row').classList.toggle('done')"></div>
-        <div class="task-name">Envoyer estimation détaillée</div>
-        <div class="task-due">22/05/2024</div>
-        <div class="task-avatar"></div>
-      </div>
-      <button class="add-task"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nouvelle tâche</button>
-    </div>
-  </aside>
-</div>
+      <section class="panel-section">
+        <div class="section-head"><strong>Activité récente</strong><a>Voir tout</a></div>
+        <div class="activity">
+          <div class="activity-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/></svg><span>Aujourd'hui<br>10:32</span><div>Appel sortant<br><span>Échange sur estimation et timing</span></div></div>
+          <div class="activity-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="m22 6-10 7L2 6"/></svg><span>Hier<br>16:45</span><div>Email envoyé<br><span>Envoi des documents du bien</span></div></div>
+          <div class="activity-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-5"/></svg><span>25 mai<br>14:00</span><div>Visite effectuée<br><span>Visite du bien avec les propriétaires</span></div></div>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-head"><strong>Notes</strong><a>Voir tout</a></div>
+        <div class="note-box">Propriétaires très motivés à vendre pour projet d'expatriation. Flexibles sur la date.</div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-head"><strong>Tâches</strong><button>+ Ajouter</button></div>
+        <div class="task-mini"><span class="check"></span><div>Appeler pour suivi estimation<br><span class="muted-line">Demain à 11:00</span></div><span class="priority">Haute</span></div>
+      </section>
+    </aside>
+  </section>
+</main>
 
 <script>
+document.querySelector('.ip-legacy-content')?.classList.add('contacts-scroll-page');
+
 var CONTACTS = [
-  { id: 1, name: 'Jean Dupont', email: 'jean.dupont@email.be', tel: '+32 475 12 34 56', initials: 'JD', status: 'discussion', biens: 2, deals: 1, dayDate: 'Aujourd\'hui', dayDesc: 'Appel sortant', nextAction: 'Relancer demain', nextIcon: 'cal', selected: true },
-  { id: 2, name: 'Marie Lambert', email: 'marie.lambert@mail.be', tel: '+32 476 98 76 54', initials: 'ML', status: 'contacte', biens: 1, deals: 0, dayDate: 'Hier', dayDesc: 'Email envoyé', nextAction: 'Appeler', nextIcon: 'phone' },
-  { id: 3, name: 'Pierre Collet', email: 'p.collet@email.be', tel: '+32 497 65 43 21', initials: 'PC', status: 'pas', biens: 1, deals: 0, dayDate: '18/05/2024', dayDesc: '', nextAction: 'Première prise de contact', nextIcon: 'phone' },
-  { id: 4, name: 'Sophie Delcourt', email: 's.delcourt@email.be', tel: '+32 468 22 11 33', initials: 'SD', status: 'discussion', biens: 3, deals: 1, dayDate: 'Aujourd\'hui', dayDesc: 'Message', nextAction: 'Proposer visite', nextIcon: 'cal' },
-  { id: 5, name: 'Alexandre Buisine', email: 'alex.buisine@mail.be', tel: '+32 470 33 55 99', initials: 'AB', status: 'converti', biens: 2, deals: 1, dayDate: '15/05/2024', dayDesc: 'Visite effectuée', nextAction: 'Suivi offre', nextIcon: 'cal' },
-  { id: 6, name: 'Valérie Cornet', email: 'v.cornet@email.be', tel: '+32 479 77 66 22', initials: 'VC', status: 'perdu', biens: 1, deals: 0, dayDate: '10/05/2024', dayDesc: 'Pas de réponse', nextAction: 'none' },
-  { id: 7, name: 'Olivier Thys', email: 'o.thys@hotmail.com', tel: '+32 496 12 88 99', initials: 'OT', status: 'pas', biens: 1, deals: 0, dayDate: '09/05/2024', dayDesc: '', nextAction: 'Appeler', nextIcon: 'phone' },
-  { id: 8, name: 'Nathalie Cockx', email: 'nathalie.cockx@mail.be', tel: '+32 475 31 44 21', initials: 'NC', status: 'contacte', biens: 1, deals: 0, dayDate: '12/05/2024', dayDesc: 'Email lu', nextAction: 'Relancer', nextIcon: 'phone' },
-  { id: 9, name: 'Bernard Dufour', email: 'b.dufour@email.be', tel: '+32 495 23 45 67', initials: 'BD', status: 'discussion', biens: 2, deals: 1, dayDate: 'Aujourd\'hui', dayDesc: 'Appel sortant', nextAction: 'Envoyer estimation', nextIcon: 'cal' },
-  { id: 10, name: 'Laura Vandermeeren', email: 'laura.vdm@email.be', tel: '+32 467 88 21 11', initials: 'LV', status: 'converti', biens: 2, deals: 1, dayDate: '14/05/2024', dayDesc: 'Offre acceptée', nextAction: 'Préparer mandat', nextIcon: 'cal' },
+  { id: 1, initials: 'ML', name: 'Mme Lambert', role: 'Propriétaire', phone: '+32 475 44 22 11', email: 'm.lambert@gmail.com', address: 'Av. Brugmann 379, 1180 Uccle', profile: 'Propriétaire occupant', status: 'active', statusLabel: 'Client actif', biens: 2, deals: 1, visits: 1, offers: 0, last: "Aujourd'hui", lastType: 'Appel', action: 'Appeler', actionMeta: 'Demain 11:00', selected: true, property: 'Av. Brugmann 379', price: '895 000 €', deal: 'Villa basse énergie', dealStage: 'RDV planifié', note: "Propriétaires très motivés à vendre pour projet d'expatriation. Flexibles sur la date.", priority: 'Haute' },
+  { id: 2, initials: 'MD', name: 'M. Dubois', role: 'Vendeur', phone: '+32 478 12 34 56', email: 'm.dubois@proximus.be', address: 'Rue de la Station 45, 1180 Uccle', profile: 'Vendeur particulier', status: 'new', statusLabel: 'Nouveau', biens: 1, deals: 1, visits: 0, offers: 0, last: 'Hier', lastType: 'Email', action: 'Envoyer email', actionMeta: '28 mai', property: 'Maison 3 façades', price: '425 000 €', deal: 'Relance estimation', dealStage: 'À contacter', note: 'Demande une estimation rapide avant de décider entre agence et vente directe.', priority: 'Normale' },
+  { id: 3, initials: 'SM', name: 'S. Martin', role: 'Investisseur', phone: '+32 496 78 90 12', email: 's.martin@icloud.com', address: 'Av. Louise 523, 1050 Ixelles', profile: 'Investisseur actif', status: 'contacted', statusLabel: 'Contacté', biens: 3, deals: 2, visits: 2, offers: 1, last: '25 mai', lastType: 'Visite', action: 'RDV visite', actionMeta: '30 mai 14:00', property: 'Appartement 2 ch.', price: '349 000 €', deal: 'Recherche rendement', dealStage: 'Visite', note: 'Cherche des biens à rendement stable autour de Bruxelles sud.', priority: 'Moyenne' },
+  { id: 4, initials: 'FJ', name: 'Fam. Janssens', role: 'Achat', phone: '+32 474 11 22 33', email: 'janssens.family@gmail.com', address: 'Rue Defacqz 88, 1060 Saint-Gilles', profile: 'Acheteurs actifs', status: 'lead', statusLabel: 'Lead', biens: 1, deals: 0, visits: 0, offers: 0, last: '22 mai', lastType: 'Formulaire', action: 'Appeler', actionMeta: '29 mai 09:30', property: 'Rez-de-chaussée', price: '275 000 €', deal: 'Qualification besoin', dealStage: 'Lead', note: 'À qualifier avant envoi de biens. Budget encore imprécis.', priority: 'Basse' },
+  { id: 5, initials: 'MP', name: 'Mme Peeters', role: 'Bailleur', phone: '+32 472 33 55 66', email: 'peeters.marie@outlook.be', address: 'Avenue de Tervueren 56, 1150 Woluwe', profile: 'Bailleur', status: 'active', statusLabel: 'Client actif', biens: 4, deals: 2, visits: 1, offers: 1, last: '21 mai', lastType: 'Notes', action: 'Suivi dossier', actionMeta: '27 mai', property: 'Villa 4 façades', price: '695 000 €', deal: 'Mandat potentiel', dealStage: 'Offre', note: 'Bon historique avec agence. Décision probable après comparaison de deux estimations.', priority: 'Haute' },
+  { id: 6, initials: 'MV', name: 'M. Vermeulen', role: 'Vendeur', phone: '+32 477 66 77 88', email: 'vermeulen.j@skynet.be', address: 'Bd. Lambermont 210, 1030 Schaerbeek', profile: 'Vendeur propriétaire', status: 'talk', statusLabel: 'En discussion', biens: 2, deals: 1, visits: 0, offers: 0, last: '20 mai', lastType: 'Appel', action: 'RDV estimation', actionMeta: '29 mai 10:00', property: 'Maison bel-étage', price: '310 000 €', deal: 'Estimation à signer', dealStage: 'RDV', note: 'Très sensible au délai de vente. Préparer arguments sur visibilité locale.', priority: 'Haute' },
+  { id: 7, initials: 'CR', name: 'C. Rousseau', role: 'Acheteur', phone: '+32 479 55 66 77', email: 'c.rousseau@gmail.com', address: 'Rue du Châtelain 172, 1050 Ixelles', profile: 'Acheteur', status: 'sent', statusLabel: 'Offre envoyée', biens: 1, deals: 1, visits: 1, offers: 1, last: '19 mai', lastType: 'Email', action: 'Relance offre', actionMeta: '26 mai', property: 'Duplex lumineux', price: '395 000 €', deal: 'Offre en cours', dealStage: 'Offre envoyée', note: 'Relancer doucement. Profil sérieux, financement prévalidé.', priority: 'Normale' },
+  { id: 8, initials: 'L2', name: 'M. & Mme Lemoine', role: 'Achat', phone: '+32 473 44 55 66', email: 'lemoine@outlook.com', address: 'Chaussée de Waterloo 118, 1060 Saint-Gilles', profile: 'Acheteurs', status: 'new', statusLabel: 'Nouveau', biens: 0, deals: 0, visits: 0, offers: 0, last: '18 mai', lastType: 'Formulaire', action: 'Appeler', actionMeta: '26 mai 16:00', property: 'Aucun bien lié', price: '-', deal: 'Découverte besoin', dealStage: 'Nouveau', note: 'Premier contact à faire. Demande arrivée via formulaire.', priority: 'Normale' }
 ];
 
-var PILL_LABELS = { discussion: 'En discussion', contacte: 'Contacté', pas: 'Pas contacté', converti: 'Converti', perdu: 'Perdu' };
-function iconSvg(name) {
-  if (name === 'phone') return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>';
-  if (name === 'cal') return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
-  return '';
+function icon(name) {
+  if (name.indexOf('email') >= 0) return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="m22 6-10 7L2 6"/></svg>';
+  if (name.indexOf('RDV') >= 0) return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
+  return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/></svg>';
 }
 
-var tbody = document.getElementById('contacts-body');
-function renderContactsTable() {
-  tbody.innerHTML = CONTACTS.map(c => `
-    <tr class="${c.selected ? 'selected' : ''}" id="contact-row-${c.id}" onclick="selectRow(this, ${c.id})">
-      <td><div class="contact-cell"><div class="avatar-sm">${c.initials}</div><div><div class="contact-name">${c.name}</div><div class="contact-email">${c.email}</div></div></div></td>
-      <td class="tel-cell">${c.tel}</td>
-      <td><span class="pill ${c.status}">${PILL_LABELS[c.status]}</span></td>
-      <td class="num-cell">${c.biens}</td>
-      <td class="num-cell">${c.deals}</td>
-      <td class="activity-cell"><div class="day">${c.dayDate}</div>${c.dayDesc ? '<div class="desc">'+c.dayDesc+'</div>' : ''}</td>
-      <td>${c.nextAction === 'none' ? '<span class="next-action none">Aucune</span>' : '<span class="next-action">'+iconSvg(c.nextIcon)+c.nextAction+'</span>'}</td>
-      <td><button class="icon-btn" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button></td>
-    </tr>
-  `).join('');
+function renderContacts() {
+  var body = document.getElementById('contacts-body');
+  if (!body) return;
+  body.innerHTML = CONTACTS.map(function(c) {
+    return '<tr class="' + (c.selected ? 'selected' : '') + '" onclick="window.selectContact(' + c.id + ')">' +
+      '<td><span class="check ' + (c.selected ? 'checked' : '') + '">' + (c.selected ? '✓' : '') + '</span></td>' +
+      '<td><div class="contact-cell"><div class="avatar-sm">' + c.initials + '</div><div><div class="contact-name">' + c.name + '</div><div class="contact-role">' + c.role + '</div></div></div></td>' +
+      '<td>' + c.phone + '</td>' +
+      '<td>' + c.email + '</td>' +
+      '<td><span class="status ' + c.status + '">' + c.statusLabel + '</span></td>' +
+      '<td>' + c.biens + '</td>' +
+      '<td>' + c.deals + '</td>' +
+      '<td><div>' + c.last + '</div><div class="muted-line">' + c.lastType + '</div></td>' +
+      '<td><span class="next-action">' + icon(c.action) + '<span>' + c.action + '<br><span class="muted-line">' + c.actionMeta + '</span></span></span></td>' +
+      '<td><button class="icon-action" onclick="event.stopPropagation()"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button></td>' +
+    '</tr>';
+  }).join('');
 }
-renderContactsTable();
+
+function infoIcon(type) {
+  if (type === 'mail') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v16H4z"/><path d="m22 6-10 7L2 6"/></svg>';
+  if (type === 'pin') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+  if (type === 'home') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/></svg>';
+  if (type === 'clock') return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+  return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/></svg>';
+}
+
+function renderContactPanel(contact) {
+  var detail = document.getElementById('detail');
+  if (!detail || !contact) return;
+  detail.innerHTML = `
+    <div class="panel-top">
+      <div class="avatar-lg">${contact.initials}</div>
+      <div>
+        <div class="panel-name">${contact.name}</div>
+        <div class="panel-role">${contact.role}</div>
+      </div>
+      <div class="panel-star">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <div class="panel-badge">${contact.statusLabel}</div>
+      </div>
+      <button class="close-btn" title="Fermer" onclick="window.closeContactPanel()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+    </div>
+
+    <div class="panel-actions">
+      <button class="panel-action">${icon('Appeler')}Appeler</button>
+      <button class="panel-action">${infoIcon('mail')}Email</button>
+      <button class="panel-action"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 8.5-8.5h.5a8.5 8.5 0 0 1 8 8.5z"/></svg>WhatsApp</button>
+      <button class="panel-action"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
+    </div>
+
+    <div class="panel-stats">
+      <div class="panel-stat">Biens<strong>${contact.biens}</strong></div>
+      <div class="panel-stat">Deals<strong>${contact.deals}</strong></div>
+      <div class="panel-stat">Visites<strong>${contact.visits}</strong></div>
+      <div class="panel-stat">Offres<strong>${contact.offers}</strong></div>
+    </div>
+
+    <section class="panel-section">
+      <div class="section-head"><strong>Informations</strong><button>✎</button></div>
+      <div class="info-list">
+        <div class="info-line">${infoIcon('phone')}<span>${contact.phone}</span></div>
+        <div class="info-line">${infoIcon('mail')}<span>${contact.email}</span></div>
+        <div class="info-line">${infoIcon('pin')}<span>${contact.address}</span></div>
+        <div class="info-line">${infoIcon('home')}<span>${contact.profile}</span></div>
+        <div class="info-line">${infoIcon('clock')}<span>Dernière activité : ${contact.last} · ${contact.lastType}</span></div>
+      </div>
+    </section>
+
+    <section class="panel-section">
+      <div class="section-head"><strong>Liens</strong><a>Voir tout</a></div>
+      <div class="linked-card">
+        <div class="thumb"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=160&q=80" alt=""></div>
+        <div>
+          <div class="linked-title">Bien lié</div>
+          <div class="linked-meta">${contact.property}<br>${contact.address}<br><strong>${contact.price}</strong></div>
+        </div>
+        <span class="mini-tag">${contact.biens > 0 ? 'Disponible' : 'À créer'}</span>
+      </div>
+      <div style="height: 8px"></div>
+      <div class="linked-card">
+        <div class="thumb" style="display:grid;place-items:center;background:#F0EAFB;color:#5B4F91"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9l8-6 8 6v10"/><path d="M9 22V12h6v10"/></svg></div>
+        <div>
+          <div class="linked-title">Deal lié</div>
+          <div class="linked-meta">${contact.deal}<br>${contact.role}</div>
+        </div>
+        <span class="mini-tag" style="background:#EEEAFB;color:#5A4A91">${contact.dealStage}</span>
+      </div>
+    </section>
+
+    <section class="panel-section">
+      <div class="section-head"><strong>Activité récente</strong><a>Voir tout</a></div>
+      <div class="activity">
+        <div class="activity-row">${icon(contact.action)}<span>${contact.last}<br>${contact.lastType}</span><div>${contact.action}<br><span>${contact.actionMeta}</span></div></div>
+        <div class="activity-row">${infoIcon('mail')}<span>Hier<br>16:45</span><div>Email envoyé<br><span>Documents et suivi envoyés</span></div></div>
+        <div class="activity-row">${infoIcon('clock')}<span>25 mai<br>14:00</span><div>Note CRM<br><span>Mise à jour du dossier contact</span></div></div>
+      </div>
+    </section>
+
+    <section class="panel-section">
+      <div class="section-head"><strong>Notes</strong><a>Voir tout</a></div>
+      <div class="note-box">${contact.note}</div>
+    </section>
+
+    <section class="panel-section">
+      <div class="section-head"><strong>Tâches</strong><button>+ Ajouter</button></div>
+      <div class="task-mini"><span class="check"></span><div>${contact.action}<br><span class="muted-line">${contact.actionMeta}</span></div><span class="priority">${contact.priority}</span></div>
+    </section>
+  `;
+}
+
+window.closeContactPanel = function() {
+  document.querySelector('.contacts-page')?.classList.add('is-panel-closed');
+};
+
+window.selectContact = function(id) {
+  CONTACTS.forEach(function(c) { c.selected = c.id === id; });
+  var selected = CONTACTS.find(function(c) { return c.id === id; });
+  renderContacts();
+  if (!selected) return;
+  document.querySelector('.contacts-page')?.classList.remove('is-panel-closed');
+  renderContactPanel(selected);
+};
 
 window.addNewContactPrompt = function() {
-  const store = window.ImmoPilotStore;
-  if (!store) return;
-  
-  const name = prompt("Saisissez le nom complet du nouveau contact :");
+  var name = prompt('Nom du contact :');
   if (!name) return;
-  const email = prompt("Adresse email :", name.toLowerCase().replace(/ /g, '.') + "@email.be");
-  const tel = prompt("Numéro de téléphone :", "+32 4");
-  if (!email || !tel) return;
-
-  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
-  
+  var initials = name.split(' ').map(function(part) { return part.charAt(0); }).join('').slice(0, 2).toUpperCase();
   CONTACTS.push({
     id: Date.now(),
-    name: name,
-    email: email,
-    tel: tel,
     initials: initials,
-    status: 'pas',
+    name: name,
+    role: 'Nouveau contact',
+    phone: '+32 4',
+    email: name.toLowerCase().replace(/\s+/g, '.') + '@email.be',
+    status: 'new',
+    statusLabel: 'Nouveau',
+    address: 'Adresse à compléter',
+    profile: 'Nouveau contact',
     biens: 0,
     deals: 0,
-    dayDate: "Aujourd'hui",
-    dayDesc: 'Créé',
-    nextAction: 'Appeler',
-    nextIcon: 'phone'
+    visits: 0,
+    offers: 0,
+    last: "Aujourd'hui",
+    lastType: 'Créé',
+    action: 'Appeler',
+    actionMeta: 'À planifier',
+    property: 'Aucun bien lié',
+    price: '-',
+    deal: 'Nouveau dossier',
+    dealStage: 'Nouveau',
+    note: 'Contact créé manuellement. Informations à compléter.',
+    priority: 'Normale'
   });
-  
-  alert(`Contact "${name}" créé avec succès !`);
-  renderContactsTable();
+  renderContacts();
 };
 
-window.addContactNotePrompt = function() {
-  const noteText = prompt("Saisissez une note complémentaire pour ce contact :");
-  if (!noteText) return;
-  
-  alert(`Note enregistrée : "${noteText}"`);
-  const list = document.querySelector('.notes-list');
-  if (list) {
-    const noteEl = document.createElement('div');
-    noteEl.className = 'note-item';
-    noteEl.innerHTML = `
-      <div class="note-head">
-        <span class="note-author">Me</span>
-        <span class="note-date">Aujourd'hui</span>
-      </div>
-      <div class="note-body">${noteText}</div>
-    `;
-    list.prepend(noteEl);
-  }
-};
-
-function selectRow(tr, id) {
-  document.querySelectorAll('table.contacts tbody tr').forEach(r => r.classList.remove('selected'));
-  tr.classList.add('selected');
-  
-  // Highlight card detail with mock data changes
-  const contact = CONTACTS.find(c => c.id === id);
-  if (contact) {
-    document.querySelector('#detail .avatar-lg').textContent = contact.initials;
-    document.querySelector('#detail .dp-h-title strong').textContent = contact.name;
-    document.querySelector('#detail .dp-h-contact').innerHTML = `
-      <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${contact.tel}</span>
-      <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${contact.email}</span>
-    `;
-  }
+var searchInput = document.getElementById('search-contacts-input');
+if (searchInput) {
+  searchInput.addEventListener('input', function() {
+    var q = searchInput.value.toLowerCase();
+    document.querySelectorAll('.contacts-table tbody tr').forEach(function(row, index) {
+      var c = CONTACTS[index];
+      row.style.display = !q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
 }
+
+renderContacts();
+renderContactPanel(CONTACTS.find(function(c) { return c.selected; }) || CONTACTS[0]);
 </script>
-</body>
-</html>

@@ -20,8 +20,9 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { PropertyCard } from '../components/biens/PropertyCard';
+import { ImageLightbox } from '../components/ui';
 import type { store as appStore } from '../lib/store';
-import type { Property } from '../types';
+import type { Property, PropertyInternalStatus } from '../types';
 
 type Store = typeof appStore;
 
@@ -53,14 +54,32 @@ export function Biens({ store }: BiensProps) {
   const [page, setPage] = useState(1);
   const [carouselMap, setCarouselMap] = useState<Record<number, number>>({});
   const [sortOpen, setSortOpen] = useState(false);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(() => {
+    const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
+    const propertyId = Number(params.get('propertyId'));
+    return Number.isFinite(propertyId) && propertyId > 0 ? propertyId : null;
+  });
   const [panelPhotoIndex, setPanelPhotoIndex] = useState(0);
   const [noteDraft, setNoteDraft] = useState('');
 
   useEffect(() => {
     const handler = () => forceUpdate((n) => n + 1);
+    const syncSelectedProperty = () => {
+      const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
+      const propertyId = Number(params.get('propertyId'));
+      if (Number.isFinite(propertyId) && propertyId > 0) {
+        setSelectedPropertyId(propertyId);
+        setPanelPhotoIndex(0);
+        setNoteDraft('');
+      }
+    };
     window.addEventListener('ip-state-changed', handler);
-    return () => window.removeEventListener('ip-state-changed', handler);
+    window.addEventListener('hashchange', syncSelectedProperty);
+    syncSelectedProperty();
+    return () => {
+      window.removeEventListener('ip-state-changed', handler);
+      window.removeEventListener('hashchange', syncSelectedProperty);
+    };
   }, []);
 
   const allProps = store.getProperties();
@@ -85,20 +104,26 @@ export function Biens({ store }: BiensProps) {
         (p) =>
           p.title.toLowerCase().includes(q) ||
           p.city.toLowerCase().includes(q) ||
-          p.source.toLowerCase().includes(q)
+          p.source.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          p.tag.toLowerCase().includes(q) ||
+          String(p.id).includes(q) ||
+          String(p.price).includes(q)
       );
     }
     if (filterCommune !== 'Toutes') list = list.filter((p) => p.city === filterCommune);
     if (filterSource !== 'Toutes') list = list.filter((p) => p.source === filterSource);
     if (filterSignal === 'FSBO') list = list.filter((p) => p.fsbo);
     if (filterSignal === 'Baisse de prix') list = list.filter((p) => p.tag === 'Baisse de prix');
+    if (filterSignal === 'Nouveau') list = list.filter((p) => p.tag === 'Nouveau');
+    if (filterSignal === 'Archivé') list = list.filter((p) => p.status === 'archivé');
     if (favoritesOnly) list = list.filter((p) => store.getMarks(p.id).favorite);
 
     switch (sort) {
       case 'price_asc': list = [...list].sort((a, b) => a.price - b.price); break;
       case 'price_desc': list = [...list].sort((a, b) => b.price - a.price); break;
       case 'score': list = [...list].sort((a, b) => b.score - a.score); break;
-      default: list = [...list].sort((a, b) => b.publishedDays - a.publishedDays); break;
+      default: list = [...list].sort((a, b) => a.publishedDays - b.publishedDays); break;
     }
 
     return list;
@@ -499,7 +524,7 @@ export function Biens({ store }: BiensProps) {
           />
           <FilterChip
             label={`Signaux IA (${filterSignal})`}
-            options={['Tous', 'FSBO', 'Baisse de prix', 'Republié', 'Nouveau']}
+            options={['Tous', 'FSBO', 'Baisse de prix', 'Republié', 'Nouveau', 'Archivé']}
             value={filterSignal}
             onChange={(v) => { setFilterSignal(v); setPage(1); }}
           />
@@ -1126,6 +1151,8 @@ function LegacyMiniFicheBien({
   isFavorite,
 }: MiniFicheBienProps) {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
   const photos = property.photos.length > 0
     ? property.photos
     : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=900&q=80'];
@@ -1133,6 +1160,11 @@ function LegacyMiniFicheBien({
   const price = priceFormatter.format(property.price).replace(/\s?EUR/, ' €');
   const relatedDeal = store.getDeals().find((deal) => deal.propertyId === property.id);
   const relatedContact = relatedDeal ? store.getContact(relatedDeal.contactId) : undefined;
+  const relatedSignals = store.getPropertySignals(property.id).slice(0, 4);
+  const relatedTasks = store.getPropertyTasks(property.id).slice(0, 4);
+  const contacts = store.getContacts();
+  const [selectedContactId, setSelectedContactId] = useState(relatedContact?.id ?? '');
+  const propertyStatus: PropertyInternalStatus = property.status ?? (property.reserved ? 'réservé' : 'disponible');
   const ownerAgent = property.ownerId ? store.getAgents().find((agent) => agent.id === property.ownerId) : undefined;
   const priceHistory = property.priceHistory?.slice(-3) ?? [];
   const propType = property.title.toLowerCase().includes('appartement')
@@ -1171,6 +1203,58 @@ function LegacyMiniFicheBien({
 
   const goToPhoto = (direction: 1 | -1) => {
     setPhotoIndex((photoIndex + direction + photos.length) % photos.length);
+  };
+
+  useEffect(() => {
+    setSelectedContactId(relatedContact?.id ?? '');
+    setTaskTitle('');
+    setActionMessage('');
+  }, [property.id, relatedContact?.id]);
+
+  const handleStatusChange = (status: PropertyInternalStatus) => {
+    store.updatePropertyStatus(property.id, status);
+    setActionMessage(`Statut mis à jour : ${status}`);
+  };
+
+  const handleLinkContact = () => {
+    if (!selectedContactId) {
+      setActionMessage('Choisis un contact à lier.');
+      return;
+    }
+
+    const contact = store.linkPropertyToContact(property.id, selectedContactId);
+    setActionMessage(contact ? `Contact lié : ${contact.name}` : 'Contact introuvable.');
+  };
+
+  const handleCreateTask = () => {
+    const title = taskTitle.trim();
+    if (!title) {
+      setActionMessage('Ajoute un intitulé de tâche.');
+      return;
+    }
+
+    store.createPropertyTask(property.id, title);
+    setTaskTitle('');
+    setActionMessage('Tâche créée pour demain à 09:00.');
+  };
+
+  const handleCreateDeal = () => {
+    if (relatedDeal) {
+      window.location.hash = '#pipeline';
+      return;
+    }
+
+    if (!selectedContactId) {
+      setActionMessage('Lie un contact avant de créer un deal.');
+      return;
+    }
+
+    try {
+      const deal = store.createDeal(property.id, selectedContactId, 'Nouveau');
+      setActionMessage(`Deal créé : ${deal.title}`);
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : 'Impossible de créer le deal.');
+    }
   };
 
   useEffect(() => {
@@ -1394,14 +1478,116 @@ function LegacyMiniFicheBien({
             </div>
           </section>
 
+          <section style={legacyModuleStyle}>
+            <div style={legacyLabelStyle}>SIGNAUX LIÉS</div>
+            {relatedSignals.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {relatedSignals.map((signal) => (
+                  <div key={signal.id} style={{ display: 'grid', gridTemplateColumns: '9px minmax(0, 1fr) auto', gap: 8, alignItems: 'start' }}>
+                    <span style={{ width: 8, height: 8, marginTop: 5, borderRadius: 999, background: signal.type === 'drop' ? '#D97706' : '#1E5A3A' }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ color: '#1D1F1E', fontSize: 12.5, fontWeight: 700, lineHeight: 1.25 }}>{signal.heading}</div>
+                      <div style={{ color: '#8E8B83', fontSize: 11, marginTop: 2 }}>{signal.time} · {signal.source ?? property.source}</div>
+                    </div>
+                    <span style={{ color: '#6B6F6D', fontSize: 11, fontFamily: 'var(--notion-mono)' }}>{signal.value ?? signal.type}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={emptyMiniTextStyle}>Aucun signal actif lié à ce bien.</p>
+            )}
+          </section>
+
+          <section style={legacyModuleStyle}>
+            <div style={legacyLabelStyle}>TÂCHES LIÉES</div>
+            {relatedTasks.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {relatedTasks.map((task) => (
+                  <button
+                    key={task.id}
+                    type="button"
+                    onClick={() => store.toggleTask(task.id)}
+                    style={{ display: 'grid', gridTemplateColumns: '13px minmax(0, 1fr) auto', gap: 8, alignItems: 'start', width: '100%', border: 0, background: 'transparent', padding: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+                  >
+                    <span style={{ width: 12, height: 12, marginTop: 2, borderRadius: 4, border: '1px solid #D8D2C6', background: task.done ? '#1E5A3A' : '#FFFFFF' }} />
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: 'block', color: task.done ? '#8E8B83' : '#1D1F1E', fontSize: 12.5, fontWeight: 650, textDecoration: task.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {task.title}
+                      </span>
+                      <span style={{ display: 'block', color: '#8E8B83', fontSize: 10.5, marginTop: 2 }}>{task.date} · {task.time}</span>
+                    </span>
+                    <span style={{ color: task.priority === 'haute' ? '#A04A2E' : '#6B6F6D', fontSize: 10.5, fontWeight: 700 }}>{task.priority}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p style={emptyMiniTextStyle}>Aucune tâche attachée à ce bien.</p>
+            )}
+          </section>
+
+          <section style={legacyModuleStyle}>
+            <div style={legacyLabelStyle}>ACTIONS CRM</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <label style={legacyFieldLabelStyle}>
+                Statut du bien
+                <select
+                  value={propertyStatus}
+                  onChange={(event) => handleStatusChange(event.target.value as PropertyInternalStatus)}
+                  style={legacyControlStyle}
+                >
+                  <option value="disponible">Disponible</option>
+                  <option value="réservé">Réservé</option>
+                  <option value="archivé">Archivé</option>
+                </select>
+              </label>
+
+              <label style={legacyFieldLabelStyle}>
+                Contact lié
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 84px', gap: 8 }}>
+                  <select value={selectedContactId} onChange={(event) => setSelectedContactId(event.target.value)} style={legacyControlStyle}>
+                    <option value="">Choisir un contact</option>
+                    {contacts.map((contact) => (
+                      <option key={contact.id} value={contact.id}>{contact.name}</option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={handleLinkContact} style={smallSecondaryButtonStyle}>Lier</button>
+                </div>
+              </label>
+
+              <label style={legacyFieldLabelStyle}>
+                Nouvelle tâche
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 84px', gap: 8 }}>
+                  <input
+                    value={taskTitle}
+                    onChange={(event) => setTaskTitle(event.target.value)}
+                    onKeyDown={(event) => { if (event.key === 'Enter') handleCreateTask(); }}
+                    placeholder="Ex: Appeler propriétaire"
+                    style={legacyControlStyle}
+                  />
+                  <button type="button" onClick={handleCreateTask} style={smallSecondaryButtonStyle}>Créer</button>
+                </div>
+              </label>
+
+              <button type="button" onClick={handleCreateDeal} style={{ ...smallPrimaryButtonStyle, height: 36, justifyContent: 'center' }}>
+                {relatedDeal ? 'Voir le deal' : 'Créer un deal'}
+              </button>
+
+              {actionMessage && (
+                <p style={{ margin: 0, padding: '8px 10px', borderRadius: 8, background: '#F7F6F3', color: '#5F5B52', fontSize: 11.5, lineHeight: 1.4 }}>
+                  {actionMessage}
+                </p>
+              )}
+            </div>
+          </section>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <a href="#pipeline" style={legacyPrimaryButtonStyle}>Créer un deal</a>
+            <button type="button" onClick={handleCreateDeal} style={legacyPrimaryButtonStyle}>{relatedDeal ? 'Voir pipeline' : 'Créer un deal'}</button>
             <button type="button" onClick={onToggleFavorite} style={legacySecondaryButtonStyle}>
               <Heart size={13} fill={isFavorite ? 'currentColor' : 'none'} />
               Favoris
             </button>
             <button type="button" style={legacySecondaryButtonStyle}>Ignorer</button>
-            <a href="#tests" style={legacySecondaryLinkStyle}>Voir plus</a>
+            <a href="#biens" style={legacySecondaryLinkStyle}>Voir plus</a>
           </div>
 
           <section style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 12, borderTop: '1px solid #EDE8DD' }}>
@@ -1429,105 +1615,14 @@ function LegacyMiniFicheBien({
       </div>
       </aside>
 
-      {isLightboxOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Photo agrandie - ${property.title}`}
-          onClick={() => setIsLightboxOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 80,
-            background: 'rgba(17, 18, 17, 0.82)',
-            display: 'grid',
-            placeItems: 'center',
-            padding: 32,
-          }}
-        >
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              setIsLightboxOpen(false);
-            }}
-            aria-label="Fermer la photo agrandie"
-            style={{
-              position: 'fixed',
-              top: 18,
-              right: 18,
-              width: 38,
-              height: 38,
-              borderRadius: 999,
-              border: '1px solid rgba(255,255,255,0.32)',
-              background: 'rgba(255,255,255,0.12)',
-              color: '#FFFFFF',
-              display: 'grid',
-              placeItems: 'center',
-              cursor: 'pointer',
-              backdropFilter: 'blur(10px)',
-            }}
-          >
-            <X size={20} />
-          </button>
-
-          {photos.length > 1 && (
-            <>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  goToPhoto(-1);
-                }}
-                aria-label="Photo précédente"
-                style={lightboxNavStyle('left')}
-              >
-                <ChevronLeft size={24} />
-              </button>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  goToPhoto(1);
-                }}
-                aria-label="Photo suivante"
-                style={lightboxNavStyle('right')}
-              >
-                <ChevronRight size={24} />
-              </button>
-            </>
-          )}
-
-          <figure
-            onClick={(event) => event.stopPropagation()}
-            style={{
-              margin: 0,
-              width: 'min(1180px, 92vw)',
-              maxHeight: '88vh',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
-            <img
-              src={currentPhoto}
-              alt={property.title}
-              style={{
-                maxWidth: '100%',
-                maxHeight: '82vh',
-                objectFit: 'contain',
-                borderRadius: 10,
-                boxShadow: '0 24px 80px rgba(0,0,0,0.36)',
-                background: '#111211',
-              }}
-            />
-            <figcaption style={{ color: '#FFFFFF', fontSize: 12.5, fontWeight: 650, opacity: 0.86 }}>
-              {(photoIndex % photos.length) + 1} / {photos.length} · {property.title}
-            </figcaption>
-          </figure>
-        </div>
-      )}
+      <ImageLightbox
+        open={isLightboxOpen}
+        images={photos}
+        index={photoIndex}
+        title={property.title}
+        onClose={() => setIsLightboxOpen(false)}
+        onIndexChange={setPhotoIndex}
+      />
     </>
   );
 }
@@ -1882,6 +1977,42 @@ const smallPrimaryButtonStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 650,
   cursor: 'pointer',
+};
+
+const smallSecondaryButtonStyle: React.CSSProperties = {
+  border: '1px solid #E3DED2',
+  borderRadius: 8,
+  background: '#FFFFFF',
+  color: '#1D1F1E',
+  padding: '0 10px',
+  font: 'inherit',
+  fontSize: 12,
+  fontWeight: 650,
+  cursor: 'pointer',
+  height: 34,
+};
+
+const legacyFieldLabelStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  color: '#6B6F6D',
+  fontSize: 11.5,
+  fontWeight: 700,
+};
+
+const legacyControlStyle: React.CSSProperties = {
+  width: '100%',
+  height: 34,
+  border: '1px solid #E3DED2',
+  borderRadius: 7,
+  background: '#FFFFFF',
+  color: '#1D1F1E',
+  padding: '0 9px',
+  font: 'inherit',
+  fontSize: 12,
+  outline: 'none',
+  boxSizing: 'border-box',
 };
 
 const secondaryActionStyle: React.CSSProperties = {

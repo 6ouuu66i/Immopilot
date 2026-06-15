@@ -1,6 +1,8 @@
 import { 
   Agent, Property, PropertySignal, Deal, Contact, Task,
-  TransferRequest, Notification, Commission, AuditLog, UserPropertyMark, Activity, UserRole 
+  TransferRequest, Notification, Commission, AuditLog, UserPropertyMark, UserRole,
+  Activity, CommissionStatus, DealRelations, DealStage, PipelineStage, PropertyRelations,
+  ContactRelations, TransferStatus, NotificationType, PropertyInternalStatus
 } from '../types';
 
 // Constants for Mock Generation
@@ -503,9 +505,70 @@ export class ImmoPilotStore {
       if (storedAgent) this.currentAgentId = storedAgent;
       else this.currentAgentId = 'thomas';
 
+      this.normalizeData();
+
     } catch (e) {
       console.error('Failed to load ImmoPilot store:', e);
     }
+  }
+
+  private normalizeData() {
+    this.properties.forEach((property) => {
+      property.photos = property.photos ?? [];
+      property.notes = property.notes ?? [];
+      property.priceHistory = property.priceHistory ?? [];
+      property.fsbo = Boolean(property.fsbo || property.tag === 'FSBO');
+      property.reserved = Boolean(property.reserved || property.ownerId);
+      property.status = property.status ?? (property.reserved ? 'réservé' : 'disponible');
+    });
+
+    this.contacts.forEach((contact) => {
+      contact.roles = contact.roles ?? ['prospect'];
+      contact.notes = contact.notes ?? [];
+      contact.assignedDeals = contact.assignedDeals ?? [];
+      contact.assignedProperties = contact.assignedProperties ?? [];
+    });
+
+    this.deals.forEach((deal) => {
+      deal.activities = deal.activities ?? [];
+      deal.notes = deal.notes ?? [];
+      deal.tasks = deal.tasks ?? [];
+      deal.activeTransferId = deal.activeTransferId ?? null;
+
+      const property = this.properties.find((item) => item.id === deal.propertyId);
+      if (property) {
+        property.reserved = true;
+        property.ownerId = property.ownerId ?? deal.ownerId;
+        property.status = 'réservé';
+      }
+
+      const contact = this.contacts.find((item) => item.id === deal.contactId);
+      if (contact) {
+        if (!contact.assignedDeals.includes(deal.id)) contact.assignedDeals.push(deal.id);
+        if (!contact.assignedProperties.includes(deal.propertyId)) contact.assignedProperties.push(deal.propertyId);
+      }
+    });
+
+    this.tasks.forEach((task) => {
+      task.done = Boolean(task.done);
+      task.priority = task.priority ?? 'moyenne';
+
+      if (task.dealId) {
+        const deal = this.deals.find((item) => item.id === task.dealId);
+        if (deal && !deal.tasks.includes(task.id)) deal.tasks.push(task.id);
+      }
+    });
+
+    this.signals.forEach((signal) => {
+      signal.ignoredByAgents = signal.ignoredByAgents ?? [];
+      signal.status = signal.status ?? (signal.ignoredByAgents.includes(this.currentAgentId) ? 'ignoré' : 'nouveau');
+    });
+
+    this.saveProperties();
+    this.saveDeals();
+    this.saveContacts();
+    this.saveTasks();
+    this.saveSignals();
   }
 
   // Savings helper
@@ -547,6 +610,60 @@ export class ImmoPilotStore {
     return this.properties.find(p => p.id === id);
   }
 
+  public getPropertySignals(propertyId: number): PropertySignal[] {
+    return this.signals.filter((signal) => signal.propertyId === propertyId);
+  }
+
+  public getPropertyTasks(propertyId: number): Task[] {
+    return this.tasks.filter((task) => task.propertyId === propertyId);
+  }
+
+  public getPropertyDeal(propertyId: number): Deal | undefined {
+    return this.deals.find((deal) => deal.propertyId === propertyId);
+  }
+
+  public getPropertyContact(propertyId: number): Contact | undefined {
+    const deal = this.getPropertyDeal(propertyId);
+    if (deal) return this.getContact(deal.contactId);
+    return this.contacts.find((contact) => contact.assignedProperties.includes(propertyId));
+  }
+
+  public getPropertyActivities(propertyId: number): Activity[] {
+    const dealActivities = this.deals
+      .filter((deal) => deal.propertyId === propertyId)
+      .flatMap((deal) => deal.activities);
+
+    const signalActivities: Activity[] = this.getPropertySignals(propertyId).map((signal) => ({
+      id: `activity-${signal.id}`,
+      type: 'signal',
+      text: signal.heading,
+      date: signal.date,
+      agentId: 'system',
+      agentName: 'ImmoPilot',
+      entityType: 'signal',
+      entityId: signal.id,
+    }));
+
+    return [...dealActivities, ...signalActivities].sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  public getPropertyRelations(propertyId: number): PropertyRelations | undefined {
+    const property = this.getProperty(propertyId);
+    if (!property) return undefined;
+
+    const deal = this.getPropertyDeal(propertyId);
+    const contact = deal ? this.getContact(deal.contactId) : this.getPropertyContact(propertyId);
+
+    return {
+      property,
+      contact,
+      deal,
+      tasks: this.getPropertyTasks(propertyId),
+      signals: this.getPropertySignals(propertyId),
+      activities: this.getPropertyActivities(propertyId),
+    };
+  }
+
   public registerNoteToProperty(propertyId: number, noteText: string) {
     const prop = this.properties.find(p => p.id === propertyId);
     if (prop) {
@@ -555,6 +672,74 @@ export class ImmoPilotStore {
       this.saveProperties();
       this.createAuditLog('Note Ajoutée', `Ajout d'une note sur le bien "${prop.title}": ${noteText.substring(0, 30)}...`);
     }
+  }
+
+  public updatePropertyStatus(propertyId: number, status: PropertyInternalStatus): Property | undefined {
+    const prop = this.properties.find(p => p.id === propertyId);
+    if (!prop) return undefined;
+
+    const previousStatus = prop.status ?? (prop.reserved ? 'réservé' : 'disponible');
+    prop.status = status;
+
+    if (status === 'réservé') {
+      prop.reserved = true;
+      prop.ownerId = prop.ownerId ?? this.currentAgentId;
+    } else {
+      prop.reserved = false;
+      prop.ownerId = null;
+    }
+
+    this.saveProperties();
+    this.createAuditLog('Statut Bien', `Le bien "${prop.title}" est passé de "${previousStatus}" à "${status}".`);
+    window.dispatchEvent(new CustomEvent('ip-state-changed'));
+    return prop;
+  }
+
+  public linkPropertyToContact(propertyId: number, contactId: string): Contact | undefined {
+    const prop = this.properties.find(p => p.id === propertyId);
+    const contact = this.contacts.find(c => c.id === contactId);
+    if (!prop || !contact) return undefined;
+
+    this.contacts.forEach((item) => {
+      item.assignedProperties = item.assignedProperties.filter((id) => id !== propertyId);
+    });
+
+    if (!contact.assignedProperties.includes(propertyId)) {
+      contact.assignedProperties.push(propertyId);
+    }
+
+    const deal = this.getPropertyDeal(propertyId);
+    if (deal) {
+      deal.contactId = contactId;
+      if (!contact.assignedDeals.includes(deal.id)) contact.assignedDeals.push(deal.id);
+      this.saveDeals();
+    }
+
+    this.saveContacts();
+    this.createAuditLog('Contact lié', `Le contact "${contact.name}" a été lié au bien "${prop.title}".`);
+    window.dispatchEvent(new CustomEvent('ip-state-changed'));
+    return contact;
+  }
+
+  public createPropertyTask(propertyId: number, title: string, options: Partial<Omit<Task, 'id' | 'title' | 'done' | 'propertyId'>> = {}): Task {
+    const prop = this.properties.find(p => p.id === propertyId);
+    if (!prop) throw new Error('Property not found');
+
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const deal = this.getPropertyDeal(propertyId);
+    const contact = this.getPropertyContact(propertyId);
+
+    return this.createTask({
+      title,
+      date: options.date ?? tomorrow,
+      time: options.time ?? '09:00',
+      priority: options.priority ?? 'moyenne',
+      agentId: options.agentId ?? this.currentAgentId,
+      propertyId,
+      dealId: options.dealId ?? deal?.id ?? null,
+      contactId: options.contactId ?? contact?.id ?? null,
+      place: options.place ?? prop.city,
+    });
   }
 
   public freeReservedProperty(propertyId: number) {
@@ -640,7 +825,24 @@ export class ImmoPilotStore {
     return this.deals.find(d => d.id === id);
   }
 
-  public createDeal(propertyId: number, contactId: string, customStage: string = 'Nouveau'): Deal {
+  public getDealTasks(dealId: string): Task[] {
+    return this.tasks.filter((task) => task.dealId === dealId);
+  }
+
+  public getDealRelations(dealId: string): DealRelations | undefined {
+    const deal = this.getDeal(dealId);
+    if (!deal) return undefined;
+
+    return {
+      deal,
+      property: this.getProperty(deal.propertyId),
+      contact: this.getContact(deal.contactId),
+      tasks: this.getDealTasks(dealId),
+      activities: deal.activities,
+    };
+  }
+
+  public createDeal(propertyId: number, contactId: string, customStage: DealStage = 'Nouveau'): Deal {
     const prop = this.properties.find(p => p.id === propertyId);
     if (!prop) throw new Error('Biens non existant / Property not found');
     
@@ -705,7 +907,7 @@ export class ImmoPilotStore {
     return newDeal;
   }
 
-  public moveDealStage(dealId: string, newStage: string) {
+  public moveDealStage(dealId: string, newStage: DealStage) {
     const deal = this.deals.find(d => d.id === dealId);
     if (deal) {
       const oldStage = deal.stage;
@@ -752,7 +954,7 @@ export class ImmoPilotStore {
           });
           this.saveCommissions();
 
-        } else if (newStage === 'Mandat signé') {
+        } else if (newStage === 'Mandat signé' || newStage === 'Mandat potentiel') {
           // Add drafted commission
           const prop = this.getProperty(deal.propertyId);
           const exists = this.commissions.some(c => c.dealId === dealId);
@@ -804,6 +1006,160 @@ export class ImmoPilotStore {
     }
   }
 
+  public createDealNextAction(
+    dealId: string,
+    title: string,
+    options: Partial<Omit<Task, 'id' | 'title' | 'done' | 'dealId'>> = {}
+  ): Task {
+    const deal = this.deals.find(d => d.id === dealId);
+    if (!deal) throw new Error('Deal not found');
+
+    const property = this.getProperty(deal.propertyId);
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const task = this.createTask({
+      title,
+      date: options.date ?? tomorrow,
+      time: options.time ?? '09:00',
+      priority: options.priority ?? 'moyenne',
+      agentId: options.agentId ?? this.currentAgentId,
+      propertyId: options.propertyId ?? deal.propertyId,
+      dealId,
+      contactId: options.contactId ?? deal.contactId,
+      place: options.place ?? property?.city,
+    });
+
+    deal.activities.unshift({
+      id: 'act-' + Date.now() + '-next',
+      type: 'task_done',
+      text: `Prochaine action ajoutée : "${title}"`,
+      date: new Date().toISOString().split('T')[0],
+      agentId: this.currentAgentId,
+      agentName: this.getCurrentAgent().name,
+      entityType: 'task',
+      entityId: task.id,
+    });
+    this.saveDeals();
+    this.createAuditLog('Action Deal', `Prochaine action créée sur le deal "${deal.title}".`);
+    window.dispatchEvent(new CustomEvent('ip-state-changed'));
+    return task;
+  }
+
+  public linkDealToContact(dealId: string, contactId: string): Contact | undefined {
+    const deal = this.deals.find(d => d.id === dealId);
+    const contact = this.contacts.find(c => c.id === contactId);
+    if (!deal || !contact) return undefined;
+
+    const previousContact = this.contacts.find(c => c.id === deal.contactId);
+    if (previousContact) {
+      previousContact.assignedDeals = previousContact.assignedDeals.filter(id => id !== dealId);
+    }
+
+    deal.contactId = contactId;
+    if (!contact.assignedDeals.includes(dealId)) contact.assignedDeals.push(dealId);
+    if (!contact.assignedProperties.includes(deal.propertyId)) contact.assignedProperties.push(deal.propertyId);
+
+    deal.activities.unshift({
+      id: 'act-' + Date.now() + '-contact',
+      type: 'contact',
+      text: `Contact lié au deal : ${contact.name}`,
+      date: new Date().toISOString().split('T')[0],
+      agentId: this.currentAgentId,
+      agentName: this.getCurrentAgent().name,
+      entityType: 'contact',
+      entityId: contactId,
+    });
+
+    this.saveContacts();
+    this.saveDeals();
+    this.createAuditLog('Contact Deal', `Le contact "${contact.name}" a été lié au deal "${deal.title}".`);
+    window.dispatchEvent(new CustomEvent('ip-state-changed'));
+    return contact;
+  }
+
+  public linkDealToProperty(dealId: string, propertyId: number): Property | undefined {
+    const deal = this.deals.find(d => d.id === dealId);
+    const property = this.properties.find(p => p.id === propertyId);
+    if (!deal || !property) return undefined;
+
+    const previousPropertyId = deal.propertyId;
+    deal.propertyId = propertyId;
+    deal.price = property.price;
+    deal.commissionAmount = Math.floor(property.price * 0.03);
+    deal.title = `deal - ${property.title} - ${property.city}`;
+
+    const previousPropertyStillUsed = this.deals.some(d => d.id !== dealId && d.propertyId === previousPropertyId);
+    const previousProperty = this.properties.find(p => p.id === previousPropertyId);
+    if (previousProperty && !previousPropertyStillUsed) {
+      previousProperty.reserved = false;
+      previousProperty.ownerId = null;
+      previousProperty.status = 'disponible';
+    }
+
+    property.reserved = true;
+    property.ownerId = deal.ownerId;
+    property.status = 'réservé';
+
+    const contact = this.contacts.find(c => c.id === deal.contactId);
+    if (contact && !contact.assignedProperties.includes(propertyId)) {
+      contact.assignedProperties.push(propertyId);
+    }
+
+    this.tasks.forEach((task) => {
+      if (task.dealId === dealId) task.propertyId = propertyId;
+    });
+
+    deal.activities.unshift({
+      id: 'act-' + Date.now() + '-property',
+      type: 'status_change',
+      text: `Bien lié au deal : ${property.title}`,
+      date: new Date().toISOString().split('T')[0],
+      agentId: this.currentAgentId,
+      agentName: this.getCurrentAgent().name,
+      entityType: 'property',
+      entityId: propertyId,
+    });
+
+    this.saveProperties();
+    this.saveContacts();
+    this.saveTasks();
+    this.saveDeals();
+    this.createAuditLog('Bien Deal', `Le bien "${property.title}" a été lié au deal "${deal.title}".`);
+    window.dispatchEvent(new CustomEvent('ip-state-changed'));
+    return property;
+  }
+
+  public markDealMilestone(dealId: string, milestone: 'rdv' | 'offre' | 'mandat_potentiel'): Deal | undefined {
+    const stageByMilestone: Record<typeof milestone, DealStage> = {
+      rdv: 'Visite',
+      offre: 'Proposition',
+      mandat_potentiel: 'Mandat potentiel',
+    };
+    const labelByMilestone: Record<typeof milestone, string> = {
+      rdv: 'RDV marqué',
+      offre: 'Offre marquée',
+      mandat_potentiel: 'Mandat potentiel marqué',
+    };
+
+    const nextStage = stageByMilestone[milestone];
+    this.moveDealStage(dealId, nextStage);
+
+    const deal = this.deals.find(d => d.id === dealId);
+    if (!deal) return undefined;
+
+    deal.activities.unshift({
+      id: 'act-' + Date.now() + '-' + milestone,
+      type: 'status_change',
+      text: labelByMilestone[milestone],
+      date: new Date().toISOString().split('T')[0],
+      agentId: this.currentAgentId,
+      agentName: this.getCurrentAgent().name,
+    });
+    this.saveDeals();
+    this.createAuditLog('Jalon Deal', `${labelByMilestone[milestone]} sur "${deal.title}".`);
+    window.dispatchEvent(new CustomEvent('ip-state-changed'));
+    return deal;
+  }
+
   // CONTACT SERVICES
   public getContacts(): Contact[] {
     return this.contacts;
@@ -811,6 +1167,43 @@ export class ImmoPilotStore {
 
   public getContact(id: string): Contact | undefined {
     return this.contacts.find(c => c.id === id);
+  }
+
+  public getContactDeals(contactId: string): Deal[] {
+    return this.deals.filter((deal) => deal.contactId === contactId);
+  }
+
+  public getContactProperties(contactId: string): Property[] {
+    const contact = this.getContact(contactId);
+    const propertyIds = new Set<number>([
+      ...(contact?.assignedProperties ?? []),
+      ...this.getContactDeals(contactId).map((deal) => deal.propertyId),
+    ]);
+
+    return this.properties.filter((property) => propertyIds.has(property.id));
+  }
+
+  public getContactTasks(contactId: string): Task[] {
+    return this.tasks.filter((task) => task.contactId === contactId);
+  }
+
+  public getContactActivities(contactId: string): Activity[] {
+    return this.getContactDeals(contactId)
+      .flatMap((deal) => deal.activities)
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  public getContactRelations(contactId: string): ContactRelations | undefined {
+    const contact = this.getContact(contactId);
+    if (!contact) return undefined;
+
+    return {
+      contact,
+      properties: this.getContactProperties(contactId),
+      deals: this.getContactDeals(contactId),
+      tasks: this.getContactTasks(contactId),
+      activities: this.getContactActivities(contactId),
+    };
   }
 
   public createContact(c: Omit<Contact, 'id' | 'assignedDeals' | 'assignedProperties'>): Contact {
@@ -843,6 +1236,24 @@ export class ImmoPilotStore {
     return this.tasks;
   }
 
+  public getTask(id: string): Task | undefined {
+    return this.tasks.find((task) => task.id === id);
+  }
+
+  public getOpenTasks(): Task[] {
+    return this.tasks.filter((task) => !task.done);
+  }
+
+  public getTasksForDate(date: string): Task[] {
+    return this.tasks
+      .filter((task) => task.date === date)
+      .sort((a, b) => a.time.localeCompare(b.time));
+  }
+
+  public getTasksForAgent(agentId: string = this.currentAgentId): Task[] {
+    return this.tasks.filter((task) => task.agentId === agentId);
+  }
+
   public createTask(t: Omit<Task, 'id' | 'done'> & { id?: string }): Task {
     const id = t.id || 'task-' + Date.now();
     const newTask: Task = {
@@ -866,6 +1277,43 @@ export class ImmoPilotStore {
     this.createAuditLog('Création Tâche', `Tâche créée: "${newTask.title}" pour l'agent ${newTask.agentId}.`);
     window.dispatchEvent(new CustomEvent('ip-state-changed'));
     return newTask;
+  }
+
+  public createManualTask(input: {
+    title: string;
+    date: string;
+    time: string;
+    priority?: Task['priority'];
+    propertyId?: number | null;
+    dealId?: string | null;
+    contactId?: string | null;
+    place?: string;
+  }): Task {
+    return this.createTask({
+      title: input.title,
+      date: input.date,
+      time: input.time,
+      priority: input.priority ?? 'moyenne',
+      agentId: this.currentAgentId,
+      propertyId: input.propertyId ?? null,
+      dealId: input.dealId ?? null,
+      contactId: input.contactId ?? null,
+      place: input.place,
+    });
+  }
+
+  public updateTask(
+    taskId: string,
+    updates: Partial<Pick<Task, 'title' | 'date' | 'time' | 'priority' | 'propertyId' | 'dealId' | 'contactId' | 'place'>>
+  ): Task | undefined {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return undefined;
+
+    Object.assign(task, updates);
+    this.saveTasks();
+    this.createAuditLog('Modification Tâche', `Tâche mise à jour: "${task.title}".`);
+    window.dispatchEvent(new CustomEvent('ip-state-changed'));
+    return task;
   }
 
   public toggleTask(taskId: string) {
@@ -899,11 +1347,24 @@ export class ImmoPilotStore {
     return this.signals;
   }
 
+  public getSignal(id: string): PropertySignal | undefined {
+    return this.signals.find((signal) => signal.id === id);
+  }
+
+  public getActiveSignals(): PropertySignal[] {
+    return this.signals.filter((signal) => !signal.ignoredByAgents.includes(this.currentAgentId) && signal.status !== 'ignoré');
+  }
+
+  public getSignalsByType(type: PropertySignal['type']): PropertySignal[] {
+    return this.getActiveSignals().filter((signal) => signal.type === type);
+  }
+
   public ignoreSignal(signalId: string) {
     const sig = this.signals.find(s => s.id === signalId);
     if (sig) {
       if (!sig.ignoredByAgents) sig.ignoredByAgents = [];
-      sig.ignoredByAgents.push(this.currentAgentId);
+      if (!sig.ignoredByAgents.includes(this.currentAgentId)) sig.ignoredByAgents.push(this.currentAgentId);
+      sig.status = 'ignoré';
       this.saveSignals();
       
       this.createAuditLog('Signal Ignoré', `Le signal "${sig.heading}" a été archivé par l'agent.`);
@@ -963,7 +1424,7 @@ export class ImmoPilotStore {
     return request;
   }
 
-  public handleTransferRequest(requestId: string, status: 'accepté' | 'refusé') {
+  public handleTransferRequest(requestId: string, status: Extract<TransferStatus, 'accepté' | 'refusé'>) {
     const tr = this.transfers.find(tObject => tObject.id === requestId);
     if (tr) {
       tr.status = status;
@@ -1029,7 +1490,7 @@ export class ImmoPilotStore {
     }
   }
 
-  public getPipelineStages(): { id: string; name: string; icon?: string; color?: string }[] {
+  public getPipelineStages(): PipelineStage[] {
     const stored = localStorage.getItem('ip_pipeline_stages');
     if (stored) {
       try {
@@ -1042,13 +1503,13 @@ export class ImmoPilotStore {
       { id: 'contact', name: 'Contact', icon: '📞', color: '#2B3A8C' },
       { id: 'visite', name: 'Visite', icon: '👁', color: '#8F55C9' },
       { id: 'proposition', name: 'Proposition', icon: '📝', color: '#2B3A8C' },
-      { id: 'mandat', name: 'Mandat signé', icon: '✍️', color: 'var(--forest)' },
+      { id: 'mandat', name: 'Mandat potentiel', icon: '✍️', color: 'var(--forest)' },
       { id: 'vendu', name: 'Bien vendu', icon: '🔑', color: '#C67A13' },
       { id: 'perdu', name: 'Perdu', icon: '✕', color: '#C0553D' },
     ];
   }
 
-  public savePipelineStages(stages: any[]) {
+  public savePipelineStages(stages: PipelineStage[]) {
     localStorage.setItem('ip_pipeline_stages', JSON.stringify(stages));
     this.createAuditLog('Admin Configuration', 'Les étapes du pipeline de vente ont été mises à jour.');
     window.dispatchEvent(new CustomEvent('ip-state-changed'));
@@ -1056,11 +1517,10 @@ export class ImmoPilotStore {
 
   // NOTIFICATION SERVICES
   public getNotifications(): Notification[] {
-    // Filters for current Agent ID
-    return this.notifications;
+    return this.notifications.filter((notification) => !notification.agentId || notification.agentId === this.currentAgentId);
   }
 
-  public addNotification(type: string, title: string, text: string, actionLink: string, specificAgentId?: string) {
+  public addNotification(type: NotificationType, title: string, text: string, actionLink: string, specificAgentId?: string) {
     const id = 'not-' + Date.now();
     const newNotif: Notification = {
       id,
@@ -1069,7 +1529,8 @@ export class ImmoPilotStore {
       text,
       date: 'À l\'instant',
       read: false,
-      actionLink
+      actionLink,
+      agentId: specificAgentId
     };
 
     this.notifications.unshift(newNotif);
@@ -1099,7 +1560,7 @@ export class ImmoPilotStore {
     return this.commissions;
   }
 
-  public updateCommissionStatus(commissionId: string, status: 'brouillon' | 'prévue' | 'payable' | 'payée') {
+  public updateCommissionStatus(commissionId: string, status: CommissionStatus) {
     const comm = this.commissions.find(c => c.id === commissionId);
     if (comm) {
       const old = comm.status;

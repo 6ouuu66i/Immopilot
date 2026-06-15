@@ -15,13 +15,10 @@ import { AppShell } from './components/AppShell';
 import { Dashboard } from './pages/Dashboard';
 import { Biens } from './pages/Biens';
 import { Pipeline } from './pages/Pipeline';
+import { Agenda } from './pages/Agenda';
+import { Contacts } from './pages/Contacts';
 
 import biensHtml from './pages/biens.html?raw';
-import inboxHtml from './pages/inbox.html?raw';
-import contactsHtml from './pages/contacts.html?raw';
-import testsHtml from './pages/tests.html?raw';
-import agendaHtml from './pages/agenda.html?raw';
-import commissionsHtml from './pages/commissions.html?raw';
 import adminHtml from './pages/admin.html?raw';
 import settingsHtml from './pages/settings.html?raw';
 import notificationsHtml from './pages/notifications.html?raw';
@@ -29,12 +26,9 @@ import notificationsHtml from './pages/notifications.html?raw';
 type RouteKey =
   | 'dashboard'
   | 'biens'
-  | 'inbox'
   | 'pipeline'
   | 'contacts'
-  | 'tests'
   | 'agenda'
-  | 'commissions'
   | 'admin'
   | 'settings'
   | 'notifications';
@@ -42,11 +36,6 @@ type RouteKey =
 const DEFAULT_ROUTE: RouteKey = 'dashboard';
 
 const legacyRoutes: Partial<Record<RouteKey, string>> = {
-  inbox: inboxHtml,
-  contacts: contactsHtml,
-  tests: testsHtml,
-  agenda: agendaHtml,
-  commissions: commissionsHtml,
   admin: adminHtml,
   settings: settingsHtml,
   notifications: notificationsHtml,
@@ -55,7 +44,7 @@ const legacyRoutes: Partial<Record<RouteKey, string>> = {
 function getRouteFromHash(): RouteKey {
   const rawHash = window.location.hash.replace(/^#/, '') || DEFAULT_ROUTE;
   const routeName = rawHash.split('?')[0] as RouteKey;
-  if (routeName === 'dashboard' || routeName === 'biens' || routeName === 'pipeline' || legacyRoutes[routeName]) return routeName;
+  if (routeName === 'dashboard' || routeName === 'biens' || routeName === 'pipeline' || routeName === 'agenda' || routeName === 'contacts' || legacyRoutes[routeName]) return routeName;
   return DEFAULT_ROUTE;
 }
 
@@ -133,6 +122,10 @@ function App() {
         <Biens store={store} />
       ) : route === 'pipeline' ? (
         <Pipeline store={store} />
+      ) : route === 'agenda' ? (
+        <Agenda store={store} />
+      ) : route === 'contacts' ? (
+        <Contacts store={store} />
       ) : legacyHtml ? (
         <LegacyPage html={legacyHtml} route={route} />
       ) : (

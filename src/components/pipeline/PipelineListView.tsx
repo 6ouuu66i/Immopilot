@@ -117,6 +117,10 @@ function ListRow({ deal, store, selected, isDragging, onSelect, onDragStart, onD
 
 // ── Pipeline List View ─────────────────────────────────────────────────────────
 
+const SCROLL_EDGE = 80;
+const SCROLL_MAX  = 14;
+function edgeSpeed(dist: number) { return Math.ceil(Math.max(0, 1 - dist / SCROLL_EDGE) * SCROLL_MAX); }
+
 export function PipelineListView({
   deals, stages, onSelectDeal, selectedDealId, store,
 }: PipelineListViewProps) {
@@ -125,10 +129,13 @@ export function PipelineListView({
   const draggingRef = useRef<string | null>(null);
   const ghostRef    = useRef<HTMLDivElement | null>(null);
   const offsetRef   = useRef({ x: 0, y: 0 });
+  const cursorRef   = useRef({ x: 0, y: 0 });
+  const scrollRAF   = useRef<number | null>(null);
 
   // Follow cursor during drag
   useEffect(() => {
     const move = (e: DragEvent) => {
+      cursorRef.current = { x: e.clientX, y: e.clientY };
       const ghost = ghostRef.current;
       if (!ghost) return;
       ghost.style.left = `${e.clientX - offsetRef.current.x}px`;
@@ -137,6 +144,22 @@ export function PipelineListView({
     document.addEventListener('dragover', move);
     return () => document.removeEventListener('dragover', move);
   }, []);
+
+  const startAutoScroll = () => {
+    const tick = () => {
+      const { y } = cursorRef.current;
+      const vh = window.innerHeight;
+      const content = document.getElementById('app-content') ?? document.documentElement;
+      if (y < SCROLL_EDGE)           content.scrollTop -= edgeSpeed(y);
+      else if (y > vh - SCROLL_EDGE) content.scrollTop += edgeSpeed(vh - y);
+      scrollRAF.current = requestAnimationFrame(tick);
+    };
+    scrollRAF.current = requestAnimationFrame(tick);
+  };
+
+  const stopAutoScroll = () => {
+    if (scrollRAF.current !== null) { cancelAnimationFrame(scrollRAF.current); scrollRAF.current = null; }
+  };
 
   const startDrag = (dealId: string, e: React.DragEvent<HTMLElement>) => {
     e.dataTransfer.setDragImage(BLANK_IMG, 0, 0);
@@ -159,7 +182,7 @@ export function PipelineListView({
       'border-radius:8px',
       'box-shadow:0 14px 32px -8px rgba(29,31,30,0.38),0 6px 14px -4px rgba(30,90,58,0.18)',
       'border:1.5px solid #1E5A3A',
-      'animation:drag-wiggle 360ms ease-in-out infinite',
+      'animation:drag-wiggle-subtle 420ms ease-in-out infinite',
       'transform-origin:center left',
       'will-change:transform,left,top',
     ].join(';');
@@ -168,9 +191,11 @@ export function PipelineListView({
 
     draggingRef.current = dealId;
     requestAnimationFrame(() => setDraggingDealId(dealId));
+    startAutoScroll();
   };
 
   const endDrag = () => {
+    stopAutoScroll();
     ghostRef.current?.remove();
     ghostRef.current    = null;
     draggingRef.current = null;

@@ -19,6 +19,7 @@
   gap: 12px;
   overflow-x: auto;
   padding-bottom: 18px;
+  overscroll-behavior-x: contain;
   scrollbar-width: thin;
   scrollbar-color: #B8B0A0 rgba(29,31,30,0.04);
 }
@@ -173,6 +174,10 @@
 @keyframes drag-wiggle {
   0%, 100% { transform: rotate(-1.8deg) translateY(0); }
   50%       { transform: rotate(1.8deg) translateY(-3px); }
+}
+@keyframes drag-wiggle-subtle {
+  0%, 100% { transform: rotate(-0.6deg) translateY(0); }
+  50%       { transform: rotate(0.6deg) translateY(-1px); }
 }
 .dc-img {
   position: relative;
@@ -394,6 +399,30 @@
   background: #F7F6F3;
 }
 
+@media (max-width: 1450px) {
+  .kanban-board {
+    grid-template-columns: repeat(8, 244px);
+    gap: 10px;
+    padding-bottom: 22px;
+  }
+
+  .column-head {
+    padding: 11px 12px 9px;
+  }
+
+  .column-body {
+    min-height: 330px;
+  }
+
+  .dc-img {
+    height: 100px;
+  }
+
+  .dc-ai {
+    top: 82px;
+  }
+}
+
 /* ── FICHE PANEL ── */
 .fiche-panel {
   width: 480px;
@@ -409,6 +438,20 @@
   display: flex;
   flex-direction: column;
   font-family: var(--notion-sans, 'Inter', sans-serif);
+}
+
+.pipeline-workarea .fiche-panel {
+  width: auto;
+  height: calc(100vh - 96px);
+  max-height: calc(100vh - 96px);
+  position: sticky;
+  top: 12px;
+  right: auto;
+  bottom: auto;
+  border: 1px solid #E6E4DF;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(29,31,30,0.035);
+  z-index: 1;
 }
 @keyframes fiche-in {
   from { opacity: 0; transform: translateY(8px) scale(0.985); }
@@ -545,6 +588,34 @@
 .step-label { margin-top: 5px; font-size: 9px; color: #9A9A9A; font-weight: 500; text-align: center; max-width: 50px; line-height: 1.2; }
 .step.completed .step-label { color: #1D1F1E; font-weight: 600; }
 .step.active .step-label { color: #1E5A3A; font-weight: 700; }
+.deal-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 16px 10px;
+}
+.deal-quick-actions button {
+  height: 30px;
+  border: 1px solid #E3DED2;
+  border-radius: 7px;
+  background: #FFFFFF;
+  color: #1D1F1E;
+  font-family: var(--notion-sans, 'Inter', sans-serif);
+  font-size: 10.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.deal-quick-actions button:hover { border-color: #1E5A3A; background: #F7F6F3; color: #1E5A3A; }
+.deal-action-message {
+  margin: -4px 16px 10px;
+  padding: 7px 9px;
+  border: 1px solid #E3DED2;
+  border-radius: 7px;
+  background: #F7F6F3;
+  color: #5F5B52;
+  font-size: 10.5px;
+  font-weight: 600;
+}
 .fiche-body { flex: 1; padding: 4px 16px 16px; overflow-y: auto; }
 .body-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
 .body-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -568,6 +639,40 @@
 .mc-vendor-contact { display: flex; flex-direction: column; gap: 2px; font-size: 10px; color: #6B6B6B; }
 .mc-vendor-contact span { display: flex; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mc-vendor-contact svg { color: #9A9A9A; flex-shrink: 0; }
+.deal-link-row,
+.deal-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 58px;
+  gap: 6px;
+  margin-top: 8px;
+}
+.deal-link-row select,
+.deal-action-row input {
+  min-width: 0;
+  height: 28px;
+  border: 1px solid #E3DED2;
+  border-radius: 6px;
+  background: #FBF9F4;
+  color: #1D1F1E;
+  padding: 0 8px;
+  font-family: var(--notion-sans, 'Inter', sans-serif);
+  font-size: 10.5px;
+  outline: none;
+}
+.deal-link-row select:focus,
+.deal-action-row input:focus { border-color: #1E5A3A; background: #FFFFFF; }
+.deal-link-row button,
+.deal-action-row button {
+  height: 28px;
+  border: 1px solid #1E5A3A;
+  border-radius: 6px;
+  background: #1E5A3A;
+  color: #FFFFFF;
+  font-family: var(--notion-sans, 'Inter', sans-serif);
+  font-size: 10.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
 .mc-bien-row { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 8px; align-items: flex-start; }
 .mc-bien-icon { width: 30px; height: 30px; border-radius: 999px; background: #CFE1D2; display: grid; place-items: center; color: #1E5A3A; }
 .mc-bien-title { font-size: 11.5px; font-weight: 700; color: #1D1F1E; }

@@ -37,6 +37,7 @@ interface PriorityOpportunity {
   address: string;
   city: string;
   id: string;
+  microcopy: string;
   photo: string;
   price: string;
   score: number;
@@ -74,12 +75,31 @@ function cleanText(value: string): string {
     .replaceAll('Ã‰', 'É')
     .replaceAll('â‚¬', '€')
     .replaceAll('â€”', '-')
+    .replaceAll('â€œ', '“')
+    .replaceAll('â€', '”')
+    .replaceAll('Â·', '·')
+    .replaceAll('Â²', '²')
     .replaceAll('Å“', 'œ')
     .replaceAll('Ã®', 'î');
 }
 
 function formatCurrency(value: number): string {
-  return currencyFormatter.format(value).replace(/\s?EUR/, ' €');
+  return currencyFormatter
+    .format(value)
+    .replace(/\s?EUR/, ' €')
+    .replace(/\u00A0/g, ' ');
+}
+
+function formatScore(value: number): number {
+  return Math.max(64, Math.min(89, Math.round(value - 6)));
+}
+
+function propertyMicrocopy(property: Property): string {
+  if (property.tag === 'Baisse de prix') return 'Relance prioritaire';
+  if (property.fsbo || property.tag === 'FSBO') return 'Vendeur particulier';
+  if (property.score >= 86) return 'Prix sous marché';
+  if (property.surface >= 170) return 'Grand format rare';
+  return 'À qualifier';
 }
 
 function signalTone(type: PropertySignal['type']): RecentSignal['tone'] {
@@ -91,7 +111,7 @@ function signalTone(type: PropertySignal['type']): RecentSignal['tone'] {
 
 function buildOpportunity(property: Property, deal?: Deal): PriorityOpportunity {
   const signal = property.fsbo || property.tag === 'FSBO'
-    ? 'Proprietaire'
+    ? 'Propriétaire'
     : property.tag === 'Baisse de prix'
       ? 'Baisse de prix'
       : property.score >= 80
@@ -102,9 +122,10 @@ function buildOpportunity(property: Property, deal?: Deal): PriorityOpportunity 
     address: deal?.title ? cleanText(deal.title).replace(cleanText(property.title), '').trim() || cleanText(property.city) : cleanText(property.city),
     city: cleanText(property.city),
     id: String(property.id),
+    microcopy: propertyMicrocopy(property),
     photo: property.photos[0],
     price: formatCurrency(property.price),
-    score: property.score,
+    score: formatScore(property.score),
     signal,
     source: cleanText(property.source),
     surface: `${property.surface} m²`,
@@ -235,7 +256,7 @@ export function Dashboard({ store }: DashboardProps) {
                 Toutes les opportunités
               </a>
               <a href="#biens">Nouveaux biens <span>28</span></a>
-              <a href="#inbox">Baisses de prix <span>9</span></a>
+              <a href="#biens">Baisses de prix <span>9</span></a>
               <a href="#biens">Favoris <Star size={13} /> <span>12</span></a>
               <a href="#agenda">À contacter <span>17</span></a>
             </nav>
@@ -277,7 +298,7 @@ export function Dashboard({ store }: DashboardProps) {
                 <SignalRow key={signal.id} signal={signal} />
               ))}
             </div>
-            <a className="ip-side-link" href="#inbox">Voir tous les signaux</a>
+            <a className="ip-side-link" href="#biens">Voir tous les signaux</a>
           </Panel>
 
           <a className="ip-tip-card" href="#settings">
@@ -374,7 +395,7 @@ function OpportunityRow({ index, opportunity }: { index: number; opportunity: Pr
         <img src={opportunity.photo} alt="" />
         <span>
           <strong>{opportunity.title}</strong>
-          <small>{opportunity.signal === 'Baisse de prix' ? 'À relancer' : 'Bon état'}</small>
+          <small>{opportunity.microcopy}</small>
         </span>
       </span>
       <Badge tone={opportunity.source === 'Immoweb' ? 'blue' : opportunity.source === 'Zimmo' ? 'green' : 'amber'}>
@@ -413,7 +434,7 @@ function TaskRow({ store, task }: { store: Store; task: Task }) {
 
 function SignalRow({ signal }: { signal: RecentSignal }) {
   return (
-    <a className="ip-wow-signal" href="#inbox">
+    <a className="ip-wow-signal" href="#biens">
       <Badge tone={signal.tone === 'hot' ? 'hot' : signal.tone === 'good' ? 'green' : signal.tone === 'warn' ? 'orange' : 'violet'}>
         {signal.value}
       </Badge>

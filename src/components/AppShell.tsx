@@ -7,14 +7,10 @@ import {
   ChevronLeft,
   CircleHelp,
   ContactRound,
-  FileText,
   Filter,
-  Gauge,
-  Globe2,
   Home,
-  Inbox,
+  Layers3,
   ListChecks,
-  MapPinned,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
@@ -46,26 +42,22 @@ const mainNav: NavItem[] = [
 
 const prospectNav: NavItem[] = [
   { key: 'biens', label: 'Biens', href: '#biens', icon: Building2 },
-  { key: 'sources', label: 'Sources', href: '#inbox', icon: Globe2 },
-  { key: 'inbox', label: 'Alertes', href: '#inbox', icon: Inbox },
 ];
 
 const crmNav: NavItem[] = [
-  { key: 'pipeline', label: 'Opportunites', href: '#pipeline', icon: BriefcaseBusiness },
+  { key: 'pipeline', label: 'Opportunités', href: '#pipeline', icon: BriefcaseBusiness },
   { key: 'contacts', label: 'Contacts', href: '#contacts', icon: ContactRound },
-  { key: 'agenda', label: 'Taches', href: '#agenda', icon: ListChecks },
-  { key: 'notes', label: 'Notes', href: '#tests', icon: FileText },
+  { key: 'agenda', label: 'Tâches', href: '#agenda', icon: ListChecks },
 ];
 
 const analyticsNav: NavItem[] = [
   { key: 'stats', label: 'Statistiques', href: '#dashboard', icon: ChartColumn },
-  { key: 'reports', label: 'Rapports', href: '#commissions', icon: Gauge },
 ];
 
 const settingsNav: NavItem[] = [
   { key: 'filters', label: 'Filtres', href: '#biens', icon: Filter },
-  { key: 'team', label: 'Equipe', href: '#contacts', icon: UsersRound },
-  { key: 'settings', label: 'Parametres', href: '#settings', icon: Settings },
+  { key: 'team', label: 'Équipe', href: '#contacts', icon: UsersRound },
+  { key: 'settings', label: 'Paramètres', href: '#settings', icon: Settings },
 ];
 
 export function AppShell({ activeRoute, children, store }: AppShellProps) {
@@ -163,7 +155,7 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
           </div>
 
           <div className="ip-nav-group ip-saved-views">
-            <div className="ip-nav-group-label">Parametres</div>
+            <div className="ip-nav-group-label">Paramètres</div>
             {settingsNav.map((item) => (
               <SidebarLink key={item.key} item={item} active={activeRoute === item.key} />
             ))}
@@ -171,13 +163,13 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
         </nav>
 
         <div className="ip-sidebar-note" aria-hidden="true">
-          <div className="ip-note-lines">
-            <span />
-            <span />
-            <span />
+          <span className="ip-sidebar-note-icon">
+            <Layers3 size={16} />
+          </span>
+          <div>
+            <strong>Vue active</strong>
+            <p>Biens à traiter cette semaine</p>
           </div>
-          <MapPinned size={18} />
-          <p>Vue sauvegardee pour suivre les biens a traiter.</p>
         </div>
 
         <div className="ip-sidebar-footer">
@@ -188,7 +180,7 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
           </a>
           <a className="ip-sidebar-link" href="#settings">
             <Settings size={17} />
-            <span>Parametres</span>
+            <span>Paramètres</span>
           </a>
           <button className="ip-sidebar-link" type="button">
             <CircleHelp size={17} />

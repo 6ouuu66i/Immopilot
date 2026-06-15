@@ -3,7 +3,7 @@
 Reference guide for any AI assistant working on this repo.
 Update this file whenever the product direction, architecture, or design system changes.
 
-Last updated: 2026-05-27
+Last updated: 2026-06-14
 
 ---
 
@@ -45,7 +45,13 @@ Current implementation reality:
 
 - The app currently uses Vite + React, but many screens are raw HTML templates imported with `?raw` and injected by `src/main.tsx`.
 - The refactor direction is to migrate toward proper React components, page by page.
-- The first refactor batch is: AppShell, Sidebar/Header, Dashboard, and Biens.
+- Dashboard, Biens, Pipeline, Contacts, and Agenda are React screens.
+- The active frontend phase is now shared component extraction: new React work should reuse common components from `src/components/ui` instead of rebuilding each page differently.
+- Biens is now the central functional workspace: cards open the mini fiche, and the mini fiche can change status, link a contact, create a task, create or open a deal, show linked signals, show linked tasks, toggle favorite state, and open the photo lightbox.
+- Pipeline is now the commercial follow-up workspace: deals can move between stages, open a mini fiche, add next actions, link a property/contact, mark RDV/offre/mandat potentiel milestones, and create automatic activity entries on status changes.
+- Contacts is now connected to the shared local store: rows open a contact side panel, the panel shows linked properties, linked deals, activity history, contact tasks, mock call/email/WhatsApp actions, and can create contact-linked tasks visible in Agenda.
+- Agenda is now the central task hub: tasks created from Biens, Contacts, Deals, or manually should appear there through the shared store. It supports overdue/today/week/all views, completion toggles, manual task creation, date/time edits, and opening linked objects via hash deep links.
+- Store relation helpers should be reused for Property, Deal, Contact, Task, Signal, and Activity instead of duplicating relation lookups inside each page.
 
 ---
 
@@ -228,7 +234,7 @@ Global behavior:
 
 ## 8. First Refactor Batch
 
-The first approved implementation batch is:
+The first approved implementation batch was:
 
 1. React design system foundation.
 2. React AppShell, Sidebar, Topbar/Header.
@@ -238,6 +244,28 @@ The first approved implementation batch is:
 Other pages can remain as legacy HTML templates temporarily.
 
 Do not attempt to refactor the whole SaaS in one pass unless the user explicitly asks for a full-batch refactor.
+
+## 8.1 Shared Functional Components
+
+Current shared React components live in `src/components/ui`.
+
+Use these before creating page-specific equivalents:
+
+- `RecordSidePanel`: generic side panel shell for property/contact/deal previews.
+- `PageIllustrationHeader`: consistent top illustration container for pages using the hand-drawn SaaS banner direction.
+- `DataToolbar`: shared search/view/action toolbar for object lists and kanban/table views.
+- `StatusBadge`: pastel status badges with consistent tones.
+- `TaskList`: task rows with toggle behavior and empty state.
+- `ActivityTimeline`: compact chronological activity feed.
+- `EmptyState`: reusable empty/loading placeholder surface.
+- `ConfirmModal`: shared confirmation dialog.
+- `ImageLightbox`: reusable fullscreen image viewer with keyboard navigation and scroll lock.
+
+Implementation rule:
+
+- If a page needs one of these behaviors, import from `src/components/ui` first.
+- Only create page-specific UI when the shared component cannot express the required layout without harming the existing design.
+- Shared components should stay data-model aware only where useful (`TaskList`, `ActivityTimeline`) and otherwise remain composable.
 
 ---
 
@@ -292,6 +320,13 @@ Interaction:
 
 - Click row: preview/select.
 - Double click or button: open full record later.
+- Click property card: open the mini fiche side panel.
+- Favorite toggle: update the current user's local property mark.
+- Status change: update `Property.status`, `reserved`, and ownership consistency through the store.
+- Link contact: update `Contact.assignedProperties` and keep an existing deal contact in sync.
+- Create task: attach the task to the property and to the related deal/contact when available.
+- Create deal: require a linked contact first.
+- Search, filters, and sort should run from React page state against store data.
 
 ### Fiche Bien / Side Panel
 
