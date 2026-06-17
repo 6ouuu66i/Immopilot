@@ -12,3 +12,6 @@ tmp/
 .codex-review-screens/
 src/assets/_asset_backups/
 *.original.png
+*.before-bg-fix.png
+*.previous.png
+.gstack/

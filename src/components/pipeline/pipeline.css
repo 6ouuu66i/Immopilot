@@ -425,14 +425,15 @@
 
 /* ── FICHE PANEL ── */
 .fiche-panel {
-  width: 480px;
+  width: 462px;
   position: fixed;
   top: 58px;
   right: 0;
   bottom: 0;
+  height: calc(100vh - 58px);
   background: #FFFFFF;
-  border-left: 1px solid #E6E4DF;
-  box-shadow: -4px 0 24px rgba(29,31,30,0.06);
+  border-left: 1px solid #E3DED2;
+  box-shadow: -10px 0 28px rgba(29, 31, 30, 0.08);
   overflow-y: auto;
   z-index: 30;
   display: flex;
@@ -441,17 +442,18 @@
 }
 
 .pipeline-workarea .fiche-panel {
-  width: auto;
-  height: calc(100vh - 96px);
-  max-height: calc(100vh - 96px);
-  position: sticky;
-  top: 12px;
-  right: auto;
-  bottom: auto;
-  border: 1px solid #E6E4DF;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(29,31,30,0.035);
-  z-index: 1;
+  width: 462px;
+  height: calc(100vh - 58px);
+  max-height: calc(100vh - 58px);
+  position: fixed;
+  top: 58px;
+  right: 0;
+  bottom: 0;
+  border: 0;
+  border-left: 1px solid #E3DED2;
+  border-radius: 0;
+  box-shadow: -10px 0 28px rgba(29, 31, 30, 0.08);
+  z-index: 30;
 }
 @keyframes fiche-in {
   from { opacity: 0; transform: translateY(8px) scale(0.985); }
@@ -616,7 +618,7 @@
   font-size: 10.5px;
   font-weight: 600;
 }
-.fiche-body { flex: 1; padding: 4px 16px 16px; overflow-y: auto; }
+.fiche-body { flex: 0 0 auto; padding: 4px 16px 16px; overflow: visible; }
 .body-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
 .body-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .mc {

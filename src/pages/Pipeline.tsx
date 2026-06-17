@@ -77,6 +77,16 @@ export function Pipeline({ store }: PipelineProps) {
   const selectedDeal = selectedDealId ? store.getDeal(selectedDealId) : undefined;
   const panelOpen    = Boolean(selectedDeal);
 
+  useEffect(() => {
+    if (!panelOpen) return undefined;
+
+    window.dispatchEvent(new Event('ip-property-panel-open'));
+
+    return () => {
+      window.dispatchEvent(new Event('ip-property-panel-close'));
+    };
+  }, [panelOpen]);
+
   const kpis = useMemo(() => {
     const active     = deals.filter(d => !['Perdu', 'Bien vendu'].includes(d.stage));
     const mandats    = deals.filter(d => d.stage === 'Mandat signé').length;
@@ -95,7 +105,7 @@ export function Pipeline({ store }: PipelineProps) {
 
   return (
     <div style={{
-      minHeight: '100%',
+      minHeight: 'calc(100vh - 58px)',
       background: '#F7F6F3',
       fontFamily: 'var(--notion-sans)',
       position: 'relative',
@@ -104,14 +114,14 @@ export function Pipeline({ store }: PipelineProps) {
       {/* ── Illustration header ── */}
       <PageIllustrationHeader
         imageUrl="/pipeline-header-illustration.png"
-        height={150}
+        height={170}
         padding="12px 32px 0"
-        backgroundPosition="center 48%"
+        backgroundPosition="calc(50% + 24px) 48%"
         backgroundSize="100% auto"
       />
 
       {/* ── Page title ── */}
-      <div style={{ padding: '0 32px', marginTop: -4, marginBottom: 16 }}>
+      <div style={{ padding: panelOpen ? '0 440px 0 32px' : '0 32px', marginTop: -4, marginBottom: 16, transition: 'padding-right 180ms ease' }}>
         <h1 style={{
           margin: 0,
           fontFamily: 'var(--notion-serif)',
@@ -128,7 +138,7 @@ export function Pipeline({ store }: PipelineProps) {
       </div>
 
       {/* ── KPI row + actions ── */}
-      <div style={{ padding: '0 32px', marginTop: -8, display: 'flex', alignItems: 'stretch', gap: 12, position: 'relative', zIndex: 2 }}>
+      <div style={{ padding: panelOpen ? '0 440px 0 32px' : '0 32px', marginTop: -8, display: 'flex', alignItems: 'stretch', gap: 12, position: 'relative', zIndex: 2, transition: 'padding-right 180ms ease' }}>
         {/* KPI container */}
         <div style={{ flex: 1, background: '#fff', border: '1px solid #E6E4DF', borderRadius: 10, display: 'flex', alignItems: 'stretch' }}>
           <KpiCell label="Deals actifs"       value={kpis.active}               delta="Pipeline en cours" />
@@ -202,11 +212,9 @@ export function Pipeline({ store }: PipelineProps) {
       <div
         className="pipeline-workarea"
         style={{
-          padding: '16px 32px 32px',
-          display: 'grid',
-          gridTemplateColumns: panelOpen ? 'minmax(0, 1fr) 480px' : 'minmax(0, 1fr)',
-          gap: 12,
-          alignItems: 'start',
+          padding: panelOpen ? '16px 462px 32px 32px' : '16px 0 32px 32px',
+          display: 'block',
+          transition: 'padding-right 180ms ease',
         }}
       >
         <div style={{ minWidth: 0 }}>
@@ -230,15 +238,16 @@ export function Pipeline({ store }: PipelineProps) {
           )}
         </div>
 
-        {panelOpen && selectedDeal && (
-          <DealFichePanel
-            deal={selectedDeal}
-            store={store}
-            onClose={() => setSelectedDealId(null)}
-            onMoveDeal={handleMoveDeal}
-          />
-        )}
       </div>
+
+      {panelOpen && selectedDeal && (
+        <DealFichePanel
+          deal={selectedDeal}
+          store={store}
+          onClose={() => setSelectedDealId(null)}
+          onMoveDeal={handleMoveDeal}
+        />
+      )}
     </div>
   );
 }

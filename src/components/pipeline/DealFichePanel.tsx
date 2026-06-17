@@ -96,7 +96,7 @@ export function DealFichePanel({ deal, store, onClose, onMoveDeal }: DealFichePa
 
   return (
     <aside className="fiche-panel">
-      <div style={{ animation: 'fiche-in 380ms cubic-bezier(0.32, 0.72, 0, 1)', display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ animation: 'fiche-in 380ms cubic-bezier(0.32, 0.72, 0, 1)', display: 'flex', flexDirection: 'column' }}>
 
         {/* ── Header ── */}
         <div className="fiche-head">
