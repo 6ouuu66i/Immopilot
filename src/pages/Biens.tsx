@@ -30,7 +30,7 @@ interface BiensProps {
   store: Store;
 }
 
-type ViewMode = 'grid' | 'list';
+type ViewMode = 'table' | 'grid';
 type SortKey = 'recent' | 'price_asc' | 'price_desc' | 'score';
 
 const PAGE_SIZE = 16;
@@ -45,7 +45,7 @@ const SORT_LABELS: Record<SortKey, string> = {
 export function Biens({ store }: BiensProps) {
   const [, forceUpdate] = useState(0);
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [sort, setSort] = useState<SortKey>('recent');
   const [filterCommune, setFilterCommune] = useState('Toutes');
   const [filterSource, setFilterSource] = useState('Toutes');
@@ -386,6 +386,21 @@ export function Biens({ store }: BiensProps) {
           }}
         >
           <button
+            onClick={() => setViewMode('table')}
+            style={{
+              background: viewMode === 'table' ? '#1E5A3A' : '#fff',
+              border: 'none',
+              padding: '8px 12px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              color: viewMode === 'table' ? '#fff' : '#6B6F6D',
+            }}
+            title="Vue tableau"
+          >
+            <List size={15} />
+          </button>
+          <button
             onClick={() => setViewMode('grid')}
             style={{
               background: viewMode === 'grid' ? '#1E5A3A' : '#fff',
@@ -395,26 +410,11 @@ export function Biens({ store }: BiensProps) {
               display: 'flex',
               alignItems: 'center',
               color: viewMode === 'grid' ? '#fff' : '#6B6F6D',
-            }}
-            title="Vue grille"
-          >
-            <LayoutGrid size={15} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            style={{
-              background: viewMode === 'list' ? '#1E5A3A' : '#fff',
-              border: 'none',
-              padding: '8px 12px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              color: viewMode === 'list' ? '#fff' : '#6B6F6D',
               borderLeft: '1px solid #E6E4DF',
             }}
-            title="Vue liste"
+            title="Vue galerie"
           >
-            <List size={15} />
+            <LayoutGrid size={15} />
           </button>
         </div>
 
@@ -612,7 +612,7 @@ export function Biens({ store }: BiensProps) {
         </div>
       </div>
 
-      {/* ── Grid / List ───────────────────────────── */}
+      {/* ── Table / Gallery ───────────────────────── */}
       <div style={{ padding: selectedProperty ? '16px 4px 32px 32px' : '16px 32px 32px' }}>
         {viewMode === 'grid' ? (
           <div
@@ -637,18 +637,13 @@ export function Biens({ store }: BiensProps) {
             ))}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {pageItems.map((p) => (
-              <ListRow
-                key={p.id}
-                property={p}
-                isFavorite={store.getMarks(p.id).favorite}
-                onToggleFavorite={handleFav(p.id)}
-                onSelect={() => selectProperty(p.id)}
-                selected={selectedPropertyId === p.id}
-              />
-            ))}
-          </div>
+          <BiensTable
+            items={pageItems}
+            selectedId={selectedPropertyId}
+            isFavorite={(id) => store.getMarks(id).favorite}
+            onToggleFavorite={handleFav}
+            onSelect={selectProperty}
+          />
         )}
 
         {pageItems.length === 0 && (
@@ -2091,52 +2086,212 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-interface ListRowProps {
-  property: ReturnType<Store['getProperties']>[number];
-  isFavorite: boolean;
-  onToggleFavorite: (e: React.MouseEvent) => void;
-  onSelect: () => void;
-  selected?: boolean;
+// ── Biens database table ────────────────────────────────────────────────────
+
+const TABLE_COLUMNS = '32px minmax(200px, 2.2fr) 112px 96px 118px 96px 64px 104px 118px 122px 96px';
+
+function deriveType(p: Property): string {
+  const t = p.title.toLowerCase();
+  if (t.includes('appartement') || t.includes('appart') || t.includes('penthouse') || t.includes('duplex') || t.includes('studio') || t.includes('flat')) return 'Appartement';
+  if (t.includes('loft')) return 'Loft';
+  if (t.includes('villa')) return 'Villa';
+  if (t.includes('terrain')) return 'Terrain';
+  if (t.includes('immeuble')) return 'Immeuble';
+  return 'Maison';
 }
 
-function ListRow({ property: p, isFavorite, onToggleFavorite, onSelect, selected }: ListRowProps) {
-  const price = priceFormatter.format(p.price).replace(/\s?EUR/, ' €');
+function deriveSeller(p: Property): string {
+  if (p.fsbo) return 'Particulier';
+  if (p.source === 'Biddit') return 'Notaire';
+  return 'Agence';
+}
+
+function deriveDrop(p: Property): number {
+  const h = p.priceHistory ?? [];
+  if (h.length < 2) return 0;
+  return Math.max(0, h[h.length - 2].price - h[h.length - 1].price);
+}
+
+function statusMeta(p: Property): { label: string; bg: string; color: string } {
+  const status = p.status ?? (p.reserved ? 'réservé' : 'disponible');
+  switch (status) {
+    case 'réservé':
+      return { label: 'Réservé', bg: '#F3F2EF', color: '#6B6F6D' };
+    case 'archivé':
+      return { label: 'Archivé', bg: '#F3F2EF', color: '#9A9A9A' };
+    default:
+      return { label: 'Disponible', bg: '#EAF7EF', color: '#166534' };
+  }
+}
+
+interface BiensTableProps {
+  items: Property[];
+  selectedId: number | null;
+  isFavorite: (id: number) => boolean;
+  onToggleFavorite: (id: number) => (e: React.MouseEvent) => void;
+  onSelect: (id: number) => void;
+}
+
+function BiensTable({ items, selectedId, isFavorite, onToggleFavorite, onSelect }: BiensTableProps) {
   return (
     <div
       style={{
+        border: '1px solid #E6E4DF',
+        borderRadius: 10,
+        overflowX: 'auto',
         background: '#fff',
-        border: selected ? '1px solid #1E5A3A' : '1px solid #E6E4DF',
-        borderRadius: 8,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-        padding: '10px 14px',
-        cursor: 'pointer',
-        boxShadow: selected ? '0 0 0 3px rgba(30, 90, 58, 0.12)' : 'none',
-        transition: 'background 0.12s',
       }}
-      onClick={onSelect}
-      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = '#F9F8F5')}
-      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = '#fff')}
     >
-      <img
-        src={p.photos[0]}
-        alt={p.title}
-        style={{ width: 72, height: 52, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }}
-        loading="lazy"
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#1D1F1E', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {p.title}
-        </p>
-        <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6B6F6D' }}>{p.city}</p>
+      <div style={{ minWidth: 1080 }}>
+        {/* Header */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: TABLE_COLUMNS,
+            alignItems: 'center',
+            gap: 12,
+            padding: '0 16px',
+            height: 38,
+            borderBottom: '1px solid #E6E4DF',
+            background: '#F3F2EF',
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.04em',
+            color: '#6B6F6D',
+            textTransform: 'uppercase',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+          }}
+        >
+          <span />
+          <span>Bien</span>
+          <span>Commune</span>
+          <span>Type</span>
+          <span style={{ textAlign: 'right' }}>Prix actuel</span>
+          <span style={{ textAlign: 'right' }}>Baisse</span>
+          <span style={{ textAlign: 'center' }}>Score</span>
+          <span>Source</span>
+          <span>Vendeur</span>
+          <span>Statut</span>
+          <span style={{ textAlign: 'right' }}>Dernier vu</span>
+        </div>
+
+        {/* Rows */}
+        {items.map((p) => (
+          <BiensTableRow
+            key={p.id}
+            property={p}
+            selected={selectedId === p.id}
+            favorite={isFavorite(p.id)}
+            onToggleFavorite={onToggleFavorite(p.id)}
+            onSelect={() => onSelect(p.id)}
+          />
+        ))}
       </div>
-      <span style={{ fontSize: 14, fontWeight: 700, color: '#1D1F1E', whiteSpace: 'nowrap', flexShrink: 0 }}>{price}</span>
-      <span style={{ fontSize: 12, color: '#6B6F6D', flexShrink: 0 }}>{p.surface} m²</span>
-      <span style={{ fontSize: 12, color: '#9A9A9A', flexShrink: 0 }}>{p.source}</span>
-      <button onClick={onToggleFavorite} style={{ background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
-        <Star size={15} fill={isFavorite ? '#D97706' : 'none'} color={isFavorite ? '#D97706' : '#E6E4DF'} />
+    </div>
+  );
+}
+
+interface BiensTableRowProps {
+  property: Property;
+  selected: boolean;
+  favorite: boolean;
+  onToggleFavorite: (e: React.MouseEvent) => void;
+  onSelect: () => void;
+}
+
+function BiensTableRow({ property: p, selected, favorite, onToggleFavorite, onSelect }: BiensTableRowProps) {
+  const price = priceFormatter.format(p.price).replace(/\s?EUR/, ' €');
+  const drop = deriveDrop(p);
+  const status = statusMeta(p);
+  const mono = 'var(--notion-mono)';
+
+  return (
+    <div
+      role="row"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => { if (e.key === 'Enter') onSelect(); }}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: TABLE_COLUMNS,
+        alignItems: 'center',
+        gap: 12,
+        padding: '0 16px',
+        height: 56,
+        borderBottom: '1px solid #EDEBE6',
+        cursor: 'pointer',
+        background: selected ? '#F1F0ED' : '#fff',
+        boxShadow: selected ? 'inset 3px 0 0 #1E5A3A' : 'none',
+        transition: 'background 0.1s',
+        outline: 'none',
+      }}
+      onMouseEnter={(e) => { if (!selected) (e.currentTarget as HTMLElement).style.background = '#F9F8F5'; }}
+      onMouseLeave={(e) => { if (!selected) (e.currentTarget as HTMLElement).style.background = '#fff'; }}
+    >
+      {/* Favorite */}
+      <button
+        onClick={onToggleFavorite}
+        title={favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+      >
+        <Star size={15} fill={favorite ? '#D97706' : 'none'} color={favorite ? '#D97706' : '#CFCBC2'} />
       </button>
+
+      {/* Bien (thumbnail + title) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        <img
+          src={p.photos[0]}
+          alt=""
+          loading="lazy"
+          style={{ width: 44, height: 34, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: '#F3F2EF' }}
+        />
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#1D1F1E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {p.title}
+        </span>
+      </div>
+
+      {/* Commune */}
+      <span style={{ fontSize: 13, color: '#3F3F3F', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.city}</span>
+
+      {/* Type */}
+      <span style={{ fontSize: 12.5, color: '#6B6F6D' }}>{deriveType(p)}</span>
+
+      {/* Prix actuel */}
+      <span style={{ fontSize: 13, fontWeight: 600, color: '#1D1F1E', fontFamily: mono, textAlign: 'right', whiteSpace: 'nowrap' }}>{price}</span>
+
+      {/* Baisse */}
+      <span style={{ textAlign: 'right' }}>
+        {drop > 0 ? (
+          <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 6, background: '#FDEBEC', color: '#A04A2E', fontSize: 11.5, fontWeight: 600, fontFamily: mono, whiteSpace: 'nowrap' }}>
+            −{priceFormatter.format(drop).replace(/\s?EUR/, ' €')}
+          </span>
+        ) : (
+          <span style={{ color: '#CFCBC2', fontSize: 13 }}>—</span>
+        )}
+      </span>
+
+      {/* Score */}
+      <span style={{ fontSize: 13, fontWeight: 600, color: p.score >= 75 ? '#166534' : '#1D1F1E', fontFamily: mono, textAlign: 'center' }}>{p.score}</span>
+
+      {/* Source */}
+      <span style={{ fontSize: 12.5, color: '#6B6F6D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.source}</span>
+
+      {/* Vendeur */}
+      <span style={{ fontSize: 12.5, color: p.fsbo ? '#166534' : '#6B6F6D', fontWeight: p.fsbo ? 600 : 400 }}>{deriveSeller(p)}</span>
+
+      {/* Statut */}
+      <span>
+        <span style={{ display: 'inline-block', padding: '3px 9px', borderRadius: 999, background: status.bg, color: status.color, fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap' }}>
+          {status.label}
+        </span>
+      </span>
+
+      {/* Dernier vu */}
+      <span style={{ fontSize: 12, color: '#9A9A9A', fontFamily: mono, textAlign: 'right', whiteSpace: 'nowrap' }}>
+        {p.publishedDays === 0 ? "auj." : `${p.publishedDays} j`}
+      </span>
     </div>
   );
 }
