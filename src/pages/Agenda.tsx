@@ -229,7 +229,7 @@ export function Agenda({ store }: AgendaProps) {
       <div className="agenda-react-content">
         <header className="agenda-react-titlebar">
           <div>
-            <h1>Agenda</h1>
+            <h1>Tâches</h1>
             <p>Toutes les actions créées depuis les biens, contacts et deals.</p>
           </div>
           <div className="agenda-search">

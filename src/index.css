@@ -2896,6 +2896,7 @@ body,
   margin: 0;
   font-family: var(--notion-serif, 'Lora', serif);
   font-size: 32px;
+  font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0;
 }
