@@ -371,6 +371,9 @@ External inspiration already reviewed:
 ## 12. Things Not To Do
 
 - Do not bring back the "Croquis de l'Architecte" DA for new production UI.
+  - Accepted exception (decided 2026-06-17): the hand-drawn doodle header banner
+    (`*-doodle-banner-*.png`) is intentional, approved product UI. Keep it; do not
+    flag it as a Croquis violation.
 - Do not make ImmoPilot look like a generic admin template.
 - Do not turn the product into an Immoweb-style photo marketplace.
 - Do not build a full Notion block editor for V1.
