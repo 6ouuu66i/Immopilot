@@ -15,3 +15,4 @@ src/assets/_asset_backups/
 *.before-bg-fix.png
 *.previous.png
 .gstack/
+.worktrees/
