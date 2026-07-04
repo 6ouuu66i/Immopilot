@@ -22,9 +22,9 @@ export function FilterBar({
         gap: 8,
         minHeight: 48,
         padding: '8px 12px',
-        border: '1px solid #E6E4DF',
+        border: '1px solid var(--color-border-default)',
         borderRadius: 8,
-        background: '#F3F2EF',
+        background: 'var(--color-bg-muted)',
         fontFamily: 'var(--notion-sans)',
       }}
     >
@@ -33,11 +33,10 @@ export function FilterBar({
           display: 'inline-flex',
           alignItems: 'center',
           gap: 6,
-          color: '#1E5A3A',
+          color: 'var(--color-brand)',
           fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: '0.04em',
-          textTransform: 'uppercase',
+          fontWeight: 700,
+          letterSpacing: 0,
           whiteSpace: 'nowrap',
         }}
       >
@@ -58,7 +57,7 @@ export function FilterBar({
             marginLeft: 'auto',
             border: 0,
             background: 'transparent',
-            color: '#8E8B83',
+            color: 'var(--color-text-tertiary)',
             font: 'inherit',
             fontSize: 12,
             cursor: 'pointer',

@@ -18,13 +18,48 @@ interface StatusBadgeProps {
 }
 
 const TONES: Record<StatusBadgeTone, { background: string; color: string; border: string; dot: string }> = {
-  neutral: { background: '#F3F2EF', color: '#5F5B52', border: '#E6E4DF', dot: '#9A9A9A' },
-  success: { background: '#EAF7EF', color: '#166534', border: '#CFE8D8', dot: '#1E5A3A' },
-  warning: { background: '#FFF3D8', color: '#8A5D0A', border: '#F2D89B', dot: '#D97706' },
-  danger: { background: '#FDEBEC', color: '#991B1B', border: '#F5C7C9', dot: '#C8553D' },
-  info: { background: '#EAF2FB', color: '#1D4E89', border: '#CFE0F2', dot: '#2D6CDF' },
-  violet: { background: '#F1ECFA', color: '#5B3E91', border: '#DED3F1', dot: '#7C3AED' },
-  dark: { background: '#1D1F1E', color: '#FFFFFF', border: '#1D1F1E', dot: '#FFFFFF' },
+  neutral: {
+    background: 'var(--color-neutral-bg)',
+    color: 'var(--color-neutral-text)',
+    border: 'var(--color-neutral-border)',
+    dot: 'var(--color-text-tertiary)',
+  },
+  success: {
+    background: 'var(--color-success-bg)',
+    color: 'var(--color-success-text)',
+    border: 'var(--color-success-border)',
+    dot: 'var(--color-success-text)',
+  },
+  warning: {
+    background: 'var(--color-warning-bg)',
+    color: 'var(--color-warning-text)',
+    border: 'var(--color-warning-border)',
+    dot: 'var(--color-warning-text)',
+  },
+  danger: {
+    background: 'var(--color-danger-bg)',
+    color: 'var(--color-danger-text)',
+    border: 'var(--color-danger-border)',
+    dot: 'var(--color-danger-text)',
+  },
+  info: {
+    background: 'var(--color-info-bg)',
+    color: 'var(--color-info-text)',
+    border: 'var(--color-info-border)',
+    dot: 'var(--color-info-text)',
+  },
+  violet: {
+    background: 'var(--color-signal-behavior-bg)',
+    color: 'var(--color-signal-behavior-text)',
+    border: 'var(--color-signal-behavior-border)',
+    dot: 'var(--color-signal-behavior-text)',
+  },
+  dark: {
+    background: 'var(--color-text-primary)',
+    color: 'var(--color-text-inverse)',
+    border: 'var(--color-text-primary)',
+    dot: 'var(--color-text-inverse)',
+  },
 };
 
 export function StatusBadge({

@@ -52,7 +52,7 @@ export function DataToolbar({
         <div style={{ flex: 1, minWidth: 220, position: 'relative' }}>
           <Search
             size={15}
-            style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9A9A9A' }}
+            style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-tertiary)' }}
           />
           <input
             type="search"
@@ -63,11 +63,11 @@ export function DataToolbar({
               width: '100%',
               height: compact ? 36 : 38,
               padding: '0 12px 0 36px',
-              border: '1px solid #E6E4DF',
+              border: '1px solid var(--color-border-default)',
               borderRadius: 8,
               outline: 'none',
-              background: '#FFFFFF',
-              color: '#1D1F1E',
+              background: 'var(--color-bg-surface)',
+              color: 'var(--color-text-primary)',
               font: 'inherit',
               fontSize: 13,
               boxSizing: 'border-box',
@@ -79,7 +79,7 @@ export function DataToolbar({
       {filters}
 
       {views && views.length > 0 && (
-        <div style={{ display: 'flex', border: '1px solid #E6E4DF', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+        <div style={{ display: 'flex', border: '1px solid var(--color-border-default)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
           {views.map((view, index) => {
             const active = activeView === view.id;
             return (
@@ -97,9 +97,9 @@ export function DataToolbar({
                   minWidth: 42,
                   padding: '0 12px',
                   border: 'none',
-                  borderLeft: index === 0 ? 'none' : '1px solid #E6E4DF',
-                  background: active ? '#1E5A3A' : '#FFFFFF',
-                  color: active ? '#FFFFFF' : '#6B6B6B',
+                  borderLeft: index === 0 ? 'none' : '1px solid var(--color-border-default)',
+                  background: active ? 'var(--color-brand)' : 'var(--color-bg-surface)',
+                  color: active ? 'var(--color-text-inverse)' : 'var(--color-text-secondary)',
                   cursor: 'pointer',
                   font: 'inherit',
                   fontSize: 12.5,

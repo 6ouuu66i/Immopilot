@@ -22,8 +22,8 @@ export function KpiStrip({ metrics, actions, compact = false }: KpiStripProps) {
           minWidth: 0,
           display: 'flex',
           alignItems: 'stretch',
-          background: '#FFFFFF',
-          border: '1px solid #E6E4DF',
+          background: 'var(--color-bg-surface)',
+          border: '1px solid var(--color-border-default)',
           borderRadius: 10,
           overflow: 'hidden',
         }}

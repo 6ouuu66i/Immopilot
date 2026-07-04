@@ -51,7 +51,7 @@ export function ConfirmModal({
         display: 'grid',
         placeItems: 'center',
         padding: 24,
-        background: 'rgba(29,31,30,0.38)',
+        background: 'var(--color-bg-overlay)',
         backdropFilter: 'blur(4px)',
         fontFamily: 'var(--notion-sans)',
       }}
@@ -61,9 +61,9 @@ export function ConfirmModal({
         style={{
           width: 'min(420px, 100%)',
           borderRadius: 14,
-          border: '1px solid #E6E4DF',
-          background: '#FFFFFF',
-          boxShadow: '0 24px 80px rgba(29,31,30,0.22)',
+          border: '1px solid var(--color-border-default)',
+          background: 'var(--color-bg-surface)',
+          boxShadow: 'var(--shadow-lg)',
           overflow: 'hidden',
         }}
       >
@@ -76,17 +76,17 @@ export function ConfirmModal({
               borderRadius: 999,
               display: 'grid',
               placeItems: 'center',
-              background: danger ? '#FDEBEC' : '#F3F2EF',
-              color: danger ? '#991B1B' : '#1D1F1E',
+              background: danger ? 'var(--color-danger-bg)' : 'var(--color-bg-muted)',
+              color: danger ? 'var(--color-danger-text)' : 'var(--color-text-primary)',
               flexShrink: 0,
             }}
           >
             <AlertTriangle size={17} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: 0, color: '#1D1F1E', fontSize: 16, fontWeight: 750 }}>{title}</h2>
+            <h2 style={{ margin: 0, color: 'var(--color-text-primary)', fontFamily: 'var(--font-serif, var(--notion-serif))', fontSize: 20, fontWeight: 400 }}>{title}</h2>
             {description && (
-              <p style={{ margin: '6px 0 0', color: '#6B6B6B', fontSize: 13, lineHeight: 1.45 }}>
+              <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)', fontSize: 13, lineHeight: 1.45 }}>
                 {description}
               </p>
             )}
@@ -95,7 +95,7 @@ export function ConfirmModal({
             type="button"
             onClick={onCancel}
             aria-label="Fermer"
-            style={{ width: 30, height: 30, border: 0, borderRadius: 6, background: 'transparent', color: '#6B6B6B', cursor: 'pointer' }}
+            style={{ width: 30, height: 30, border: 0, borderRadius: 6, background: 'transparent', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
           >
             <X size={17} />
           </button>
@@ -115,9 +115,9 @@ export function ConfirmModal({
 
 function buttonStyle(kind: 'secondary' | 'primary' | 'danger'): React.CSSProperties {
   const colors = {
-    secondary: { background: '#FFFFFF', color: '#1D1F1E', border: '#E6E4DF' },
-    primary: { background: '#1E5A3A', color: '#FFFFFF', border: '#1E5A3A' },
-    danger: { background: '#991B1B', color: '#FFFFFF', border: '#991B1B' },
+    secondary: { background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)', border: 'var(--color-border-default)' },
+    primary: { background: 'var(--color-brand)', color: 'var(--color-text-inverse)', border: 'var(--color-brand)' },
+    danger: { background: 'var(--color-danger)', color: 'var(--color-text-inverse)', border: 'var(--color-danger)' },
   }[kind];
 
   return {

@@ -1,0 +1,165 @@
+/* =============================================================
+   ImmoPilot — Design tokens (source unique de vérité)
+   =============================================================
+   Toute valeur visuelle (couleur, taille, ombre, rayon, durée)
+   DOIT référencer un token ci-dessous. Aucun hex, aucun rgba,
+   aucune ombre magique dans les composants.
+   ------------------------------------------------------------- */
+
+:root {
+  /* --- Palette de base --------------------------------------- */
+  --ip-ink-900:    #101613;                    /* texte principal */
+  --ip-ink-700:    rgba(16, 22, 19, 0.62);     /* muted */
+  --ip-ink-500:    rgba(16, 22, 19, 0.42);     /* faint / labels */
+  --ip-ink-300:    rgba(16, 22, 19, 0.24);     /* border strong */
+  --ip-ink-200:    rgba(16, 22, 19, 0.14);     /* border */
+  --ip-ink-100:    rgba(16, 22, 19, 0.08);     /* hairline */
+  --ip-ink-050:    rgba(16, 22, 19, 0.04);     /* shadow ambient */
+
+  --ip-paper:      #FFFFFF;                    /* surface */
+  --ip-paper-alt:  #FAFAF9;                    /* app background */
+  --ip-paper-soft: #F7F8F6;                    /* hover / muted surface */
+
+  --ip-green-700:  #16442C;                    /* primary hover */
+  --ip-green-600:  #1E5A3A;                    /* primary */
+  --ip-green-050:  #F1F6F3;                    /* primary tinted bg */
+  --ip-red-600:    #B3402E;                    /* danger */
+  --ip-ocre-600:   #8A6D1F;                    /* warning */
+
+  /* --- Alias sémantiques (utilisés dans les composants) ------ */
+  --app-bg:         var(--ip-paper-alt);
+  --surface:        var(--ip-paper);
+  --surface-soft:   var(--ip-paper-soft);
+  --text:           var(--ip-ink-900);
+  --muted:          var(--ip-ink-700);
+  --faint:          var(--ip-ink-500);
+  --border:         var(--ip-ink-200);
+  --border-strong:  var(--ip-ink-300);
+  --hairline:       var(--ip-ink-100);
+  --hover:          var(--ip-paper-soft);
+  --green:          var(--ip-green-600);
+  --green-hover:    var(--ip-green-700);
+  --green-tint:     var(--ip-green-050);
+  --red:            var(--ip-red-600);
+  --ocre:           var(--ip-ocre-600);
+
+  /* --- Tons sémantiques (states & badges) -------------------- */
+  --tone-good:      var(--ip-green-600);
+  --tone-warn:      var(--ip-ocre-600);
+  --tone-risk:      var(--ip-red-600);
+  --tone-neutral:   var(--ip-ink-700);
+
+  /* --- Typographie ------------------------------------------- */
+  --font-title:  Archivo, Inter, system-ui, sans-serif;
+  --font-sans:   Inter, system-ui, sans-serif;
+  --font-mono:   'JetBrains Mono', 'IBM Plex Mono', Consolas, monospace;
+
+  /* aliases hérités */
+  --title:  var(--font-title);
+  --sans:   var(--font-sans);
+  --mono:   var(--font-mono);
+
+  /* Échelle typographique */
+  --fs-display: 28px;   /* KPI value, page hero */
+  --fs-h1:      22px;   /* page title */
+  --fs-h2:      18px;   /* section title */
+  --fs-h3:      15px;   /* card title */
+  --fs-body:    13px;   /* body */
+  --fs-meta:    12px;   /* meta secondaire */
+  --fs-micro:   11px;   /* pills, badges, kbd */
+  --fs-caps:    10px;   /* labels ALL CAPS */
+
+  --lh-tight:   1.15;
+  --lh-body:    1.5;
+
+  --tracking-caps: 0.08em;
+
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-semi:    600;
+  --fw-bold:    700;
+
+  /* --- Espacement (base 4px) --------------------------------- */
+  --space-0:  0;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  28px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* --- Border radius ----------------------------------------- */
+  --radius-xs:  2px;
+  --radius-sm:  3px;
+  --radius-md:  4px;    /* défaut cartes / boutons */
+  --radius-lg:  6px;
+  --radius-pill: 999px;
+
+  /* --- Bordures ---------------------------------------------- */
+  --stroke-hair:   1px solid var(--hairline);
+  --stroke-thin:   1px solid var(--border);
+  --stroke-strong: 1px solid var(--border-strong);
+  --stroke-brand:  1px solid var(--green);
+
+  /* --- Ombres sémantiques ------------------------------------ */
+  --shadow-flat:  0 1px 0    var(--ip-ink-050);
+  --shadow-inset: inset 0 -1px 0 var(--border);
+  --shadow-card:  0 1px 2px  var(--ip-ink-050);
+  --shadow-lift:  0 4px 12px -6px rgba(16, 22, 19, 0.10),
+                  0 1px 2px  -1px rgba(16, 22, 19, 0.06);
+  --shadow-hover: 0 8px 22px -14px rgba(16, 22, 19, 0.35),
+                  0 2px 4px  -2px  rgba(16, 22, 19, 0.06);
+  --shadow-float: 0 18px 40px -18px rgba(16, 22, 19, 0.22),
+                  0 4px 10px  -4px  rgba(16, 22, 19, 0.08);
+  --shadow-focus: 0 0 0 3px rgba(30, 90, 58, 0.22);
+
+  /* --- Transitions & motion ---------------------------------- */
+  --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in:    cubic-bezier(0.4, 0, 1, 1);
+  --ease-std:   cubic-bezier(0.4, 0, 0.2, 1);
+
+  --dur-fast:   120ms;
+  --dur-base:   200ms;
+  --dur-slow:   380ms;
+  --dur-ring:   900ms;
+
+  --transition-colors: color var(--dur-fast) var(--ease-std),
+                       background-color var(--dur-fast) var(--ease-std),
+                       border-color var(--dur-fast) var(--ease-std);
+  --transition-lift:   transform var(--dur-base) var(--ease-out),
+                       box-shadow var(--dur-base) var(--ease-out);
+
+  /* --- États (opacité / hover) ------------------------------- */
+  --state-hover-bg:     var(--surface-soft);
+  --state-selected-bg:  var(--green-tint);
+  --state-selected-border: var(--green);
+  --state-disabled-opacity: 0.5;
+
+  /* --- Z-index ----------------------------------------------- */
+  --z-base:    1;
+  --z-sticky:  10;
+  --z-panel:   20;
+  --z-topbar:  30;
+  --z-modal:   40;
+  --z-toast:   50;
+
+  /* --- Layout ------------------------------------------------- */
+  --sidebar-w:          232px;
+  --sidebar-w-collapse: 56px;
+  --topbar-h:           52px;
+  --panel-w:            420px;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+    --dur-slow: 1ms;
+    --dur-ring: 1ms;
+  }
+}

@@ -1,144 +1,687 @@
-<div class="agenda-page">
+<div class="settings-page">
   <style>
-    .settings-container {
-      margin-right: 22px;
-      display: grid;
-      grid-template-columns: 1.5fr 1fr;
+    .settings-page {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 28px 32px 36px;
+      background: #F7F6F3;
+      color: #1F1F1F;
+      font-family: var(--notion-sans, Inter, system-ui, sans-serif);
+    }
+
+    .settings-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
       gap: 24px;
+      margin-bottom: 22px;
     }
-    .settings-card {
-      background: #FFFDF7;
-      border: 1.5px solid var(--stone);
-      border-radius: 4px;
-      padding: 20px;
-      box-shadow: 2.2px 2.5px 0px rgba(107, 111, 109, 0.15);
-      margin-bottom: 24px;
+
+    .settings-title h1 {
+      margin: 0;
+      color: #1F1F1F;
+      font-family: var(--notion-serif, Lora, Georgia, serif);
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: 0;
     }
-    .form-group-retro {
+
+    .settings-subtitle {
+      margin-top: 7px;
+      color: #6B6B6B;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .settings-header-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 11px;
+      border: 1px solid #E6E4DF;
+      border-radius: 9px;
+      background: #FFFFFF;
+      color: #5F5B52;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .settings-header-chip svg,
+    .settings-card-icon svg,
+    .settings-row-icon svg {
+      width: 15px;
+      height: 15px;
+      stroke-width: 1.9;
+    }
+
+    .settings-container {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(340px, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .settings-column {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      margin-bottom: 16px;
+      gap: 18px;
+      min-width: 0;
     }
-    .form-group-retro label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      color: var(--stone);
+
+    .settings-card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #E6E4DF;
+      border-radius: 12px;
+      background: #FFFFFF;
+      box-shadow: 0 1px 2px rgba(31, 31, 31, 0.03);
     }
-    .form-control-retro {
-      padding: 8px 12px;
-      font-size: 13.5px;
-      border: 1.5px solid var(--stone);
-      border-radius: 4px;
-      background: #FFFDF7;
-      outline: none;
-      transition: all 120ms;
+
+    .settings-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      background: #1E5A3A;
+      opacity: 0;
+      transition: opacity 140ms ease;
     }
-    .form-control-retro:focus {
-      border-color: var(--forest);
-      box-shadow: 1.5px 1.5px 0px var(--forest);
+
+    .settings-card:hover::before {
+      opacity: 1;
     }
+
+    .settings-card-head {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 11px;
+      align-items: start;
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid #F0EEE9;
+    }
+
+    .settings-card-icon {
+      width: 36px;
+      height: 36px;
+      border: 1px solid #E6E4DF;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: #F7F6F3;
+      color: #1E5A3A;
+    }
+
+    .settings-card-title {
+      margin: 0;
+      color: #1F1F1F;
+      font-size: 15px;
+      font-weight: 750;
+      line-height: 1.2;
+    }
+
+    .settings-card-copy {
+      margin: 5px 0 0;
+      color: #6B6B6B;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+
+    .settings-card-body {
+      padding: 16px 18px 18px;
+    }
+
     .agent-switcher {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 9px;
     }
+
     .agent-option {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border: 1.5px solid var(--stone);
-      border-radius: 4px;
-      padding: 10px 14px;
-      background: #FFFDF7;
+      gap: 14px;
+      min-height: 58px;
+      border: 1px solid #E6E4DF;
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #FFFFFF;
       cursor: pointer;
-      transition: all 150ms;
+      transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
     }
+
     .agent-option:hover {
-      background: var(--forest-tint);
+      border-color: #D8D3C8;
+      background: #FBFAF7;
+      transform: translateY(-1px);
     }
+
     .agent-option.selected {
-      border-color: var(--forest);
-      background: var(--forest-tint);
-      box-shadow: 2px 2px 0px var(--forest);
+      border-color: #AFC8B8;
+      background: #F1F7F3;
     }
-    .sync-btn {
+
+    .agent-person {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .agent-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      background-size: cover;
+      background-position: center;
+      box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 3px #E6E4DF;
+    }
+
+    .agent-name {
+      display: block;
+      overflow: hidden;
+      color: #1F1F1F;
+      font-size: 13px;
+      font-weight: 720;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .agent-role {
+      margin-top: 3px;
+      color: #8A867E;
+      font-family: var(--notion-mono, "JetBrains Mono", monospace);
+      font-size: 10px;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .agent-state {
+      flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      margin-top: 8px;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      color: #77736B;
+      background: #F3F2EF;
+      font-family: var(--notion-mono, "JetBrains Mono", monospace);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .agent-option.selected .agent-state {
+      color: #1E5A3A;
+      background: #EAF7EF;
+    }
+
+    .settings-form {
+      display: grid;
+      gap: 14px;
+    }
+
+    .form-group-retro {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .form-group-retro label {
+      color: #6B6B6B;
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.2;
+    }
+
+    .form-control-retro {
+      width: 100%;
+      height: 38px;
+      border: 1px solid #E6E4DF;
+      border-radius: 9px;
+      background: #FFFFFF;
+      color: #1F1F1F;
+      outline: none;
+      padding: 0 11px;
+      font: inherit;
+      font-size: 13px;
+      transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+    }
+
+    .form-control-retro:focus {
+      border-color: #AFC8B8;
+      background: #FBFAF7;
+      box-shadow: 0 0 0 3px rgba(30, 90, 58, 0.08);
+    }
+
+    .settings-primary-btn,
+    .settings-danger-btn {
+      min-height: 36px;
+      border-radius: 9px;
+      border: 1px solid transparent;
+      padding: 0 13px;
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+    }
+
+    .settings-primary-btn {
+      color: #FFFFFF;
+      background: #1E5A3A;
+    }
+
+    .settings-primary-btn:hover {
+      background: #174A2F;
+      transform: translateY(-1px);
+    }
+
+    .settings-sync-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .settings-sync-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 54px;
+      border: 1px solid #E6E4DF;
+      border-radius: 10px;
+      background: #FFFFFF;
+      padding: 10px 11px;
+    }
+
+    .settings-row-main {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .settings-row-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      background: #FFFFFF;
+      color: #1F1F1F;
+      border: 1px solid #E6E4DF;
+      flex: 0 0 auto;
+    }
+
+    .settings-row-icon svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
+
+    .settings-row-icon.is-google {
+      border-color: #E7EAF0;
+    }
+
+    .settings-row-icon.is-outlook {
+      border-color: #D7E8F8;
+      background: #F7FBFF;
+    }
+
+    .settings-row-icon.is-apple {
+      border-color: #E0E0E0;
+      background: linear-gradient(180deg, #FFFFFF 0%, #F4F4F4 100%);
+    }
+
+    .settings-row-title {
+      display: block;
+      color: #1F1F1F;
+      font-size: 13px;
+      font-weight: 720;
+      line-height: 1.2;
+    }
+
+    .settings-row-meta {
+      display: block;
+      margin-top: 3px;
+      color: #8A867E;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .settings-status {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      padding: 0 9px;
+      font-size: 11px;
+      font-weight: 750;
+      cursor: pointer;
+      transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+    }
+
+    .settings-status.is-disconnected {
+      color: #A33B32;
+      border-color: #F2C5C0;
+      background: #FFF1EF;
+    }
+
+    .settings-status.is-connected {
+      color: #1E5A3A;
+      border-color: #BFD8C7;
+      background: #EAF7EF;
+    }
+
+    .settings-note {
+      margin: 12px 0 0;
+      color: #77736B;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .settings-source-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .settings-source-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 58px;
+      border: 1px solid #E6E4DF;
+      border-radius: 10px;
+      background: #FFFFFF;
+      padding: 10px 11px;
+    }
+
+    .settings-source-main {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .settings-source-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      box-shadow: 0 0 0 3px #F3F2EF;
+    }
+
+    .settings-source-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 24px;
+      border: 1px solid #E6E4DF;
+      border-radius: 999px;
+      background: #F7F6F3;
+      color: #1F1F1F;
+      font-family: var(--notion-mono, "JetBrains Mono", monospace);
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .settings-source-status {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      min-height: 21px;
+      margin-top: 5px;
+      border-radius: 999px;
+      padding: 0 7px;
+      font-size: 10.5px;
+      font-weight: 750;
+    }
+
+    .settings-source-status.is-active {
+      color: #1E5A3A;
+      background: #EAF7EF;
+    }
+
+    .settings-source-status.is-watch {
+      color: #946B16;
+      background: #FFF3D8;
+    }
+
+    .settings-source-status.is-planned {
+      color: #6B6B6B;
+      background: #F3F2EF;
+    }
+
+    .settings-danger-zone {
+      border: 1px solid #F2D6D2;
+      border-radius: 10px;
+      background: #FFF8F7;
+      padding: 12px;
+    }
+
+    .settings-danger-zone p {
+      margin: 0 0 12px;
+      color: #6B6B6B;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .settings-danger-btn {
+      width: 100%;
+      color: #9F3128;
+      border-color: #E9B8B1;
+      background: #FFFFFF;
+    }
+
+    .settings-danger-btn:hover {
+      color: #7D211A;
+      border-color: #D9938A;
+      background: #FFF1EF;
     }
   </style>
 
-  <!-- Title section -->
-  <div class="agenda-header" style="margin-bottom:20px;">
-    <div class="agenda-header-top">
-      <div class="agenda-title">
-        <h1>Paramètres d'ImmoPilot</h1>
-        <div class="agenda-subtitle">Configuration des préférences d'agence, du profil simulé actif, et intégrations</div>
-      </div>
+  <div class="settings-header">
+    <div class="settings-title">
+      <h1>Paramètres d'ImmoPilot</h1>
+      <div class="settings-subtitle">Configuration des préférences d'agence, du profil simulé actif, et intégrations</div>
+    </div>
+    <div class="settings-header-chip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path d="M12 3l7 4v5c0 4.5-2.8 7.7-7 9-4.2-1.3-7-4.5-7-9V7l7-4z" />
+        <path d="M9 12l2 2 4-5" />
+      </svg>
+      Workspace local
     </div>
   </div>
 
   <div class="settings-container">
-    <!-- LEFT: System preferences -->
-    <div>
+    <div class="settings-column">
       <div class="settings-card">
-        <h3 style="font-family:'Lora',serif; font-size:16px; font-weight:700; color:var(--ink); margin-bottom:14px;">🎛️ Sélecteur de profil actif (Simulateur de rôles)</h3>
-        <p style="font-size:12.5px; color:var(--stone); margin-bottom:16px;">Sélectionnez l'utilisateur simulé pour naviguer entre les niveaux d'autorisation CRM d'ImmoPilot :</p>
-        
-        <div class="agent-switcher" id="settings-agent-switcher-list">
-          <!-- Populated by JS -->
+        <div class="settings-card-head">
+          <div class="settings-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="settings-card-title">Sélecteur de profil actif</h3>
+            <p class="settings-card-copy">Sélectionnez l'utilisateur simulé pour naviguer entre les niveaux d'autorisation CRM d'ImmoPilot.</p>
+          </div>
+        </div>
+        <div class="settings-card-body">
+          <div class="agent-switcher" id="settings-agent-switcher-list">
+          </div>
         </div>
       </div>
 
       <div class="settings-card">
-        <h3 style="font-family:'Lora',serif; font-size:16px; font-weight:700; color:var(--ink); margin-bottom:14px;">🏢 Configuration de l'Agence</h3>
-        <div class="form-group-retro">
-          <label>Nom de la structure Real-Estate</label>
-          <input type="text" class="form-control-retro" id="settings-agency-name" value="Agence Plus Immobilier SRL">
+        <div class="settings-card-head">
+          <div class="settings-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M3 21h18" />
+              <path d="M5 21V7l8-4v18" />
+              <path d="M19 21V11l-6-4" />
+              <path d="M9 9h.01" />
+              <path d="M9 13h.01" />
+              <path d="M9 17h.01" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="settings-card-title">Configuration de l'Agence</h3>
+            <p class="settings-card-copy">Gardez les paramètres commerciaux cohérents pour les simulations et le suivi CRM.</p>
+          </div>
         </div>
-        <div class="form-group-retro">
-          <label>Taux de Commission standard (%)</label>
-          <input type="number" class="form-control-retro" id="settings-agency-fee" value="3.0" step="0.5">
+        <div class="settings-card-body">
+          <div class="settings-form">
+            <div class="form-group-retro">
+              <label>Nom de la structure Real-Estate</label>
+              <input type="text" class="form-control-retro" id="settings-agency-name" value="Agence Plus Immobilier SRL">
+            </div>
+            <div class="form-group-retro">
+              <label>Taux de Commission standard (%)</label>
+              <input type="number" class="form-control-retro" id="settings-agency-fee" value="3.0" step="0.5">
+            </div>
+            <button class="settings-primary-btn" onclick="alert(&quot;Configuration d'agence enregistrée !&quot;)">Sauvegarder les préférences</button>
+          </div>
         </div>
-        <button class="tab-btn active" onclick="alert('Configuration d\'agence enregistrée !')" style="height:34px;">Sauvegarder les préférences</button>
       </div>
     </div>
 
-    <!-- RIGHT: Integrations and Sync status -->
-    <div>
+    <div class="settings-column">
       <div class="settings-card">
-        <h3 style="font-family:'Lora',serif; font-size:16px; font-weight:700; color:var(--ink); margin-bottom:12px;">📅 Synchronisation Calendrier externe</h3>
-        <p style="font-size:12.5px; color:var(--stone); margin-bottom:16px;">Permettez la synchronisation instantanée bidirectionnelle de votre Agenda ImmoPilot avec vos outils d'équipe personnels :</p>
-        
-        <div style="display:flex; flex-direction:column; gap:12px;">
-          <div style="padding:10px; border:1px solid var(--sand-deep); border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--forest)"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-              <span style="font-size:12.5px; font-weight:600;">Google Calendar</span>
-            </div>
-            <span class="status-badge" id="gcal-status" style="background:#FBDADA; color:var(--rose); border:1px solid var(--rose); cursor:pointer;" onclick="toggleSync('gcal')">Déconnecté</span>
+        <div class="settings-card-head">
+          <div class="settings-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M10 13a5 5 0 0 0 7.1 0l2.8-2.8a5 5 0 0 0-7.1-7.1L11 4.9" />
+              <path d="M14 11a5 5 0 0 0-7.1 0L4.1 13.8a5 5 0 0 0 7.1 7.1L13 19.1" />
+            </svg>
           </div>
-
-          <div style="padding:10px; border:1px solid var(--sand-deep); border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--forest)"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              <span style="font-size:12.5px; font-weight:600;">Microsoft Outlook</span>
-            </div>
-            <span class="status-badge" id="outlook-status" style="background:#FBDADA; color:var(--rose); border:1px solid var(--rose); cursor:pointer;" onclick="toggleSync('outlook')">Déconnecté</span>
+          <div>
+            <h3 class="settings-card-title">Sources de prospection</h3>
+            <p class="settings-card-copy">Suivez les portails surveilles par ImmoPilot pour alimenter les biens, signaux et opportunites.</p>
           </div>
         </div>
-        <p style="font-size:11px; color:var(--stone); margin-top:12px; line-height:1.3;">Note : En environnement de développement local, les appels OAuth seront simulés par des jetons applicatifs sécurisés temporaires.</p>
+        <div class="settings-card-body">
+          <div class="settings-source-list" id="settings-source-list">
+          </div>
+          <p class="settings-note">Les sources sont simulees dans ce prototype. Aucun connecteur reel ni scraping live n'est active depuis ce repo.</p>
+        </div>
       </div>
 
       <div class="settings-card">
-        <h3 style="font-family:'Lora',serif; font-size:16px; font-weight:700; color:var(--ink); margin-bottom:10px;">🧪 État de Persistance (MVP)</h3>
-        <p style="font-size:12.5px; color:var(--stone); margin-bottom:12px;">Toutes les actions CRM et modifications d'états de ce visualiseur interactif sont stockées au sein de la session locale sécurisée de votre navigateur Web.</p>
-        
-        <button class="action-btn-sm" style="width:100%; border-color:var(--rose); color:var(--rose); background:#FFF8F7;" onclick="clearStateAndHardReset()">Réinitialiser complètement la Base de données</button>
+        <div class="settings-card-head">
+          <div class="settings-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4" />
+              <path d="M8 2v4" />
+              <path d="M3 10h18" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="settings-card-title">Synchronisation Calendrier externe</h3>
+            <p class="settings-card-copy">Permettez la synchronisation bidirectionnelle de votre Agenda ImmoPilot avec vos outils d'équipe.</p>
+          </div>
+        </div>
+        <div class="settings-card-body">
+          <div class="settings-sync-list">
+            <div class="settings-sync-row">
+              <div class="settings-row-main">
+                <div class="settings-row-icon is-google">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="17" rx="3" fill="#FFFFFF" />
+                    <path d="M6 4h12a3 3 0 0 1 3 3v2H3V7a3 3 0 0 1 3-3z" fill="#4285F4" />
+                    <path d="M3 9h18v3H3z" fill="#34A853" />
+                    <path d="M3 12h4v9H6a3 3 0 0 1-3-3v-6z" fill="#FBBC04" />
+                    <path d="M17 12h4v6a3 3 0 0 1-3 3h-1v-9z" fill="#EA4335" />
+                    <path d="M8 14.2h2.4v5H9v-3.5H8v-1.5zm4.2 0h3.2v1.2h-1.8v.9h.4c1 0 1.8.5 1.8 1.5 0 1.1-.8 1.6-2 1.6-.8 0-1.5-.2-1.9-.5l.4-1.1c.3.2.8.4 1.3.4.4 0 .8-.1.8-.5s-.3-.5-.9-.5h-1.1v-3z" fill="#1F1F1F" />
+                  </svg>
+                </div>
+                <div>
+                  <span class="settings-row-title">Google Calendar</span>
+                  <span class="settings-row-meta">Rendez-vous et relances</span>
+                </div>
+              </div>
+              <span class="settings-status is-disconnected" id="gcal-status" onclick="toggleSync('gcal')">Déconnecté</span>
+            </div>
+
+            <div class="settings-sync-row">
+              <div class="settings-row-main">
+                <div class="settings-row-icon is-outlook">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M10 5.5h8.2c.9 0 1.6.7 1.6 1.6v9.8c0 .9-.7 1.6-1.6 1.6H10V5.5z" fill="#0A63C7" />
+                    <path d="M12.3 7.6h6v8.8h-6z" fill="#FFFFFF" opacity=".96" />
+                    <path d="M12.3 7.6l3 3 3-3" fill="#D7E8F8" />
+                    <path d="M12.3 16.4l3-3 3 3" fill="#B9D8F7" />
+                    <path d="M4.2 7.2 12 5.8v12.4L4.2 16.8a1 1 0 0 1-.8-1V8.2a1 1 0 0 1 .8-1z" fill="#0078D4" />
+                    <path d="M7.7 10c1.5 0 2.5 1.1 2.5 2.7s-1 2.8-2.5 2.8-2.5-1.1-2.5-2.7 1-2.8 2.5-2.8zm0 1.2c-.7 0-1.1.6-1.1 1.5s.4 1.6 1.1 1.6 1.1-.6 1.1-1.5-.4-1.6-1.1-1.6z" fill="#FFFFFF" />
+                  </svg>
+                </div>
+                <div>
+                  <span class="settings-row-title">Microsoft Outlook</span>
+                  <span class="settings-row-meta">Agenda d'équipe</span>
+                </div>
+              </div>
+              <span class="settings-status is-disconnected" id="outlook-status" onclick="toggleSync('outlook')">Déconnecté</span>
+            </div>
+
+            <div class="settings-sync-row">
+              <div class="settings-row-main">
+                <div class="settings-row-icon is-apple">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M16.9 12.8c0-2 1.6-3 1.7-3.1-1-.1-2-.6-2.6-1.4-.7-.8-1.4-1.3-2.3-1.3-1 0-1.9.6-2.4.6-.6 0-1.5-.6-2.4-.6-1.2 0-2.4.7-3 1.8-1.3 2.3-.3 5.7.9 7.5.6.9 1.4 1.9 2.4 1.9.9 0 1.3-.6 2.4-.6s1.4.6 2.4.6 1.7-.9 2.3-1.8c.7-1 1-2 1-2.1-.1 0-2-.8-2-3z" fill="#1F1F1F" />
+                    <path d="M14.7 5.5c.5-.6.8-1.4.7-2.2-.7 0-1.5.5-2 1-.4.5-.8 1.3-.7 2.1.8.1 1.5-.4 2-1z" fill="#1F1F1F" />
+                  </svg>
+                </div>
+                <div>
+                  <span class="settings-row-title">Apple Calendar</span>
+                  <span class="settings-row-meta">iCloud et rappels agence</span>
+                </div>
+              </div>
+              <span class="settings-status is-disconnected" id="apple-status" onclick="toggleSync('apple')">Déconnecté</span>
+            </div>
+          </div>
+          <p class="settings-note">Note : en environnement local, les appels OAuth sont simulés par des jetons applicatifs sécurisés temporaires.</p>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-card-head">
+          <div class="settings-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <ellipse cx="12" cy="5" rx="8" ry="3" />
+              <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+              <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="settings-card-title">État de Persistance (MVP)</h3>
+            <p class="settings-card-copy">Les actions CRM et modifications d'états sont stockées dans la session locale sécurisée de votre navigateur.</p>
+          </div>
+        </div>
+        <div class="settings-card-body">
+          <div class="settings-danger-zone">
+            <p>Cette action réinitialise les données locales de démonstration et recharge l'application.</p>
+            <button class="settings-danger-btn" onclick="clearStateAndHardReset()">Réinitialiser complètement la Base de données</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -148,6 +691,43 @@
 (function() {
   const store = window.ImmoPilotStore;
   if (!store) return;
+
+  const sources = [
+    { name: 'Immoweb', meta: 'Annonces Belgique, particulier et agence', color: '#E66B1C', status: 'Actif', tone: 'is-active' },
+    { name: 'Zimmo', meta: 'Portail residentiel, signaux prix', color: '#1E5A3A', status: 'Actif', tone: 'is-active' },
+    { name: 'Immovlan', meta: 'Listings francophones et reprise annonces', color: '#7C3AED', status: 'Actif', tone: 'is-active' },
+    { name: 'Biddit', meta: 'Ventes publiques et notaires', color: '#CE3333', status: 'Surveillance', tone: 'is-watch' },
+    { name: '2ememain', meta: 'Particuliers et opportunites FSBO', color: '#2563EB', status: 'Planifie', tone: 'is-planned' },
+    { name: 'Immoffice', meta: 'Professionnels et biens tertiaires', color: '#6B6B6B', status: 'Planifie', tone: 'is-planned' }
+  ];
+
+  function renderSources() {
+    const listContainer = document.getElementById('settings-source-list');
+    if (!listContainer) return;
+
+    const properties = store.getProperties ? store.getProperties() : [];
+    const sourceCounts = properties.reduce((acc, property) => {
+      acc[property.source] = (acc[property.source] || 0) + 1;
+      return acc;
+    }, {});
+
+    listContainer.innerHTML = sources.map(source => {
+      const count = sourceCounts[source.name] || 0;
+      return `
+        <div class="settings-source-row">
+          <div class="settings-source-main">
+            <span class="settings-source-dot" style="background:${source.color};"></span>
+            <div>
+              <span class="settings-row-title">${source.name}</span>
+              <span class="settings-row-meta">${source.meta}</span>
+              <span class="settings-source-status ${source.tone}">${source.status}</span>
+            </div>
+          </div>
+          <span class="settings-source-count" title="Biens mockes detectes">${count}</span>
+        </div>
+      `;
+    }).join('');
+  }
 
   function renderSwitcher() {
     const listContainer = document.getElementById('settings-agent-switcher-list');
@@ -160,67 +740,53 @@
       const isSelected = a.id === current.id;
       return `
         <div class="agent-option ${isSelected ? 'selected' : ''}" onclick="selectSystemAgent('${a.id}')">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <div class="agent-avatar" style="background-image:url(${a.avatar}); width:28px; height:28px;"></div>
+          <div class="agent-person">
+            <div class="agent-avatar" style="background-image:url(${a.avatar});"></div>
             <div>
-              <strong style="font-size:13px; color:var(--ink);">${a.name}</strong>
-              <div style="font-size:10.5px; color:var(--stone); text-transform:uppercase; font-family:monospace;">${a.role === 'admin' ? 'Administrateur' : 'Conseiller Immobilier'}</div>
+              <strong class="agent-name">${a.name}</strong>
+              <div class="agent-role">${a.role === 'admin' ? 'Administrateur' : 'Conseiller immobilier'}</div>
             </div>
           </div>
-          <div>
-            ${isSelected 
-              ? `<span style="font-size:11px; font-weight:700; color:var(--forest); font-family:monospace;">ACTIF ✔</span>`
-              : `<span style="font-size:11px; color:var(--stone-light); font-family:monospace;">Sélectionner</span>`
-            }
-          </div>
+          <span class="agent-state">${isSelected ? 'ACTIF' : 'Sélectionner'}</span>
         </div>
       `;
     }).join('');
   }
 
-  // Set system agent
   window.selectSystemAgent = function(agentId) {
     store.setCurrentAgent(agentId);
     renderSwitcher();
-    
-    // Auto sync layout profiles
+
     if (window.syncSidebarProfile) {
       window.syncSidebarProfile();
     }
-    
-    // Emit notification toast
+
     const activeObj = store.getCurrentAgent();
     const t = document.createElement('div');
-    t.style.cssText = "position:fixed; bottom:20px; right:20px; background:var(--forest); color:#FFFDF7; padding:12px 20px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12.5px; box-shadow:3px 3px 0 var(--ink); z-index:9999;";
-    t.textContent = `CRM : Profil actif commuté vers [${activeObj.name.toUpperCase()}].`;
+    t.style.cssText = "position:fixed; bottom:20px; right:20px; background:#1E5A3A; color:#FFFFFF; padding:12px 16px; border-radius:10px; font-family:var(--notion-sans, Inter, sans-serif); font-size:12.5px; font-weight:700; box-shadow:0 10px 28px rgba(31,31,31,0.16); z-index:9999;";
+    t.textContent = `Profil actif : ${activeObj.name}`;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 2500);
   };
 
-  // Toggle dynamic calendar integrations
   window.toggleSync = function(service) {
     const el = document.getElementById(`${service}-status`);
     if (!el) return;
 
-    const isConnected = el.textContent === 'Connecté';
-    if (isConnected) {
-      el.textContent = 'Déconnecté';
-      el.style.cssText = "background:#FBDADA; color:var(--rose); border:1px solid var(--rose); cursor:pointer;";
-    } else {
-      el.textContent = 'Connecté';
-      el.style.cssText = "background:#EAF5ED; color:var(--forest); border:1px solid var(--forest); cursor:pointer;";
-    }
+    const isConnected = el.classList.contains('is-connected');
+    el.classList.toggle('is-connected', !isConnected);
+    el.classList.toggle('is-disconnected', isConnected);
+    el.textContent = isConnected ? 'Déconnecté' : 'Connecté';
   };
 
-  // Database Reset
   window.clearStateAndHardReset = function() {
-    if (confirm('Voulez-vous vraiment écraser l\'état applicatif local ? Toutes vos modifications et nouveaux deals simulés seront définitivement perdus.')) {
+    if (confirm("Voulez-vous vraiment écraser l'état applicatif local ? Toutes vos modifications et nouveaux deals simulés seront définitivement perdus.")) {
       localStorage.clear();
       window.location.reload();
     }
   };
 
-  // Initial render
+  renderSources();
   renderSwitcher();
 })();
 </script>

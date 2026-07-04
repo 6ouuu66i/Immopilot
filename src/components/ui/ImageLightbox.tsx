@@ -60,7 +60,7 @@ export function ImageLightbox({
         display: 'grid',
         placeItems: 'center',
         padding: 32,
-        background: 'rgba(17,18,17,0.82)',
+        background: 'color-mix(in srgb, var(--color-text-primary) 82%, transparent)',
         fontFamily: 'var(--notion-sans)',
       }}
     >
@@ -99,12 +99,12 @@ export function ImageLightbox({
             maxHeight: '82vh',
             objectFit: 'contain',
             borderRadius: 10,
-            background: '#111211',
-            boxShadow: '0 24px 80px rgba(0,0,0,0.36)',
+            background: 'var(--color-text-primary)',
+            boxShadow: '0 24px 80px color-mix(in srgb, var(--color-text-primary) 36%, transparent)',
           }}
         />
         {safeImages.length > 1 && (
-          <figcaption style={{ color: '#FFFFFF', fontSize: 12.5, fontWeight: 650, opacity: 0.86 }}>
+          <figcaption style={{ color: 'var(--color-text-inverse)', fontSize: 12.5, fontWeight: 650, opacity: 0.86 }}>
             {currentIndex + 1} / {safeImages.length} · {title}
           </figcaption>
         )}
@@ -120,9 +120,9 @@ const closeStyle: React.CSSProperties = {
   width: 38,
   height: 38,
   borderRadius: 999,
-  border: '1px solid rgba(255,255,255,0.32)',
-  background: 'rgba(255,255,255,0.12)',
-  color: '#FFFFFF',
+  border: '1px solid color-mix(in srgb, var(--color-text-inverse) 32%, transparent)',
+  background: 'color-mix(in srgb, var(--color-text-inverse) 12%, transparent)',
+  color: 'var(--color-text-inverse)',
   display: 'grid',
   placeItems: 'center',
   cursor: 'pointer',
@@ -138,9 +138,9 @@ function navStyle(side: 'left' | 'right'): React.CSSProperties {
     width: 46,
     height: 46,
     borderRadius: 999,
-    border: '1px solid rgba(255,255,255,0.32)',
-    background: 'rgba(255,255,255,0.14)',
-    color: '#FFFFFF',
+    border: '1px solid color-mix(in srgb, var(--color-text-inverse) 32%, transparent)',
+    background: 'color-mix(in srgb, var(--color-text-inverse) 14%, transparent)',
+    color: 'var(--color-text-inverse)',
     display: 'grid',
     placeItems: 'center',
     cursor: 'pointer',

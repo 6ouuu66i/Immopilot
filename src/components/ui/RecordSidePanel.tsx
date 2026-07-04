@@ -41,11 +41,11 @@ export function RecordSidePanel({
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        background: '#FFFFFF',
-        border: sticky ? '1px solid #E6E4DF' : '0 solid #E6E4DF',
-        borderLeft: sticky ? '1px solid #E6E4DF' : '1px solid #E6E4DF',
+        background: 'var(--color-bg-surface)',
+        border: sticky ? '1px solid var(--color-border-default)' : '0 solid var(--color-border-default)',
+        borderLeft: sticky ? '1px solid var(--color-border-default)' : '1px solid var(--color-border-default)',
         borderRadius: sticky ? 10 : 0,
-        boxShadow: sticky ? '0 8px 24px rgba(29,31,30,0.035)' : '-4px 0 24px rgba(29,31,30,0.06)',
+        boxShadow: sticky ? 'var(--shadow-xs)' : 'var(--shadow-md)',
         fontFamily: 'var(--notion-sans)',
       }}
     >
@@ -56,17 +56,17 @@ export function RecordSidePanel({
           justifyContent: 'space-between',
           gap: 12,
           padding: '15px 18px 12px',
-          borderBottom: '1px solid #E6E4DF',
+          borderBottom: '1px solid var(--color-border-default)',
           flexShrink: 0,
         }}
       >
         <div style={{ minWidth: 0 }}>
           {meta && <div style={{ marginBottom: 6 }}>{meta}</div>}
-          <h2 style={{ margin: 0, color: '#1D1F1E', fontSize: 17, fontWeight: 750, lineHeight: 1.2 }}>
+          <h2 style={{ margin: 0, color: 'var(--color-text-primary)', fontFamily: 'var(--font-serif, var(--notion-serif))', fontSize: 19, fontWeight: 400, lineHeight: 1.15 }}>
             {title}
           </h2>
           {subtitle && (
-            <p style={{ margin: '4px 0 0', color: '#6B6B6B', fontSize: 12.5, lineHeight: 1.35 }}>
+            <p style={{ margin: '4px 0 0', color: 'var(--color-text-secondary)', fontSize: 12.5, lineHeight: 1.35 }}>
               {subtitle}
             </p>
           )}
@@ -81,7 +81,7 @@ export function RecordSidePanel({
             border: 'none',
             borderRadius: 6,
             background: 'transparent',
-            color: '#6B6B6B',
+            color: 'var(--color-text-secondary)',
             display: 'grid',
             placeItems: 'center',
             cursor: 'pointer',
@@ -96,7 +96,7 @@ export function RecordSidePanel({
         {children}
       </div>
       {footer && (
-        <footer style={{ padding: 16, borderTop: '1px solid #E6E4DF', flexShrink: 0 }}>
+        <footer style={{ padding: 16, borderTop: '1px solid var(--color-border-default)', flexShrink: 0 }}>
           {footer}
         </footer>
       )}

@@ -1,7 +1,8 @@
 // src/components/pipeline/PipelineListView.tsx
 import { useEffect, useRef, useState } from 'react';
 import type { store as appStore } from '../../lib/store';
-import type { Deal } from '../../types';
+import type { Deal, Task } from '../../types';
+import { ScoreRing } from '../biens/ScoreRing';
 
 type Store = typeof appStore;
 
@@ -9,6 +10,7 @@ interface PipelineListViewProps {
   deals: Deal[];
   stages: ReturnType<Store['getPipelineStages']>;
   onSelectDeal: (dealId: string) => void;
+  onMoveDeal: (dealId: string, stageName: string) => void;
   selectedDealId: string | null;
   store: Store;
 }
@@ -29,6 +31,42 @@ function stageNameToId(name: string): string {
   if (n.includes('vend'))     return 'vendu';
   if (n.includes('perd'))     return 'perdu';
   return 'nouveau';
+}
+
+function localDateKey(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function taskTimestamp(task: Task): number {
+  return new Date(`${task.date}T${task.time || '23:59'}`).getTime();
+}
+
+function dueState(task: Task | undefined): 'overdue' | 'today' | 'later' | 'none' {
+  if (!task) return 'none';
+  const today = localDateKey();
+  if (task.date < today) return 'overdue';
+  if (task.date === today) return 'today';
+  return 'later';
+}
+
+function compactTaskTime(task: Task): string {
+  const state = dueState(task);
+  if (state === 'overdue' || state === 'today') return task.time;
+  const date = new Date(`${task.date}T12:00:00`);
+  const label = Number.isNaN(date.getTime())
+    ? task.date
+    : date.toLocaleDateString('fr-BE', { day: '2-digit', month: 'short' });
+  return `${label} · ${task.time}`;
+}
+
+function taskStatusLabel(task: Task): string {
+  const state = dueState(task);
+  if (state === 'overdue') return 'En retard';
+  if (state === 'today') return "Aujourd'hui";
+  return 'À venir';
 }
 
 const BLANK_IMG = (() => {
@@ -53,15 +91,17 @@ function ListRow({ deal, store, selected, isDragging, onSelect, onDragStart, onD
   const property = store.getProperty(deal.propertyId);
   const agent    = store.getAgents().find(a => a.id === deal.ownerId);
   const score    = property?.score ?? 70;
-  const offset   = Math.round(180 - (180 * (score / 100)));
-  const scoreClass =
-    score >= 80 ? 'score-excellent' :
-    score >= 60 ? 'score-moderate'  : 'score-critical';
+  const openTasks = store
+    .getDealTasks(deal.id)
+    .filter(task => !task.done)
+    .sort((a, b) => taskTimestamp(a) - taskTimestamp(b));
+  const nextTask = openTasks[0];
+  const taskState = dueState(nextTask);
 
   return (
     <div
       className={`list-row${isDragging ? ' dragging' : ''}`}
-      style={{ outline: selected ? '2px solid #1E5A3A' : 'none', outlineOffset: -2 }}
+      style={{ outline: selected ? '2px solid var(--color-brand)' : 'none', outlineOffset: -2 }}
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
@@ -73,11 +113,30 @@ function ListRow({ deal, store, selected, isDragging, onSelect, onDragStart, onD
         )}
       </div>
       <div>
-        <div className="lr-title">{property?.title ?? deal.title}</div>
+        <div className="lr-title">
+          <span className="deal-inline-ref">{deal.reference}</span>
+          <span className="deal-inline-separator"> · </span>
+          {property?.title ?? deal.title}
+        </div>
         <div className="lr-city">{property?.city ?? '—'}</div>
       </div>
       <div className="lr-price">{fmt(deal.price)}</div>
       <div className="lr-commission">{fmt(deal.commissionAmount)}</div>
+      <div className={`lr-followup ${taskState}`}>
+        {nextTask ? (
+          <>
+            <div className="lr-followup-top">
+              <span className={`lr-followup-status ${taskState}`}>{taskStatusLabel(nextTask)}</span>
+              <span className="lr-followup-count">{openTasks.length} {openTasks.length > 1 ? 'tâches' : 'tâche'}</span>
+            </div>
+            <div className="lr-followup-title">
+              {compactTaskTime(nextTask)} · {nextTask.title}
+            </div>
+          </>
+        ) : (
+          <span className="lr-followup-empty">Aucune tâche</span>
+        )}
+      </div>
       <div className="lr-owner">
         {agent?.avatar && (
           <div className="lr-avatar" style={{ backgroundImage: `url('${agent.avatar}')` }} />
@@ -86,17 +145,7 @@ function ListRow({ deal, store, selected, isDragging, onSelect, onDragStart, onD
       </div>
       <div />
       <div className="lr-score">
-        <svg viewBox="0 0 100 100" className={`sketch-double-score ${scoreClass}`} style={{ width: 30, height: 30 }}>
-          <path d="M 50,11 C 71,9 87,25 89,49 C 91,73 75,89 50,87 C 25,85 9,69 11,49 C 13,29 29,13 50,11 Z" className="sketch-bg-fill" />
-          <path d="M 50,11 C 71,9 87,25 89,49 C 91,73 75,89 50,87 C 25,85 9,69 11,49 C 13,29 29,13 50,11 Z" className="sketch-circle-back-1" />
-          <path
-            className="sketch-progress-ribbon"
-            d="M 22,70 C 13,50 17,29 37,18 C 57,7 78,13 86,33 C 94,53 85,74 65,83"
-            strokeDasharray="180"
-            strokeDashoffset={offset}
-          />
-          <text x="50" y="54" className="sketch-text-score" style={{ fontSize: '32px' }}>{score}</text>
-        </svg>
+        <ScoreRing score={score} size="sm" />
       </div>
       <div className="lr-actions">
         <button
@@ -122,7 +171,7 @@ const SCROLL_MAX  = 14;
 function edgeSpeed(dist: number) { return Math.ceil(Math.max(0, 1 - dist / SCROLL_EDGE) * SCROLL_MAX); }
 
 export function PipelineListView({
-  deals, stages, onSelectDeal, selectedDealId, store,
+  deals, stages, onSelectDeal, onMoveDeal, selectedDealId, store,
 }: PipelineListViewProps) {
   const [draggingDealId, setDraggingDealId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
@@ -180,8 +229,8 @@ export function PipelineListView({
       'pointer-events:none',
       'opacity:0.96',
       'border-radius:8px',
-      'box-shadow:0 14px 32px -8px rgba(29,31,30,0.38),0 6px 14px -4px rgba(30,90,58,0.18)',
-      'border:1.5px solid #1E5A3A',
+      'box-shadow:0 14px 32px -8px color-mix(in srgb, var(--color-text-primary) 38%, transparent),0 6px 14px -4px color-mix(in srgb, var(--color-brand) 18%, transparent)',
+      'border:1.5px solid var(--color-brand)',
       'animation:drag-wiggle-subtle 420ms ease-in-out infinite',
       'transform-origin:center left',
       'will-change:transform,left,top',
@@ -208,7 +257,7 @@ export function PipelineListView({
     if (!id) return;
     const deal = deals.find(d => d.id === id);
     if (deal && stageNameToId(deal.stage) !== stageNameToId(stageName)) {
-      store.moveDealStage(id, stageName);
+      onMoveDeal(id, stageName);
     }
     endDrag();
   };
@@ -225,6 +274,7 @@ export function PipelineListView({
             key={stage.id}
             className={`list-group${dragOverStageId === stageId ? ' drag-over' : ''}`}
             data-stage={stageId}
+            style={stage.color ? ({ '--col-color': stage.color } as React.CSSProperties) : undefined}
             onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverStageId(stageId); }}
             onDragLeave={e => {
               const related = e.relatedTarget as Node | null;

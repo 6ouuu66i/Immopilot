@@ -1,5 +1,10 @@
 import { Bath, Bed, ChevronLeft, ChevronRight, Globe, Heart, MapPin, Square, Star } from 'lucide-react';
 import type { Property } from '../../types';
+import { SignalBadges } from '../SignalBadges';
+import type { ListingSignal } from '../../lib/services/listingSignalsService';
+import { ScoreRing } from './ScoreRing';
+
+type SignalFamily = 'price' | 'behavior' | 'context' | 'alert';
 
 interface PropertyCardProps {
   property: Property;
@@ -10,27 +15,101 @@ interface PropertyCardProps {
   onSelect: () => void;
   isFavorite: boolean;
   selected?: boolean;
+  primarySignal?: string;
+  secondarySignalCount?: number;
+  opportunityReason?: string;
+  nextAction?: string;
+  contactName?: string;
+  signals?: ListingSignal[];
 }
 
-function scoreGrade(score: number): { label: string; bg: string } {
-  if (score >= 75) return { label: 'A', bg: '#1E5A3A' };
-  if (score >= 55) return { label: 'B', bg: '#2D6A4F' };
-  if (score >= 35) return { label: 'C', bg: '#D97706' };
-  if (score >= 15) return { label: 'D', bg: '#92400E' };
-  return { label: 'E', bg: '#991B1B' };
+function cssVar(name: string) {
+  return `var(${name})`;
 }
 
-function tagBadge(property: Property): { label: string; bg: string; text: string } | null {
-  if (property.reserved) return { label: 'Réservé', bg: '#374151', text: '#fff' };
-  if (property.tag === 'Coup de cœur') return { label: 'Coup de cœur', bg: '#D97706', text: '#fff' };
-  if (property.tag === 'Nouveau') return { label: 'Nouveau', bg: '#1E5A3A', text: '#fff' };
-  if (property.tag === 'Baisse de prix') return { label: 'Prix', bg: '#1D4ED8', text: '#fff' };
-  if (property.tag === 'Republié') return { label: 'Republié', bg: '#7C3AED', text: '#fff' };
-  if (property.tag === 'FSBO' || property.fsbo) return { label: 'FSBO', bg: '#0E7490', text: '#fff' };
-  return null;
+function statusBadge(property: Property): { label: string; bg: string; text: string; border: string } {
+  const status = property.status ?? (property.reserved ? 'réservé' : 'disponible');
+  if (status === 'archivé') {
+    return {
+      label: 'Archivé',
+      bg: cssVar('--color-neutral-bg'),
+      text: cssVar('--color-neutral-text'),
+      border: cssVar('--color-neutral-border'),
+    };
+  }
+  if (status === 'réservé' || property.reserved) {
+    return {
+      label: 'Réservé',
+      bg: cssVar('--color-warning-bg'),
+      text: cssVar('--color-warning-text'),
+      border: cssVar('--color-warning-border'),
+    };
+  }
+  return {
+    label: 'Disponible',
+    bg: cssVar('--color-success-bg'),
+    text: cssVar('--color-success-text'),
+    border: cssVar('--color-success-border'),
+  };
+}
+
+function signalFamily(label: string): SignalFamily {
+  const value = label.toLowerCase();
+  if (value.includes('prix sous') || value.includes('baisse') || value.includes('prix')) return 'price';
+  if (value.includes('repub') || value.includes('ancien') || value.includes('multi')) return 'behavior';
+  if (value.includes('fsbo') || value.includes('nouveau') || value.includes('particulier')) return 'context';
+  if (value.includes('urgent') || value.includes('deadline') || value.includes('rappel')) return 'alert';
+  return 'context';
+}
+
+function signalBadge(label: string): { bg: string; text: string; border: string } {
+  if (label.toLowerCase().includes('nouveau')) {
+    return {
+      bg: cssVar('--color-neutral-bg'),
+      text: cssVar('--color-neutral-text'),
+      border: cssVar('--color-neutral-border'),
+    };
+  }
+
+  const family = signalFamily(label);
+  return {
+    bg: cssVar(`--color-signal-${family}-bg`),
+    text: cssVar(`--color-signal-${family}-text`),
+    border: cssVar(`--color-signal-${family}-border`),
+  };
+}
+
+function sellerLabel(property: Property): string {
+  if (property.fsbo) return 'Particulier';
+  if (property.source === 'Biddit') return 'Notaire';
+  return 'Agence';
+}
+
+function daysOnlineLabel(days: number): string {
+  if (days <= 0) return 'Aujourd hui';
+  if (days === 1) return '1 jour';
+  return `${days} jours`;
 }
 
 const priceFormatter = new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+
+const photoNavStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  width: 24,
+  height: 24,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  border: 0,
+  borderRadius: '50%',
+  background: 'color-mix(in srgb, var(--color-text-primary) 48%, transparent)',
+  opacity: 0,
+  cursor: 'pointer',
+  padding: 0,
+  transition: 'opacity 0.14s ease',
+};
 
 export function PropertyCard({
   property,
@@ -41,198 +120,296 @@ export function PropertyCard({
   onSelect,
   isFavorite,
   selected,
+  primarySignal,
+  secondarySignalCount = 0,
+  opportunityReason,
+  contactName,
+  signals = [],
 }: PropertyCardProps) {
   const photos = property.photos.length > 0 ? property.photos : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80'];
   const currentPhoto = photos[carouselIndex % photos.length];
-  const badge = tagBadge(property);
-  const grade = scoreGrade(property.score);
+  const status = statusBadge(property);
+  const signalLabel = primarySignal ?? property.tag;
+  const signal = signalBadge(signalLabel);
   const price = priceFormatter.format(property.price).replace(/\s?EUR/, ' €');
+  const selectedShadow = '0 0 0 3px color-mix(in srgb, var(--color-brand) 13%, transparent), var(--shadow-sm)';
+  const defaultShadow = 'var(--shadow-xs)';
 
   return (
     <article
       style={{
-        background: '#fff',
-        border: selected ? '1px solid #1E5A3A' : '1px solid #E6E4DF',
+        background: cssVar('--color-bg-surface'),
+        border: selected ? '1px solid var(--color-brand)' : '1px solid var(--color-border-default)',
         borderRadius: 10,
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        transition: 'box-shadow 0.15s ease, transform 0.15s ease',
+        transition: 'box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease',
         cursor: 'pointer',
-        boxShadow: selected ? '0 0 0 3px rgba(30, 90, 58, 0.12)' : 'none',
+        boxShadow: selected ? selectedShadow : defaultShadow,
       }}
       onClick={onSelect}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.boxShadow = selected
-          ? '0 0 0 3px rgba(30, 90, 58, 0.12), 0 4px 16px rgba(0,0,0,0.08)'
-          : '0 4px 16px rgba(0,0,0,0.08)';
-        (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)';
+      onMouseEnter={(event) => {
+        event.currentTarget.style.boxShadow = selected ? selectedShadow : 'var(--shadow-sm)';
+        event.currentTarget.style.borderColor = 'var(--color-border-strong)';
+        event.currentTarget.style.transform = 'translateY(-1px)';
+        event.currentTarget.querySelectorAll<HTMLElement>('[data-photo-nav]').forEach((button) => { button.style.opacity = '1'; });
       }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.boxShadow = selected ? '0 0 0 3px rgba(30, 90, 58, 0.12)' : 'none';
-        (e.currentTarget as HTMLElement).style.transform = 'none';
+      onMouseLeave={(event) => {
+        event.currentTarget.style.boxShadow = selected ? selectedShadow : defaultShadow;
+        event.currentTarget.style.borderColor = selected ? 'var(--color-brand)' : 'var(--color-border-default)';
+        event.currentTarget.style.transform = 'none';
+        event.currentTarget.querySelectorAll<HTMLElement>('[data-photo-nav]').forEach((button) => { button.style.opacity = '0'; });
       }}
     >
-      {/* Photo carousel */}
-      <div style={{ position: 'relative', height: 180, overflow: 'hidden', background: '#F3F2EF', flexShrink: 0 }}>
+      <div style={{ position: 'relative', height: 168, overflow: 'hidden', background: cssVar('--color-bg-muted'), flexShrink: 0 }}>
         <img
           src={currentPhoto}
           alt={property.title}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: cssVar('--color-bg-muted') }}
           loading="lazy"
+          onError={(event) => {
+            event.currentTarget.style.opacity = '0';
+          }}
         />
 
-        {/* Prev/Next arrows */}
         {photos.length > 1 && (
           <>
             <button
+              data-photo-nav
               onClick={onCarouselPrev}
-              style={{
-                position: 'absolute', top: '50%', left: 6, transform: 'translateY(-50%)',
-                background: 'rgba(255,255,255,0.88)', border: 'none', borderRadius: '50%',
-                width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', padding: 0,
-              }}
+              style={{ ...photoNavStyle, left: 6 }}
+              onFocus={(event) => { event.currentTarget.style.opacity = '1'; }}
+              aria-label="Photo précédente"
             >
-              <ChevronLeft size={15} color="#1D1F1E" />
+              <ChevronLeft size={14} color={cssVar('--color-text-inverse')} />
             </button>
             <button
+              data-photo-nav
               onClick={onCarouselNext}
-              style={{
-                position: 'absolute', top: '50%', right: 6, transform: 'translateY(-50%)',
-                background: 'rgba(255,255,255,0.88)', border: 'none', borderRadius: '50%',
-                width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', padding: 0,
-              }}
+              style={{ ...photoNavStyle, right: 6 }}
+              onFocus={(event) => { event.currentTarget.style.opacity = '1'; }}
+              aria-label="Photo suivante"
             >
-              <ChevronRight size={15} color="#1D1F1E" />
+              <ChevronRight size={14} color={cssVar('--color-text-inverse')} />
             </button>
           </>
         )}
 
-        {/* Tag badge top-left */}
-        {badge && (
-          <span style={{
-            position: 'absolute', top: 8, left: 8,
-            background: badge.bg, color: badge.text,
-            fontSize: 11, fontWeight: 600, fontFamily: 'var(--notion-sans)',
-            padding: '3px 8px', borderRadius: 4, letterSpacing: '0.02em',
-          }}>
-            {badge.label}
-          </span>
+        {signalLabel && (
+          <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', alignItems: 'center', gap: 6, maxWidth: 'calc(100% - 62px)' }}>
+            <span style={{
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              background: signal.bg,
+              color: signal.text,
+              border: `1px solid ${signal.border}`,
+              fontSize: 10.5,
+              fontWeight: 650,
+              fontFamily: 'var(--font-sans, var(--notion-sans))',
+              padding: '3px 8px',
+              borderRadius: 5,
+            }}>
+              {signalLabel}
+            </span>
+            {secondarySignalCount > 0 && (
+              <span style={{
+                color: cssVar('--color-text-secondary'),
+                background: 'color-mix(in srgb, var(--color-bg-surface) 84%, transparent)',
+                border: '1px solid var(--color-border-default)',
+                borderRadius: 999,
+                padding: '2px 6px',
+                fontSize: 10.5,
+                fontWeight: 650,
+                whiteSpace: 'nowrap',
+              }}>
+                + {secondarySignalCount} autres
+              </span>
+            )}
+          </div>
         )}
 
-        {/* "Prix" secondary badge for reserved with price drop */}
-        {property.reserved && property.tag === 'Baisse de prix' && (
-          <span style={{
-            position: 'absolute', top: 8, left: badge ? 80 : 8,
-            background: '#1D4ED8', color: '#fff',
-            fontSize: 11, fontWeight: 600, fontFamily: 'var(--notion-sans)',
-            padding: '3px 8px', borderRadius: 4,
-          }}>
-            Prix
-          </span>
-        )}
+        <span style={{ position: 'absolute', top: 6, right: 6, borderRadius: 999, background: 'color-mix(in srgb, var(--color-bg-surface) 88%, transparent)', boxShadow: 'var(--shadow-sm)' }}>
+          <ScoreRing score={property.score} size="sm" />
+        </span>
 
-        {/* Dot indicators */}
         {photos.length > 1 && (
           <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 4 }}>
-            {photos.map((_, i) => (
-              <span key={i} style={{
-                width: 6, height: 6, borderRadius: '50%',
-                background: i === carouselIndex % photos.length ? '#fff' : 'rgba(255,255,255,0.5)',
+            {photos.map((_, index) => (
+              <span key={index} style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: index === carouselIndex % photos.length ? cssVar('--color-bg-surface') : 'color-mix(in srgb, var(--color-bg-surface) 50%, transparent)',
               }} />
             ))}
           </div>
         )}
 
-        {/* Favorite heart button */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            left: 8,
+            maxWidth: 'calc(100% - 54px)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            borderRadius: 3,
+            background: 'color-mix(in srgb, var(--color-text-primary) 70%, transparent)',
+            color: 'color-mix(in srgb, var(--color-text-inverse) 90%, transparent)',
+            fontSize: 10,
+            fontWeight: 650,
+            padding: '2px 6px',
+            lineHeight: 1.1,
+          }}
+          title={property.source}
+        >
+          <Globe size={10} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{property.source}</span>
+        </div>
+
         <button
           onClick={onToggleFavorite}
           style={{
             position: 'absolute', bottom: 8, right: 8,
-            background: '#fff', border: 'none', borderRadius: '50%',
-            width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', padding: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
+            background: isFavorite ? cssVar('--color-favorite-bg') : 'color-mix(in srgb, var(--color-bg-surface) 88%, transparent)',
+            border: '1px solid var(--color-border-default)',
+            borderRadius: '50%',
+            width: 30,
+            height: 30,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            padding: 0,
+            boxShadow: 'var(--shadow-sm)',
           }}
           title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
         >
-          <Heart size={14} fill={isFavorite ? '#ef4444' : 'none'} color={isFavorite ? '#ef4444' : '#6B6F6D'} />
+          <Heart size={14} fill={isFavorite ? cssVar('--color-favorite') : 'none'} color={isFavorite ? cssVar('--color-favorite') : cssVar('--color-text-secondary')} />
         </button>
       </div>
 
-      {/* Card body */}
-      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-        {/* Price + status */}
+      <div style={{ padding: '11px 14px 12px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--notion-sans)', color: '#1D1F1E', lineHeight: 1 }}>
+          <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-sans, var(--notion-sans))', color: cssVar('--color-text-primary'), lineHeight: 1 }}>
             {price}
           </span>
           <span style={{
-            fontSize: 11, fontWeight: 500, fontFamily: 'var(--notion-sans)',
-            padding: '2px 8px', borderRadius: 99,
-            background: property.reserved ? '#F3F2EF' : '#EAF7EF',
-            color: property.reserved ? '#6B6F6D' : '#166534',
+            fontSize: 11,
+            fontWeight: 550,
+            fontFamily: 'var(--font-sans, var(--notion-sans))',
+            padding: '2px 8px',
+            borderRadius: 99,
+            background: status.bg,
+            color: status.text,
+            border: `1px solid ${status.border}`,
           }}>
-            {property.reserved ? 'Réservé' : 'Disponible'}
+            {status.label}
           </span>
         </div>
 
-        {/* Title */}
         <p style={{
-          margin: 0, fontSize: 13, fontWeight: 600,
-          fontFamily: 'var(--notion-sans)', color: '#1D1F1E',
-          lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          margin: 0,
+          fontSize: 13,
+          fontWeight: 600,
+          fontFamily: 'var(--font-sans, var(--notion-sans))',
+          color: cssVar('--color-text-primary'),
+          lineHeight: 1.3,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
         }}>
           {property.title}
         </p>
 
-        {/* City */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#6B6F6D' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: cssVar('--color-text-secondary') }}>
           <MapPin size={12} />
-          <span style={{ fontSize: 12, fontFamily: 'var(--notion-sans)' }}>{property.city}</span>
+          <span style={{ fontSize: 12, fontFamily: 'var(--font-sans, var(--notion-sans))' }}>{property.city}</span>
         </div>
 
-        {/* Specs + score */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#6B6F6D', fontSize: 12 }}>
-            <Square size={11} />
-            <span>{property.surface} m²</span>
+        <SignalBadges signals={signals} />
+
+        {contactName ? opportunityReason && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '13px minmax(0, 1fr)',
+              alignItems: 'center',
+              gap: 6,
+              padding: '7px 8px',
+              borderRadius: 8,
+              background: cssVar('--color-signal-price-bg'),
+              border: '1px solid var(--color-signal-price-border)',
+              color: cssVar('--color-signal-price-text'),
+              fontSize: 11.5,
+              fontWeight: 650,
+              lineHeight: 1.25,
+            }}
+            title={opportunityReason}
+          >
+            <Star size={12} fill={cssVar('--color-signal-price-text')} color={cssVar('--color-signal-price-text')} />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {opportunityReason}
+            </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#6B6F6D', fontSize: 12 }}>
-            <Bed size={11} />
-            <span>{property.bedrooms}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#6B6F6D', fontSize: 12 }}>
-            <Bath size={11} />
-            <span>{property.bathrooms}</span>
-          </div>
-          <span style={{
-            marginLeft: 'auto',
-            fontSize: 11, fontWeight: 700, fontFamily: 'var(--notion-mono)',
-            background: grade.bg, color: '#fff',
-            width: 22, height: 22, borderRadius: 4,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            {grade.label}
+        ) : (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelect();
+            }}
+            style={{
+              width: 'fit-content',
+              border: 0,
+              background: 'transparent',
+              color: cssVar('--color-brand'),
+              padding: 0,
+              font: 'inherit',
+              fontSize: 12,
+              fontWeight: 650,
+              cursor: 'pointer',
+            }}
+          >
+            + Lier un contact
+          </button>
+        )}
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 7,
+          color: cssVar('--color-text-tertiary'),
+          fontSize: 11.5,
+          fontWeight: 560,
+          marginTop: 1,
+        }}>
+          <span>{daysOnlineLabel(property.publishedDays)}</span>
+          <span aria-hidden="true">-</span>
+          <span style={{ color: property.fsbo ? cssVar('--color-brand') : cssVar('--color-text-secondary'), fontWeight: property.fsbo ? 680 : 560 }}>
+            {sellerLabel(property)}
           </span>
         </div>
 
-        {/* Source + star */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#9A9A9A' }}>
-            <Globe size={12} />
-            <span style={{ fontSize: 12, fontFamily: 'var(--notion-sans)' }}>{property.source}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: cssVar('--color-text-secondary'), fontSize: 12 }}>
+            <Square size={11} />
+            <span>{property.surface} m²</span>
           </div>
-          <button
-            onClick={onToggleFavorite}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}
-            title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-          >
-            <Star size={14} fill={isFavorite ? '#D97706' : 'none'} color={isFavorite ? '#D97706' : '#E6E4DF'} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: cssVar('--color-text-secondary'), fontSize: 12 }}>
+            <Bed size={11} />
+            <span>{property.bedrooms}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: cssVar('--color-text-secondary'), fontSize: 12 }}>
+            <Bath size={11} />
+            <span>{property.bathrooms}</span>
+          </div>
         </div>
+
       </div>
     </article>
   );

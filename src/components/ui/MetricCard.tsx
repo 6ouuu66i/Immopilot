@@ -10,12 +10,12 @@ export interface MetricCardProps {
 }
 
 const TONE_COLORS: Record<NonNullable<MetricCardProps['tone']>, string> = {
-  neutral: '#8E8B83',
-  success: '#1E5A3A',
-  warning: '#D97706',
-  danger: '#C8553D',
-  info: '#2D6CDF',
-  violet: '#7C3AED',
+  neutral: 'var(--color-text-tertiary)',
+  success: 'var(--color-success-text)',
+  warning: 'var(--color-warning-text)',
+  danger: 'var(--color-danger-text)',
+  info: 'var(--color-info-text)',
+  violet: 'var(--color-signal-behavior-text)',
 };
 
 export function MetricCard({
@@ -33,12 +33,12 @@ export function MetricCard({
       style={{
         flex: 1,
         minWidth: 0,
-        padding: '14px 20px',
+        padding: 'var(--space-4) var(--space-5)',
         display: 'grid',
         gridTemplateColumns: icon ? '28px minmax(0, 1fr)' : 'minmax(0, 1fr)',
         gap: 10,
         alignItems: 'center',
-        borderRight: last ? 'none' : '1px solid #E6E4DF',
+        borderRight: last ? 'none' : '1px solid var(--color-border-default)',
       }}
     >
       {icon && (
@@ -50,7 +50,7 @@ export function MetricCard({
             borderRadius: 8,
             display: 'grid',
             placeItems: 'center',
-            background: `${accent}14`,
+            background: 'var(--color-bg-muted)',
             color: accent,
           }}
         >
@@ -61,13 +61,11 @@ export function MetricCard({
         <span
           style={{
             display: 'block',
-            color: '#8E8B83',
-            fontFamily: 'var(--notion-mono)',
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.08em',
+            color: 'var(--color-text-secondary)',
+            fontSize: 11.5,
+            fontWeight: 600,
+            letterSpacing: 0,
             lineHeight: 1.2,
-            textTransform: 'uppercase',
           }}
         >
           {label}
@@ -76,7 +74,7 @@ export function MetricCard({
           style={{
             display: 'block',
             marginTop: 7,
-            color: '#1D1F1E',
+            color: 'var(--color-text-primary)',
             fontSize: 28,
             fontWeight: 750,
             lineHeight: 1,
@@ -86,7 +84,7 @@ export function MetricCard({
           {value}
         </strong>
         {delta && (
-          <small style={{ display: 'block', marginTop: 7, color: '#6B6B6B', fontSize: 11.5, lineHeight: 1.25 }}>
+          <small style={{ display: 'block', marginTop: 7, color: 'var(--color-text-secondary)', fontSize: 11.5, lineHeight: 1.25 }}>
             {delta}
           </small>
         )}

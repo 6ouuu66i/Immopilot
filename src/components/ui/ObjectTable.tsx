@@ -37,10 +37,11 @@ export function ObjectTable<T>({
     <section
       style={{
         overflow: 'hidden',
-        border: '1px solid #E6E4DF',
+        border: '1px solid var(--color-border-default)',
         borderRadius: 10,
-        background: '#FFFFFF',
+        background: 'var(--color-bg-surface)',
         fontFamily: 'var(--notion-sans)',
+        boxShadow: 'var(--shadow-xs)',
       }}
     >
       <div
@@ -51,13 +52,12 @@ export function ObjectTable<T>({
           alignItems: 'center',
           gap: 12,
           padding: '0 14px',
-          borderBottom: '1px solid #E6E4DF',
-          color: '#8E8B83',
-          fontFamily: 'var(--notion-mono)',
-          fontSize: 10.5,
-          fontWeight: 750,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
+          borderBottom: '1px solid var(--color-border-default)',
+          color: 'var(--color-text-tertiary)',
+          fontFamily: 'var(--notion-sans)',
+          fontSize: 'var(--text-xs)',
+          fontWeight: 500,
+          letterSpacing: 0,
         }}
       >
         {columns.map((column) => (
@@ -90,9 +90,9 @@ export function ObjectTable<T>({
                 minHeight: 52,
                 padding: '8px 14px',
                 border: 0,
-                borderBottom: index === rows.length - 1 ? 0 : '1px solid #F1EFEB',
-                background: selected ? '#F4F1EA' : '#FFFFFF',
-                color: '#1D1F1E',
+                borderBottom: index === rows.length - 1 ? 0 : '1px solid var(--color-border-subtle)',
+                background: selected ? 'var(--color-brand-bg)' : 'var(--color-bg-surface)',
+                color: 'var(--color-text-primary)',
                 textAlign: 'left',
                 font: 'inherit',
                 fontSize: 12.5,

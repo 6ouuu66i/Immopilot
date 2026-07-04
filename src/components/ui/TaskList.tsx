@@ -44,22 +44,22 @@ export function TaskList({
             width: '100%',
             padding: compact ? '4px 0' : '8px 0',
             border: 0,
-            borderBottom: compact ? 0 : '1px solid #F1EFEB',
+            borderBottom: compact ? 0 : '1px solid var(--color-border-subtle)',
             background: 'transparent',
-            color: '#1D1F1E',
+            color: 'var(--color-text-primary)',
             textAlign: 'left',
             cursor: onToggleTask ? 'pointer' : 'default',
             fontFamily: 'var(--notion-sans)',
           }}
         >
-          <span style={{ color: task.done ? '#1E5A3A' : '#B8B0A0', marginTop: 1 }}>
+          <span style={{ color: task.done ? 'var(--color-success-text)' : 'var(--color-text-disabled)', marginTop: 1 }}>
             {task.done ? <CheckCircle2 size={compact ? 14 : 16} /> : <Circle size={compact ? 14 : 16} />}
           </span>
           <span style={{ minWidth: 0 }}>
             <strong
               style={{
                 display: 'block',
-                color: task.done ? '#9A9A9A' : '#1D1F1E',
+                color: task.done ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)',
                 fontSize: compact ? 11.5 : 12.5,
                 fontWeight: 650,
                 lineHeight: 1.25,
@@ -68,7 +68,7 @@ export function TaskList({
             >
               {task.title}
             </strong>
-            <small style={{ display: 'block', marginTop: 3, color: '#8E8B83', fontSize: compact ? 10 : 11.5 }}>
+            <small style={{ display: 'block', marginTop: 3, color: 'var(--color-text-tertiary)', fontSize: compact ? 10 : 11.5 }}>
               {getMeta?.(task) ?? `${task.date} · ${task.time}`}
             </small>
           </span>

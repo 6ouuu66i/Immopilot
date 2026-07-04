@@ -30,7 +30,9 @@ export type PropertyInternalStatus = 'disponible' | 'réservé' | 'archivé';
 
 export interface Property {
   id: number;
+  supabasePropertyId?: ID;
   title: string;
+  propertyType?: string;
   city: string;
   price: number;
   photos: string[];
@@ -110,6 +112,7 @@ export type CommissionStatus = 'brouillon' | 'prévue' | 'payable' | 'payée';
 
 export interface Deal {
   id: ID;
+  reference: string;
   propertyId: number;
   contactId: ID;
   ownerId: ID;
@@ -128,6 +131,7 @@ export type ContactRole = 'vendeur' | 'acheteur' | 'prospect' | 'investisseur' |
 
 export interface Contact {
   id: ID;
+  reference: string;
   name: string;
   email: string;
   phone: string;

@@ -20,11 +20,12 @@ export function SectionPanel({
   return (
     <section
       style={{
-        border: '1px solid #E6E4DF',
+        border: '1px solid var(--color-border-default)',
         borderRadius: compact ? 8 : 10,
-        background: '#FFFFFF',
+        background: 'var(--color-bg-surface)',
         padding: compact ? 10 : 12,
         fontFamily: 'var(--notion-sans)',
+        boxShadow: 'var(--shadow-xs)',
       }}
     >
       {(title || eyebrow || action) && (
@@ -42,22 +43,21 @@ export function SectionPanel({
               <div
                 style={{
                   marginBottom: 4,
-                  color: '#8E8B83',
-                  fontFamily: 'var(--notion-mono)',
-                  fontSize: 9.5,
-                  fontWeight: 750,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
+                  color: 'var(--color-text-tertiary)',
+                  fontFamily: 'var(--notion-sans)',
+                  fontSize: 'var(--text-xs)',
+                  fontWeight: 500,
+                  letterSpacing: 0,
                 }}
               >
                 {eyebrow}
               </div>
             )}
             {title && (
-              <h3 style={{ margin: 0, color: '#1D1F1E', fontSize: compact ? 12.5 : 13.5, fontWeight: 750 }}>
+              <h3 style={{ margin: 0, color: 'var(--color-text-primary)', fontSize: compact ? 12.5 : 13.5, fontWeight: 750 }}>
                 {title}
                 {count !== undefined && (
-                  <span style={{ marginLeft: 7, color: '#8E8B83', fontSize: 11, fontWeight: 650 }}>
+                  <span style={{ marginLeft: 7, color: 'var(--color-text-tertiary)', fontSize: 11, fontWeight: 650 }}>
                     {count}
                   </span>
                 )}

@@ -39,15 +39,15 @@ export function ActivityTimeline({
               height: 8,
               marginTop: 4,
               borderRadius: 999,
-              background: '#1E5A3A',
-              boxShadow: '0 0 0 3px rgba(30,90,58,0.09)',
+              background: 'var(--color-brand)',
+              boxShadow: '0 0 0 3px color-mix(in srgb, var(--color-brand) 9%, transparent)',
             }}
           />
           <span style={{ minWidth: 0 }}>
-            <strong style={{ display: 'block', color: '#1D1F1E', fontSize: compact ? 11 : 12, fontWeight: 650, lineHeight: 1.3 }}>
+            <strong style={{ display: 'block', color: 'var(--color-text-primary)', fontSize: compact ? 11 : 12, fontWeight: 650, lineHeight: 1.3 }}>
               {activity.text}
             </strong>
-            <small style={{ display: 'block', marginTop: 3, color: '#8E8B83', fontSize: compact ? 9.5 : 10.5 }}>
+            <small style={{ display: 'block', marginTop: 3, color: 'var(--color-text-tertiary)', fontSize: compact ? 9.5 : 10.5 }}>
               {activity.agentName} · {activity.date}
             </small>
           </span>

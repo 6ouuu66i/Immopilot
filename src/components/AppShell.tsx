@@ -1,24 +1,30 @@
 import {
   Bell,
+  ArrowLeftRight,
   BriefcaseBusiness,
   Building2,
   CalendarDays,
-  ChartColumn,
   ChevronLeft,
-  CircleHelp,
+  CircleDollarSign,
   ContactRound,
   Filter,
   Home,
   Layers3,
   ListChecks,
+  LogOut,
+  Megaphone,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
   Settings,
+  Shield,
   UsersRound,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useAuth } from '../lib/auth';
 import type { store as appStore } from '../lib/store';
+import { resolveNotificationUrl, type NotificationRow } from '../lib/services/notificationsService';
+import { useNotifications } from '../lib/useNotifications';
 
 type Store = typeof appStore;
 
@@ -48,10 +54,8 @@ const crmNav: NavItem[] = [
   { key: 'pipeline', label: 'Opportunités', href: '#pipeline', icon: BriefcaseBusiness },
   { key: 'contacts', label: 'Contacts', href: '#contacts', icon: ContactRound },
   { key: 'agenda', label: 'Tâches', href: '#agenda', icon: ListChecks },
-];
-
-const analyticsNav: NavItem[] = [
-  { key: 'stats', label: 'Statistiques', href: '#dashboard', icon: ChartColumn },
+  { key: 'transfers', label: 'Transferts', href: '#transfers', icon: ArrowLeftRight },
+  { key: 'commissions', label: 'Commissions', href: '#commissions', icon: CircleDollarSign },
 ];
 
 const settingsNav: NavItem[] = [
@@ -60,12 +64,27 @@ const settingsNav: NavItem[] = [
   { key: 'settings', label: 'Paramètres', href: '#settings', icon: Settings },
 ];
 
+const adminNav: NavItem = { key: 'admin', label: 'Admin', href: '#admin', icon: Shield };
+
 export function AppShell({ activeRoute, children, store }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('ip_sidebar_collapsed') === 'true');
+  const [, refreshShell] = useState(0);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const collapsedRef = useRef(collapsed);
+  const notificationsRef = useRef<HTMLDivElement>(null);
   const shouldRestoreSidebarRef = useRef(false);
-  const currentAgent = store.getCurrentAgent();
-  const unreadNotifications = store.getNotifications().filter((notification) => !notification.read).length;
+  const { agency, profile, signOut } = useAuth();
+  const notificationsState = useNotifications(10);
+  const visibleSettingsNav = profile?.role === 'admin' ? [...settingsNav, adminNav] : settingsNav;
+  const unreadNotifications = notificationsState.unreadCount;
+  const agentName = profile?.full_name ?? profile?.email ?? 'Agent ImmoPilot';
+  const agentSubtitle = agency?.name ?? (profile?.role === 'admin' ? 'Administrateur' : 'Conseiller agence');
+  const agentInitials = agentName
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
   const today = useMemo(
     () =>
       new Intl.DateTimeFormat('fr-BE', {
@@ -80,6 +99,39 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
     collapsedRef.current = collapsed;
     localStorage.setItem('ip_sidebar_collapsed', String(collapsed));
   }, [collapsed]);
+
+  useEffect(() => {
+    const refresh = () => refreshShell((value) => value + 1);
+
+    window.addEventListener('ip-agent-changed', refresh);
+    window.addEventListener('ip-notification-received', refresh);
+
+    return () => {
+      window.removeEventListener('ip-agent-changed', refresh);
+      window.removeEventListener('ip-notification-received', refresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!notificationsRef.current?.contains(event.target as Node)) setNotificationsOpen(false);
+    };
+
+    document.addEventListener('mousedown', closeOnOutsideClick);
+    return () => document.removeEventListener('mousedown', closeOnOutsideClick);
+  }, []);
+
+  async function handleSignOut() {
+    await signOut();
+    window.location.hash = '#login';
+  }
+
+  async function handleOpenNotification(notification: NotificationRow) {
+    await notificationsState.markAsRead(notification.id).catch(() => undefined);
+    const url = await resolveNotificationUrl(notification);
+    setNotificationsOpen(false);
+    window.location.hash = url;
+  }
 
   useEffect(() => {
     const handlePropertyPanelOpen = () => {
@@ -147,16 +199,9 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
             ))}
           </div>
 
-          <div className="ip-nav-group">
-            <div className="ip-nav-group-label">Analytique</div>
-            {analyticsNav.map((item) => (
-              <SidebarLink key={item.key} item={item} active={activeRoute === item.key} />
-            ))}
-          </div>
-
           <div className="ip-nav-group ip-saved-views">
             <div className="ip-nav-group-label">Paramètres</div>
-            {settingsNav.map((item) => (
+            {visibleSettingsNav.map((item) => (
               <SidebarLink key={item.key} item={item} active={activeRoute === item.key} />
             ))}
           </div>
@@ -173,28 +218,24 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
         </div>
 
         <div className="ip-sidebar-footer">
-          <a className="ip-sidebar-link" href="#notifications">
-            <Bell size={17} />
-            <span>Alertes</span>
-            {unreadNotifications > 0 && <span className="ip-nav-count">{unreadNotifications}</span>}
-          </a>
           <a className="ip-sidebar-link" href="#settings">
             <Settings size={17} />
             <span>Paramètres</span>
           </a>
-          <button className="ip-sidebar-link" type="button">
-            <CircleHelp size={17} />
-            <span>Aide</span>
-          </button>
 
           <div className="ip-agent-card">
-            <img src={currentAgent.avatar} alt="" />
+            {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : <span className="ip-agent-avatar">{agentInitials}</span>}
             <div className="ip-agent-meta">
-              <strong>{currentAgent.name}</strong>
-              <span>{currentAgent.role === 'admin' ? 'Administrateur' : 'Conseiller agence'}</span>
+              <strong>{agentName}</strong>
+              <span>{agentSubtitle}</span>
             </div>
             <ChevronLeft size={15} />
           </div>
+
+          <button className="ip-sidebar-link ip-signout-button" type="button" onClick={handleSignOut}>
+            <LogOut size={17} />
+            <span>Se déconnecter</span>
+          </button>
         </div>
       </aside>
 
@@ -213,10 +254,63 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
               <CalendarDays size={15} />
               {today}
             </span>
-            <a className="ip-icon-button" href="#notifications" aria-label="Notifications">
-              <Bell size={17} />
-              {unreadNotifications > 0 && <span className="ip-dot" />}
-            </a>
+            <div className="ip-notification-menu" ref={notificationsRef}>
+              <button
+                className="ip-icon-button"
+                type="button"
+                aria-label="Notifications"
+                onClick={() => setNotificationsOpen((value) => !value)}
+              >
+                <Bell size={17} />
+                {unreadNotifications > 0 && (
+                  <span className="ip-notification-count">{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>
+                )}
+              </button>
+
+              {notificationsOpen && (
+                <div className="ip-notification-dropdown">
+                  <header className="ip-notification-dropdown-head">
+                    <div>
+                      <strong>Notifications</strong>
+                      <span>{unreadNotifications} non lue{unreadNotifications > 1 ? 's' : ''}</span>
+                    </div>
+                    <button type="button" onClick={() => { void notificationsState.markAllAsRead(); }}>
+                      Tout marquer lu
+                    </button>
+                  </header>
+
+                  {notificationsState.error && <div className="ip-notification-error">{notificationsState.error}</div>}
+
+                  <div className="ip-notification-list">
+                    {notificationsState.isLoading ? (
+                      <div className="ip-notification-empty">Chargement...</div>
+                    ) : notificationsState.notifications.length === 0 ? (
+                      <div className="ip-notification-empty">Aucune notification.</div>
+                    ) : (
+                      notificationsState.notifications.map((notification) => (
+                        <button
+                          key={notification.id}
+                          type="button"
+                          className={`ip-notification-item ${notification.is_read ? '' : 'is-unread'}`}
+                          onClick={() => { void handleOpenNotification(notification); }}
+                        >
+                          <NotificationIcon type={notification.type} />
+                          <span>
+                            <strong>{notification.title}</strong>
+                            {notification.body && <small>{notification.body}</small>}
+                            <em>{formatNotificationTime(notification.created_at)}</em>
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  <footer className="ip-notification-dropdown-foot">
+                    <a href="#notifications" onClick={() => setNotificationsOpen(false)}>Voir toutes les notifications</a>
+                  </footer>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -226,6 +320,24 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
       </div>
     </div>
   );
+}
+
+function NotificationIcon({ type }: { type: string }) {
+  if (type.includes('task')) return <ListChecks size={15} />;
+  if (type.includes('deal') || type.includes('transfer')) return <BriefcaseBusiness size={15} />;
+  if (type.includes('commission')) return <Building2 size={15} />;
+  return <Megaphone size={15} />;
+}
+
+function formatNotificationTime(value: string) {
+  const date = new Date(value);
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.max(0, Math.round(diffMs / 60000));
+  if (diffMinutes < 1) return 'A l’instant';
+  if (diffMinutes < 60) return `Il y a ${diffMinutes} min`;
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `Il y a ${diffHours} h`;
+  return new Intl.DateTimeFormat('fr-BE', { day: '2-digit', month: 'short' }).format(date);
 }
 
 interface SidebarLinkProps {

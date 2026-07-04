@@ -48,14 +48,28 @@ export const MOCK_AGENTS: Agent[] = [
 ];
 
 export const MOCK_CONTACTS: Contact[] = [
-  { id: 'c1', name: 'Jean-Marc Cloquet', email: 'jm.cloquet@gmail.com', phone: '+32 475 22 88 11', roles: ['vendeur', 'propriétaire'], notes: ['Souhaite vendre rapidement suite à déménagement.'], assignedDeals: ['deal-1'], assignedProperties: [1] },
-  { id: 'c2', name: 'Annelies De Graeve', email: 'annelies.dg@outlook.com', phone: '+32 486 33 22 99', roles: ['vendeur'], notes: ['Très pointilleuse sur le prix de réserve.'], assignedDeals: ['deal-2'], assignedProperties: [2] },
-  { id: 'c3', name: 'Benoît Poelvoorde', email: 'ben.poel@skynet.be', phone: '+32 495 11 44 22', roles: ['propriétaire'], notes: ['Client historique de l\'agence.'], assignedDeals: [], assignedProperties: [3] },
-  { id: 'c4', name: 'Chantal Ladesou', email: 'chantal.ladesou@rtbf.be', phone: '+32 471 88 33 44', roles: ['prospect', 'acheteur'], notes: ['Recherche un loft insolite pour un projet artistique.'], assignedDeals: ['deal-4'], assignedProperties: [] },
-  { id: 'c5', name: 'Marc Coucke', email: 'marc@coucke-invest.be', phone: '+32 488 99 00 22', roles: ['investisseur', 'acheteur'], notes: ['Gros dossier, cherche immeubles de rapport.'], assignedDeals: [], assignedProperties: [] },
-  { id: 'c6', name: 'Sarah Dubois', email: 'sarah.dubois@gmail.com', phone: '+32 475 12 34 56', roles: ['acheteur'], notes: ['Budget flexible, coup de coeur uniquement.'], assignedDeals: [], assignedProperties: [] },
-  { id: 'c7', name: 'Philippe Lambert', email: 'philippe.lambert@skynet.be', phone: '+32 495 55 66 77', roles: ['vendeur', 'propriétaire'], notes: ['Propriétaire d\'une villa d\'architecte.'], assignedDeals: [], assignedProperties: [4] }
+  { id: 'c1', reference: 'CTC-0001', name: 'Jean-Marc Cloquet', email: 'jm.cloquet@gmail.com', phone: '+32 475 22 88 11', roles: ['vendeur', 'propriétaire'], notes: ['Souhaite vendre rapidement suite à déménagement.'], assignedDeals: ['deal-1'], assignedProperties: [1] },
+  { id: 'c2', reference: 'CTC-0002', name: 'Annelies De Graeve', email: 'annelies.dg@outlook.com', phone: '+32 486 33 22 99', roles: ['vendeur'], notes: ['Très pointilleuse sur le prix de réserve.'], assignedDeals: ['deal-2'], assignedProperties: [2] },
+  { id: 'c3', reference: 'CTC-0003', name: 'Benoît Poelvoorde', email: 'ben.poel@skynet.be', phone: '+32 495 11 44 22', roles: ['propriétaire'], notes: ['Client historique de l\'agence.'], assignedDeals: [], assignedProperties: [3] },
+  { id: 'c4', reference: 'CTC-0004', name: 'Chantal Ladesou', email: 'chantal.ladesou@rtbf.be', phone: '+32 471 88 33 44', roles: ['prospect', 'acheteur'], notes: ['Recherche un loft insolite pour un projet artistique.'], assignedDeals: ['deal-4'], assignedProperties: [] },
+  { id: 'c5', reference: 'CTC-0005', name: 'Marc Coucke', email: 'marc@coucke-invest.be', phone: '+32 488 99 00 22', roles: ['investisseur', 'acheteur'], notes: ['Gros dossier, cherche immeubles de rapport.'], assignedDeals: [], assignedProperties: [] },
+  { id: 'c6', reference: 'CTC-0006', name: 'Sarah Dubois', email: 'sarah.dubois@gmail.com', phone: '+32 475 12 34 56', roles: ['acheteur'], notes: ['Budget flexible, coup de coeur uniquement.'], assignedDeals: [], assignedProperties: [] },
+  { id: 'c7', reference: 'CTC-0007', name: 'Philippe Lambert', email: 'philippe.lambert@skynet.be', phone: '+32 495 55 66 77', roles: ['vendeur', 'propriétaire'], notes: ['Propriétaire d\'une villa d\'architecte.'], assignedDeals: [], assignedProperties: [4] }
 ];
+
+type ReferencePrefix = 'DEAL' | 'CTC';
+
+const isReadableReference = (value: unknown, prefix: ReferencePrefix): value is string =>
+  typeof value === 'string' && new RegExp(`^${prefix}-\\d{4}$`).test(value);
+
+const nextReference = (items: Array<{ reference?: string }>, prefix: ReferencePrefix): string => {
+  const max = items.reduce((highest, item) => {
+    if (!isReadableReference(item.reference, prefix)) return highest;
+    return Math.max(highest, Number(item.reference.slice(prefix.length + 1)));
+  }, 0);
+
+  return `${prefix}-${String(max + 1).padStart(4, '0')}`;
+};
 
 // Generate 35 properties (satisfies requirement of at least 30 properties)
 const generateProperties = (): Property[] => {
@@ -277,6 +291,7 @@ const generateInitialDeals = (props: Property[]): Deal[] => {
   return [
     {
       id: 'deal-1',
+      reference: 'DEAL-0001',
       propertyId: 1, // Villa basse énergie, owned by thomas (Thomas Martin)
       contactId: 'c1',
       ownerId: 'thomas',
@@ -298,6 +313,7 @@ const generateInitialDeals = (props: Property[]): Deal[] => {
     },
     {
       id: 'deal-2',
+      reference: 'DEAL-0002',
       propertyId: 2, // Appartement lumineux, owned by adam (Adam Dubois)
       contactId: 'c2',
       ownerId: 'adam',
@@ -318,6 +334,7 @@ const generateInitialDeals = (props: Property[]): Deal[] => {
     },
     {
       id: 'deal-3',
+      reference: 'DEAL-0003',
       propertyId: 3, // Maison 3 façades, owned by thomas
       contactId: 'c3',
       ownerId: 'thomas',
@@ -337,6 +354,7 @@ const generateInitialDeals = (props: Property[]): Deal[] => {
     },
     {
       id: 'deal-4',
+      reference: 'DEAL-0004',
       propertyId: 5, // Maison victorienne, owned by nora
       contactId: 'c4',
       ownerId: 'nora',
@@ -460,6 +478,8 @@ export class ImmoPilotStore {
         this.saveContacts();
       }
 
+      this.ensureReadableReferences();
+
       if (storedTasks) this.tasks = JSON.parse(storedTasks);
       else {
         this.tasks = generateInitialTasks();
@@ -510,6 +530,38 @@ export class ImmoPilotStore {
     } catch (e) {
       console.error('Failed to load ImmoPilot store:', e);
     }
+  }
+
+  private ensureReadableReferences() {
+    let dealsChanged = false;
+    let contactsChanged = false;
+    const assignedDealRefs = new Set<string>();
+    const assignedContactRefs = new Set<string>();
+
+    this.deals.forEach((deal) => {
+      if (isReadableReference(deal.reference, 'DEAL') && !assignedDealRefs.has(deal.reference)) {
+        assignedDealRefs.add(deal.reference);
+        return;
+      }
+
+      deal.reference = nextReference([...this.deals, ...Array.from(assignedDealRefs).map(reference => ({ reference }))], 'DEAL');
+      assignedDealRefs.add(deal.reference);
+      dealsChanged = true;
+    });
+
+    this.contacts.forEach((contact) => {
+      if (isReadableReference(contact.reference, 'CTC') && !assignedContactRefs.has(contact.reference)) {
+        assignedContactRefs.add(contact.reference);
+        return;
+      }
+
+      contact.reference = nextReference([...this.contacts, ...Array.from(assignedContactRefs).map(reference => ({ reference }))], 'CTC');
+      assignedContactRefs.add(contact.reference);
+      contactsChanged = true;
+    });
+
+    if (dealsChanged) this.saveDeals();
+    if (contactsChanged) this.saveContacts();
   }
 
   private normalizeData() {
@@ -825,6 +877,10 @@ export class ImmoPilotStore {
     return this.deals.find(d => d.id === id);
   }
 
+  public getDealByReference(reference: string): Deal | undefined {
+    return this.deals.find(d => d.reference === reference);
+  }
+
   public getDealTasks(dealId: string): Task[] {
     return this.tasks.filter((task) => task.dealId === dealId);
   }
@@ -863,6 +919,7 @@ export class ImmoPilotStore {
 
     const newDeal: Deal = {
       id: dealId,
+      reference: nextReference(this.deals, 'DEAL'),
       propertyId: propertyId,
       contactId: contactId,
       ownerId: this.currentAgentId,
@@ -1169,6 +1226,10 @@ export class ImmoPilotStore {
     return this.contacts.find(c => c.id === id);
   }
 
+  public getContactByReference(reference: string): Contact | undefined {
+    return this.contacts.find(c => c.reference === reference);
+  }
+
   public getContactDeals(contactId: string): Deal[] {
     return this.deals.filter((deal) => deal.contactId === contactId);
   }
@@ -1206,11 +1267,12 @@ export class ImmoPilotStore {
     };
   }
 
-  public createContact(c: Omit<Contact, 'id' | 'assignedDeals' | 'assignedProperties'>): Contact {
+  public createContact(c: Omit<Contact, 'id' | 'reference' | 'assignedDeals' | 'assignedProperties'>): Contact {
     const id = 'c' + (this.contacts.length + 1);
     const newContact: Contact = {
       ...c,
       id,
+      reference: nextReference(this.contacts, 'CTC'),
       assignedDeals: [],
       assignedProperties: []
     };
@@ -1415,7 +1477,7 @@ export class ImmoPilotStore {
       'transfer_pending',
       'Portefeuille : Demande de transfert',
       `${agentSender} sollicite la reprise du deal "${prop?.title}". Action requise.`,
-      `#pipeline?dealId=${dealId}`,
+      deal?.reference ? `#pipeline?deal=${encodeURIComponent(deal.reference)}` : `#pipeline?dealId=${dealId}`,
       fromAgentId // Specific target agent id
     );
 
@@ -1466,7 +1528,7 @@ export class ImmoPilotStore {
           'transfer_accepted',
           'Transfert de dossier validé',
           `Le transfert de la fiche "${prop?.title}" a été accepté par ${originalOwnerName}.`,
-          `#pipeline?dealId=${tr.dealId}`,
+          deal?.reference ? `#pipeline?deal=${encodeURIComponent(deal.reference)}` : `#pipeline?dealId=${tr.dealId}`,
           tr.toAgentId
         );
 

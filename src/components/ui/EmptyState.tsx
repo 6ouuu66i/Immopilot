@@ -18,10 +18,10 @@ export function EmptyState({ title, description, icon, action, compact = false }
         gap: compact ? 6 : 10,
         minHeight: compact ? 72 : 148,
         padding: compact ? 12 : 20,
-        border: '1px dashed #D8D5CD',
+        border: '1px dashed var(--color-border-strong)',
         borderRadius: 10,
-        background: '#FAF9F6',
-        color: '#6B6B6B',
+        background: 'var(--color-bg-page)',
+        color: 'var(--color-text-secondary)',
         textAlign: 'center',
         fontFamily: 'var(--notion-sans)',
       }}
@@ -34,18 +34,18 @@ export function EmptyState({ title, description, icon, action, compact = false }
           borderRadius: 999,
           display: 'grid',
           placeItems: 'center',
-          background: '#F3F2EF',
-          color: '#8E8B83',
+          background: 'var(--color-bg-muted)',
+          color: 'var(--color-text-tertiary)',
         }}
       >
         {icon ?? <Inbox size={compact ? 15 : 18} />}
       </span>
       <div>
-        <strong style={{ display: 'block', color: '#1D1F1E', fontSize: compact ? 12 : 13.5 }}>
+        <strong style={{ display: 'block', color: 'var(--color-text-primary)', fontSize: compact ? 12 : 13.5 }}>
           {title}
         </strong>
         {description && (
-          <p style={{ margin: '4px 0 0', maxWidth: 320, color: '#6B6B6B', fontSize: compact ? 11.5 : 12.5, lineHeight: 1.45 }}>
+          <p style={{ margin: '4px 0 0', maxWidth: 320, color: 'var(--color-text-secondary)', fontSize: compact ? 11.5 : 12.5, lineHeight: 1.45 }}>
             {description}
           </p>
         )}
