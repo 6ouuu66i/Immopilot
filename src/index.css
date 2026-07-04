@@ -4528,13 +4528,6 @@ body,
   flex: 0 0 auto;
 }
 
-.ip-legacy-content {
-  min-height: 0;
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-
 @keyframes ip-enter {
   from {
     opacity: 0;

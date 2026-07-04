@@ -3,7 +3,7 @@
 Reference guide for any AI assistant working on this repo.
 Update this file whenever the product direction, architecture, or design system changes.
 
-Last updated: 2026-06-14
+Last updated: 2026-07-04
 
 ---
 
@@ -35,17 +35,16 @@ The project is in UI/product prototyping.
 
 Important constraints:
 
-- Use mock/local data only unless the user explicitly asks for backend work.
-- Do not connect Supabase or any real API without explicit instruction.
+- Use local/mock fallbacks only when Supabase is unavailable or when explicitly working in prototype mode.
+- Supabase Auth/Postgres is now part of the active app surface; keep `.env.local` private and never commit real keys.
 - Do not implement real scoring/business algorithms unless explicitly requested.
 - The scraping/data pipeline exists as a separate project and is not part of this repo.
 - Current priority: build a credible, usable CRM interface and a reusable frontend foundation.
 
 Current implementation reality:
 
-- The app currently uses Vite + React, but many screens are raw HTML templates imported with `?raw` and injected by `src/main.tsx`.
-- The refactor direction is to migrate toward proper React components, page by page.
-- Dashboard, Biens, Pipeline, Contacts, and Agenda are React screens.
+- The app now uses Vite + React screens directly through `src/main.tsx`; the old raw HTML legacy bridge has been removed.
+- Dashboard, Biens, Pipeline, Contacts, Agenda, Notifications, Transfers, Commissions, Settings, Admin, Login, and ScoreTest are React screens.
 - The active frontend phase is now shared component extraction: new React work should reuse common components from `src/components/ui` instead of rebuilding each page differently.
 - Biens is now the central functional workspace: cards open the mini fiche, and the mini fiche can change status, link a contact, create a task, create or open a deal, show linked signals, show linked tasks, toggle favorite state, and open the photo lightbox.
 - Pipeline is now the commercial follow-up workspace: deals can move between stages, open a mini fiche, add next actions, link a property/contact, mark RDV/offre/mandat potentiel milestones, and create automatic activity entries on status changes.
@@ -66,11 +65,9 @@ Actual stack in this repo:
 | Styling | Tailwind CSS v4 via `@tailwindcss/vite` plus custom CSS tokens |
 | Icons | Lucide React |
 | Fonts | Self-hosted `@fontsource/inter`, `@fontsource/lora`, `@fontsource/jetbrains-mono` |
-| Motion | `motion` |
 | Maps | Google Maps integration through `src/lib/maps.ts` |
 | Store | Custom local store in `src/lib/store.ts` |
-| Backend | None in this repo yet |
-| Planned backend | Supabase PostgreSQL + Auth later |
+| Backend | Supabase Auth/Postgres through `@supabase/supabase-js`, with local/mock fallbacks where implemented |
 
 Do not assume Zustand, React Router, TanStack Table, shadcn/ui, Radix, or DnD libraries are installed unless `package.json` confirms it.
 
@@ -411,7 +408,7 @@ External inspiration already reviewed:
 - Do not build a full Notion block editor for V1.
 - Do not let users create arbitrary databases in V1.
 - Do not add deep customization that makes the product vague.
-- Do not branch Supabase or a real API without explicit instruction.
+- Do not add new Supabase schema/API behavior without explicit instruction.
 - Do not implement real scoring logic without explicit instruction.
 - Do not silently remove TODO/FIXME comments without addressing them.
 
@@ -419,7 +416,7 @@ External inspiration already reviewed:
 
 ## 13. Environment Variables
 
-Prepared for later Supabase work only.
+Supabase is active in the app. Keep real values in `.env.local` only.
 
 ```bash
 # .env.local - never commit real values

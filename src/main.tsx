@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
@@ -44,62 +44,12 @@ const Admin = lazy(() => import('./pages/Admin').then((module) => ({ default: mo
 const Login = lazy(() => import('./pages/Login').then((module) => ({ default: module.Login })));
 const ScoreTest = lazy(() => import('./pages/ScoreTest').then((module) => ({ default: module.ScoreTest })));
 
-const legacyRouteLoaders: Partial<Record<RouteKey, () => Promise<{ default: string }>>> = {};
-
 function getRouteFromHash(): RouteKey {
   if (window.location.pathname === '/login') return 'login';
   const rawHash = window.location.hash.replace(/^#/, '') || DEFAULT_ROUTE;
   const routeName = rawHash.split('?')[0] as RouteKey;
-  if (routeName === 'login' || routeName === 'dashboard' || routeName === 'biens' || routeName === 'pipeline' || routeName === 'agenda' || routeName === 'contacts' || routeName === 'transfers' || routeName === 'commissions' || routeName === 'notifications' || routeName === 'settings' || routeName === 'admin' || routeName === 'score-test' || legacyRouteLoaders[routeName]) return routeName;
+  if (routeName === 'login' || routeName === 'dashboard' || routeName === 'biens' || routeName === 'pipeline' || routeName === 'agenda' || routeName === 'contacts' || routeName === 'transfers' || routeName === 'commissions' || routeName === 'notifications' || routeName === 'settings' || routeName === 'admin' || routeName === 'score-test') return routeName;
   return DEFAULT_ROUTE;
-}
-
-function executeScripts(container: HTMLElement) {
-  const scripts = container.querySelectorAll('script');
-  for (const oldScript of Array.from(scripts)) {
-    const newScript = document.createElement('script');
-    for (const attr of Array.from(oldScript.attributes)) {
-      newScript.setAttribute(attr.name, attr.value);
-    }
-    newScript.textContent = oldScript.textContent;
-    oldScript.parentNode?.replaceChild(newScript, oldScript);
-  }
-}
-
-interface LegacyPageProps {
-  route: RouteKey;
-}
-
-function LegacyPage({ route }: LegacyPageProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [html, setHtml] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setHtml(null);
-
-    legacyRouteLoaders[route]?.().then((module) => {
-      if (!cancelled) setHtml(module.default);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [route]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    if (!html) {
-      container.innerHTML = '';
-      return;
-    }
-
-    container.innerHTML = html;
-    executeScripts(container);
-  }, [html, route]);
-
-  return <div ref={containerRef} className="ip-legacy-content" />;
 }
 
 function PageLoading() {
@@ -147,8 +97,6 @@ function App() {
     };
   }, []);
 
-  const isLegacyRoute = Boolean(legacyRouteLoaders[route]);
-
   if (route === 'login') {
     return (
       <Suspense fallback={<PageLoading />}>
@@ -183,8 +131,6 @@ function App() {
             <Settings />
           ) : route === 'admin' ? (
             <Admin />
-          ) : isLegacyRoute ? (
-            <LegacyPage route={route} />
           ) : (
             <Dashboard store={store} />
           )}

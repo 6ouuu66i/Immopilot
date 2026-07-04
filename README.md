@@ -1,20 +1,31 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# ImmoPilot
 
-# Run and deploy your AI Studio app
+ImmoPilot is a React/Vite SaaS workspace for Belgian real-estate agents: dashboard, property CRM, pipeline, contacts, agenda, transfers, commissions, notifications, settings, and admin screens.
 
-This contains everything you need to run your app locally.
+## Stack
 
-View your app in AI Studio: https://ai.studio/apps/e735f5ee-8d4d-4e04-8bf3-19709cdfcd45
+- React 19 + TypeScript
+- Vite 6
+- Tailwind CSS v4 via `@tailwindcss/vite`
+- Supabase Auth/Postgres through `@supabase/supabase-js`
+- Lucide React icons
+- Self-hosted fonts through `@fontsource`
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
+## Local Development
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Copy `.env.example` to `.env.local` and fill the Supabase values.
+3. Start the app:
    `npm run dev`
+
+The dev server runs on `http://127.0.0.1:3000`.
+
+## Verification
+
+Run before committing frontend or dependency changes:
+
+```bash
+npm run build
+npm run lint
+```

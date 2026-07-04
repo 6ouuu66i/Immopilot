@@ -1,5 +1,0 @@
-2026/05/28-02:52:31.083 5048 Creating DB C:\IMMOPILOT\.codex-chrome-cdp\Default\Local Storage\leveldb since it was missing.
-2026/05/28-02:52:31.109 5048 Reusing MANIFEST C:\IMMOPILOT\.codex-chrome-cdp\Default\Local Storage\leveldb/MANIFEST-000001
-2026/05/28-02:53:31.121 32b0 Level-0 table #5: started
-2026/05/28-02:53:31.126 32b0 Level-0 table #5: 14794 bytes OK
-2026/05/28-02:53:31.128 32b0 Delete type=0 #3
