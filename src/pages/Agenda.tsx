@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarClock, Check, Clock, ExternalLink, Loader2, Plus, Search, X } from 'lucide-react';
 import type { store as appStore } from '../lib/store';
-import { fetchSupabaseProperties } from '../lib/supabaseProperties';
+import { fetchSupabaseProperties, uniqueSupabaseProperties } from '../lib/supabaseProperties';
 import { useContacts } from '../lib/useContacts';
 import { useDeals } from '../lib/useDeals';
 import { taskLinkLabel, useTasks, type UseTasksResult } from '../lib/useTasks';
@@ -464,7 +464,7 @@ function TaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (inpu
     fetchSupabaseProperties()
       .then((items) => {
         if (!active) return;
-        setProperties(items.filter((property) => property.supabasePropertyId).map((property) => ({
+        setProperties(uniqueSupabaseProperties(items).map((property) => ({
           id: property.supabasePropertyId as string,
           label: `${property.title} - ${property.city}`,
         })));

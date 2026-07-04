@@ -21,16 +21,24 @@ const priceFormatter = new Intl.NumberFormat('fr-BE', {
 function fmt(v: number) { return priceFormatter.format(v).replace(/\s?EUR/, ' €'); }
 
 function stageNameToId(name: string): string {
-  const n = (name ?? '').trim().toLowerCase();
+  const n = (name ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
   if (n.includes('nouveau'))  return 'nouveau';
+  if (n.includes('analyser') || n.includes('analyse')) return 'analyse';
+  if (n.includes('a contacter')) return 'a-contacter';
+  if (n === 'rdv' || n.includes('rendez')) return 'rdv';
   if (n.includes('qualif'))   return 'qualifie';
+  if (n.includes('contacte')) return 'contacte';
   if (n.includes('contact'))  return 'contact';
   if (n.includes('visite'))   return 'visite';
   if (n.includes('propos'))   return 'proposition';
   if (n.includes('mandat'))   return 'mandat';
   if (n.includes('vend'))     return 'vendu';
   if (n.includes('perd'))     return 'perdu';
-  return 'nouveau';
+  return n.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'stage';
 }
 
 function localDateKey(date = new Date()): string {

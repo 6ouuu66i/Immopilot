@@ -146,3 +146,14 @@ export async function fetchSupabaseProperties(): Promise<Property[]> {
 
   return (data ?? []).map(mapListingToProperty);
 }
+
+export function uniqueSupabaseProperties(properties: Property[]): Property[] {
+  const seen = new Set<string>();
+
+  return properties.filter((property) => {
+    if (!property.supabasePropertyId) return false;
+    if (seen.has(property.supabasePropertyId)) return false;
+    seen.add(property.supabasePropertyId);
+    return true;
+  });
+}

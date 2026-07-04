@@ -25,7 +25,7 @@ import type { store as appStore } from '../lib/store';
 import type { Contact, ContactRelations, Deal, Property, Task, TaskPriority } from '../types';
 import { ActivityTimeline, NotesList, StatusBadge, TaskList } from '../components/ui';
 import { useAuth } from '../lib/auth';
-import { fetchSupabaseProperties } from '../lib/supabaseProperties';
+import { fetchSupabaseProperties, uniqueSupabaseProperties } from '../lib/supabaseProperties';
 import { useContact, useContacts } from '../lib/useContacts';
 import { useNotes } from '../lib/useNotes';
 import { taskToView, useTasks, useTasksFor } from '../lib/useTasks';
@@ -830,9 +830,9 @@ function LinkPropertyModal({ contactId, onClose, onLinked }: LinkPropertyModalPr
 
     async function loadProperties() {
       try {
-        const nextProperties = await fetchSupabaseProperties();
+        const nextProperties = uniqueSupabaseProperties(await fetchSupabaseProperties());
         if (!active) return;
-        setProperties(nextProperties.filter((property) => property.supabasePropertyId));
+        setProperties(nextProperties);
         setSelectedPropertyId(nextProperties.find((property) => property.supabasePropertyId)?.supabasePropertyId ?? '');
       } catch (loadError) {
         if (active) setError(loadError instanceof Error ? loadError.message : 'Chargement des biens impossible.');
