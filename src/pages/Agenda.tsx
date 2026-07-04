@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarClock, Check, Clock, ExternalLink, Loader2, Plus, Search, X } from 'lucide-react';
 import type { store as appStore } from '../lib/store';
-import { fetchSupabaseProperties, uniqueSupabaseProperties } from '../lib/supabaseProperties';
+import { fetchSupabaseProperties } from '../lib/supabaseProperties';
 import { useContacts } from '../lib/useContacts';
 import { useDeals } from '../lib/useDeals';
 import { taskLinkLabel, useTasks, type UseTasksResult } from '../lib/useTasks';
@@ -22,7 +22,7 @@ const filterLabels: Record<AgendaFilter, string> = {
   today: "Aujourd'hui",
   this_week: 'Cette semaine',
   all: 'Toutes',
-  completed: 'Terminees',
+  completed: 'Terminées',
 };
 
 function toLocalIso(date = new Date()): string {
@@ -100,7 +100,7 @@ function taskPriority(task: TaskWithRelations): TaskPriority {
 }
 
 function formatDateLabel(date: string, today: string): string {
-  if (!date) return 'Sans echeance';
+  if (!date) return 'Sans échéance';
   if (date === today) return "Aujourd'hui";
   if (date === addDaysIso(today, 1)) return 'Demain';
   return new Intl.DateTimeFormat('fr-BE', { day: '2-digit', month: 'short' }).format(new Date(`${date}T12:00:00`));
@@ -217,16 +217,16 @@ export function Agenda({ store }: AgendaProps) {
   };
 
   return (
-    <div className="agenda-react-page">
+    <div className="lv-agenda lv-page agenda-react-page">
       <div className="agenda-react-content">
         <header className="agenda-react-titlebar">
           <div>
-            <h1>Taches</h1>
-            <p>Toutes les actions creees depuis les biens, contacts et deals.</p>
+            <h1 className="lv-title">Tâches</h1>
+            <p>Toutes les actions créées depuis les biens, contacts et deals.</p>
           </div>
           <div className="agenda-search">
             <Search size={15} />
-            <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Rechercher une tache..." />
+            <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Rechercher une tâche..." />
           </div>
         </header>
 
@@ -244,7 +244,7 @@ export function Agenda({ store }: AgendaProps) {
         <section className="agenda-create-card">
           <button type="button" className="agenda-create-main" onClick={() => setCreateOpen(true)}>
             <Plus size={15} />
-            <span>Ajouter une tache manuelle...</span>
+            <span>Ajouter une tâche manuelle...</span>
           </button>
           <button type="button" onClick={() => setCreateOpen(true)}>Ajouter</button>
         </section>
@@ -274,15 +274,15 @@ export function Agenda({ store }: AgendaProps) {
 
           <section className="agenda-task-panel">
             <div className="agenda-task-panel-head">
-              <span>{visibleTasks.length} taches affichees{selectedDate ? ` - ${formatDateLabel(selectedDate, today)}` : ''}</span>
-              <span>{stats.doneToday} terminees aujourd'hui</span>
+              <span>{visibleTasks.length} tâches affichées{selectedDate ? ` - ${formatDateLabel(selectedDate, today)}` : ''}</span>
+              <span>{stats.doneToday} terminées aujourd'hui</span>
             </div>
 
             <div className="agenda-task-list">
               {taskState.isLoading ? (
-                <div className="agenda-empty"><Loader2 size={16} className="animate-spin" /> Chargement des taches...</div>
+                <div className="agenda-empty"><Loader2 size={16} className="animate-spin" /> Chargement des tâches...</div>
               ) : visibleTasks.length === 0 ? (
-                <div className="agenda-empty">Aucune tache dans cette vue.</div>
+                <div className="agenda-empty">Aucune tâche dans cette vue.</div>
               ) : visibleTasks.map(task => (
                 <AgendaTaskRow
                   key={task.id}
@@ -299,7 +299,7 @@ export function Agenda({ store }: AgendaProps) {
               <div className="agenda-month-head">
                 <span>{calendarTitle}</span>
                 <div>
-                  <button type="button" onClick={() => setCalendarMonth(moveMonth(calendarMonth, -1))} aria-label="Mois precedent">‹</button>
+                  <button type="button" onClick={() => setCalendarMonth(moveMonth(calendarMonth, -1))} aria-label="Mois précédent">‹</button>
                   <button type="button" onClick={() => setCalendarMonth(moveMonth(calendarMonth, 1))} aria-label="Mois suivant">›</button>
                 </div>
               </div>
@@ -417,7 +417,7 @@ function AgendaTaskRow({ task, today, taskState }: { task: TaskWithRelations; to
 
   return (
     <article className={`agenda-task-row ${task.is_completed ? 'done' : ''} ${late ? 'late' : ''}`}>
-      <button type="button" className="agenda-check" onClick={() => { void taskState.toggleTask(task.id); }} aria-label="Marquer terminee">
+      <button type="button" className="agenda-check" onClick={() => { void taskState.toggleTask(task.id); }} aria-label="Marquer terminée">
         {task.is_completed && <Check size={12} />}
       </button>
       <div className="agenda-task-main">
@@ -429,7 +429,7 @@ function AgendaTaskRow({ task, today, taskState }: { task: TaskWithRelations; to
         </div>
         <div className="agenda-task-meta">
           <Clock size={13} />
-          <span>{formatDateLabel(date, today)} a {time}</span>
+          <span>{formatDateLabel(date, today)} à {time}</span>
           <span>-</span>
           <button type="button" disabled={!hasLink} onClick={() => openLinkedObject(task)}>
             {taskLinkLabel(task)}
@@ -464,7 +464,7 @@ function TaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (inpu
     fetchSupabaseProperties()
       .then((items) => {
         if (!active) return;
-        setProperties(uniqueSupabaseProperties(items).map((property) => ({
+        setProperties(items.filter((property) => property.supabasePropertyId).map((property) => ({
           id: property.supabasePropertyId as string,
           label: `${property.title} - ${property.city}`,
         })));
@@ -512,7 +512,7 @@ function TaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (inpu
         contact_id: linkKind === 'contact' ? linkId || null : null,
       });
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : 'Creation impossible.');
+      setError(createError instanceof Error ? createError.message : 'Création impossible.');
     }
   };
 
@@ -520,7 +520,7 @@ function TaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (inpu
     <div className="contact-modal-backdrop" role="dialog" aria-modal="true" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <div className="contact-modal">
         <div className="section-head">
-          <strong>Nouvelle tache</strong>
+          <strong>Nouvelle tâche</strong>
           <button type="button" onClick={onClose}><X size={16} /></button>
         </div>
         <div className="contact-modal-grid">
@@ -528,7 +528,7 @@ function TaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (inpu
           <label className="contact-modal-field-wide">Description<textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} /></label>
           <label>Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
           <label>Heure<input type="time" value={time} onChange={(event) => setTime(event.target.value)} /></label>
-          <label>Priorite<select value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)}><option value="basse">Basse</option><option value="moyenne">Moyenne</option><option value="haute">Haute</option></select></label>
+          <label>Priorité<select value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)}><option value="basse">Basse</option><option value="moyenne">Moyenne</option><option value="haute">Haute</option></select></label>
           <label>Lien<select value={linkKind} onChange={(event) => setLinkKind(event.target.value as LinkKind)}><option value="none">Aucun</option><option value="deal">Deal</option><option value="property">Bien</option><option value="contact">Contact</option></select></label>
           {linkKind !== 'none' && (
             <>
@@ -540,7 +540,7 @@ function TaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (inpu
         {error && <div className="contact-action-message">{error}</div>}
         <div className="contact-modal-actions">
           <button className="panel-action" type="button" onClick={onClose}>Annuler</button>
-          <button className="add-contact-link" type="button" onClick={handleSubmit}>Creer</button>
+          <button className="add-contact-link" type="button" onClick={handleSubmit}>Créer</button>
         </div>
       </div>
     </div>

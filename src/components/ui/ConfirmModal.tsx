@@ -53,17 +53,17 @@ export function ConfirmModal({
         padding: 24,
         background: 'var(--color-bg-overlay)',
         backdropFilter: 'blur(4px)',
-        fontFamily: 'var(--notion-sans)',
+        fontFamily: 'var(--font-sans, var(--notion-sans))',
       }}
     >
       <section
         onClick={(event) => event.stopPropagation()}
         style={{
           width: 'min(420px, 100%)',
-          borderRadius: 14,
+          borderRadius: 'var(--radius)',
           border: '1px solid var(--color-border-default)',
           background: 'var(--color-bg-surface)',
-          boxShadow: 'var(--shadow-lg)',
+          boxShadow: 'none',
           overflow: 'hidden',
         }}
       >
@@ -73,7 +73,7 @@ export function ConfirmModal({
             style={{
               width: 34,
               height: 34,
-              borderRadius: 999,
+              borderRadius: 'var(--radius)',
               display: 'grid',
               placeItems: 'center',
               background: danger ? 'var(--color-danger-bg)' : 'var(--color-bg-muted)',
@@ -84,7 +84,7 @@ export function ConfirmModal({
             <AlertTriangle size={17} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: 0, color: 'var(--color-text-primary)', fontFamily: 'var(--font-serif, var(--notion-serif))', fontSize: 20, fontWeight: 400 }}>{title}</h2>
+            <h2 style={{ margin: 0, color: 'var(--color-text-primary)', fontFamily: 'var(--font-title, var(--lv-font-title))', fontSize: 20, fontWeight: 700 }}>{title}</h2>
             {description && (
               <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)', fontSize: 13, lineHeight: 1.45 }}>
                 {description}
@@ -95,7 +95,7 @@ export function ConfirmModal({
             type="button"
             onClick={onCancel}
             aria-label="Fermer"
-            style={{ width: 30, height: 30, border: 0, borderRadius: 6, background: 'transparent', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
+            style={{ width: 30, height: 30, border: 0, borderRadius: 'var(--radius)', background: 'transparent', color: 'var(--color-text-secondary)', cursor: 'pointer' }}
           >
             <X size={17} />
           </button>
@@ -123,7 +123,7 @@ function buttonStyle(kind: 'secondary' | 'primary' | 'danger'): React.CSSPropert
   return {
     height: 36,
     padding: '0 14px',
-    borderRadius: 8,
+    borderRadius: 'var(--radius)',
     border: `1px solid ${colors.border}`,
     background: colors.background,
     color: colors.color,

@@ -9,6 +9,7 @@ import { useDeals } from '../lib/useDeals';
 import { usePipelineStages } from '../lib/usePipelineStages';
 import type { DealFull } from '../lib/services/dealsService';
 import type { PipelineStageRow } from '../lib/services/pipelineStagesService';
+import { formatEuro } from '../lib/formatCurrency';
 import type { Activity, Agent, Contact, Deal, PipelineStage, Property, Task } from '../types';
 import '../components/pipeline/pipeline.css';
 
@@ -24,14 +25,8 @@ function getDealParamFromHash(): string | null {
   return params.get('deal') ?? params.get('dealId');
 }
 
-const commFormatter = new Intl.NumberFormat('fr-BE', {
-  style: 'currency',
-  currency: 'EUR',
-  maximumFractionDigits: 0,
-});
-
 function fmtComm(v: number) {
-  return commFormatter.format(v).replace(/\s?EUR/, ' EUR');
+  return formatEuro(v);
 }
 
 function numericIdFromText(value: string): number {
@@ -203,7 +198,7 @@ interface KpiCellProps {
 
 function KpiCell({ label, value, delta, last }: KpiCellProps) {
   return (
-    <div style={{
+    <div className="lv-pipeline-kpi" style={{
       flex: 1,
       padding: '14px 20px',
       display: 'flex',
@@ -318,14 +313,14 @@ export function Pipeline({ store }: PipelineProps) {
   const loadError = dealsState.error ?? stagesState.error;
 
   return (
-    <div style={{
+    <div className={`lv-pipeline lv-page ${panelOpen ? 'has-panel' : ''}`} style={{
       minHeight: 'calc(100vh - 58px)',
       background: 'var(--color-bg-page)',
       fontFamily: 'var(--font-sans, var(--notion-sans))',
       position: 'relative',
     }}>
-      <div style={{ padding: panelOpen ? '24px 440px 0 32px' : '24px 32px 0', marginBottom: 16, transition: 'padding-right 180ms ease' }}>
-        <h1 style={{
+      <div className="lv-pipeline-head" style={{ padding: panelOpen ? '24px 440px 0 32px' : '24px 32px 0', marginBottom: 16, transition: 'padding-right 180ms ease' }}>
+        <h1 className="lv-title" style={{
           margin: 0,
           fontFamily: 'var(--font-serif, var(--notion-serif))',
           fontSize: 32,
@@ -333,24 +328,25 @@ export function Pipeline({ store }: PipelineProps) {
           lineHeight: 1.05,
           color: 'var(--color-text-primary)',
         }}>
-          Opportunites
+          Opportunités
         </h1>
         <p style={{ margin: '6px 0 0', fontSize: 15, color: 'var(--color-text-secondary)' }}>
           Suivi commercial de vos dossiers actifs.
         </p>
       </div>
 
-      <div style={{ padding: panelOpen ? '0 440px 0 32px' : '0 32px', display: 'flex', alignItems: 'stretch', gap: 12, position: 'relative', zIndex: 2, transition: 'padding-right 180ms ease' }}>
-        <div style={{ flex: 1, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border-default)', borderRadius: 10, display: 'flex', alignItems: 'stretch' }}>
+      <div className="lv-pipeline-toolbar" style={{ padding: panelOpen ? '0 440px 0 32px' : '0 32px', display: 'flex', alignItems: 'stretch', gap: 12, position: 'relative', zIndex: 2, transition: 'padding-right 180ms ease' }}>
+        <div className="lv-pipeline-kpis" style={{ flex: 1, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border-default)', borderRadius: 10, display: 'flex', alignItems: 'stretch' }}>
           <KpiCell label="Deals actifs" value={kpis.active} delta="Pipeline en cours" />
-          <KpiCell label="Mandats signes" value={kpis.mandats} delta="Ce mois" />
+          <KpiCell label="Mandats signés" value={kpis.mandats} delta="Ce mois" />
           <KpiCell label="Biens vendus" value={kpis.vendus} delta="Ce mois" />
-          <KpiCell label="Commission ouverte" value={fmtComm(kpis.commission)} delta="Estimee" last />
+          <KpiCell label="Commission ouverte" value={fmtComm(kpis.commission)} delta="Estimée" last />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <div style={{ display: 'flex', border: '1px solid var(--color-border-default)', borderRadius: 8, overflow: 'hidden' }}>
+        <div className="lv-pipeline-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div className="lv-pipeline-view-toggle" style={{ display: 'flex', border: '1px solid var(--color-border-default)', borderRadius: 8, overflow: 'hidden' }}>
             <button
+              className={`lv-icon-toggle ${viewMode === 'kanban' ? 'is-active' : ''}`}
               type="button"
               onClick={() => setViewMode('kanban')}
               title="Vue Kanban"
@@ -367,6 +363,7 @@ export function Pipeline({ store }: PipelineProps) {
               <LayoutGrid size={15} />
             </button>
             <button
+              className={`lv-icon-toggle ${viewMode === 'list' ? 'is-active' : ''}`}
               type="button"
               onClick={() => setViewMode('list')}
               title="Vue Liste"
@@ -387,6 +384,7 @@ export function Pipeline({ store }: PipelineProps) {
 
           <button
             type="button"
+            className="lv-secondary-button"
             style={{ background: 'var(--color-bg-surface)', border: '1px solid var(--color-border-default)', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontFamily: 'var(--font-sans, var(--notion-sans))', color: 'var(--color-text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -399,6 +397,7 @@ export function Pipeline({ store }: PipelineProps) {
 
           <button
             type="button"
+            className="lv-primary-button"
             title="Sélectionnez un bien pour créer un deal"
             onClick={() => { window.location.hash = '#biens'; }}
             style={{ background: 'var(--color-brand)', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-sans, var(--notion-sans))', color: 'var(--color-text-inverse)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
@@ -409,7 +408,7 @@ export function Pipeline({ store }: PipelineProps) {
       </div>
 
       {loadError && (
-        <div style={{ margin: '12px 32px 0', padding: '10px 12px', border: '1px solid var(--color-danger-border)', borderRadius: 8, background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', fontSize: 13 }}>
+        <div className="lv-pipeline-error" style={{ margin: '12px 32px 0', padding: '10px 12px', border: '1px solid var(--color-danger-border)', borderRadius: 8, background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', fontSize: 13 }}>
           {loadError}
         </div>
       )}

@@ -16,5 +16,7 @@ src/assets/_asset_backups/
 *.original.png
 *.before-bg-fix.png
 *.previous.png
+tmp-*.png
+tmp-phase3-*.png
 .gstack/
 .worktrees/

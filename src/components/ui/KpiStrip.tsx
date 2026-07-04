@@ -13,7 +13,7 @@ export function KpiStrip({ metrics, actions, compact = false }: KpiStripProps) {
         display: 'flex',
         alignItems: 'stretch',
         gap: actions ? 12 : 0,
-        fontFamily: 'var(--notion-sans)',
+        fontFamily: 'var(--font-sans, var(--notion-sans))',
       }}
     >
       <div
@@ -24,7 +24,7 @@ export function KpiStrip({ metrics, actions, compact = false }: KpiStripProps) {
           alignItems: 'stretch',
           background: 'var(--color-bg-surface)',
           border: '1px solid var(--color-border-default)',
-          borderRadius: 10,
+          borderRadius: 'var(--radius)',
           overflow: 'hidden',
         }}
       >

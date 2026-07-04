@@ -3,6 +3,8 @@ import type { Property } from '../../types';
 import { SignalBadges } from '../SignalBadges';
 import type { ListingSignal } from '../../lib/services/listingSignalsService';
 import { ScoreRing } from './ScoreRing';
+import { propertyImageFallbacks } from '../../lib/propertyImageFallbacks';
+import { formatEuro } from '../../lib/formatCurrency';
 
 type SignalFamily = 'price' | 'behavior' | 'context' | 'alert';
 
@@ -47,9 +49,9 @@ function statusBadge(property: Property): { label: string; bg: string; text: str
   }
   return {
     label: 'Disponible',
-    bg: cssVar('--color-success-bg'),
-    text: cssVar('--color-success-text'),
-    border: cssVar('--color-success-border'),
+    bg: cssVar('--color-bg-muted'),
+    text: cssVar('--color-text-secondary'),
+    border: cssVar('--color-border-default'),
   };
 }
 
@@ -63,7 +65,29 @@ function signalFamily(label: string): SignalFamily {
 }
 
 function signalBadge(label: string): { bg: string; text: string; border: string } {
-  if (label.toLowerCase().includes('nouveau')) {
+  const normalized = label.toLowerCase();
+  if (normalized.includes('sous march') || normalized.includes('sous-march')) {
+    return {
+      bg: '#E8F0EB',
+      text: '#1E5A3A',
+      border: 'color-mix(in srgb, #1E5A3A 24%, transparent)',
+    };
+  }
+  if (normalized.includes('surcot') || normalized.includes('sur-cot')) {
+    return {
+      bg: '#FAEDE9',
+      text: '#B3402E',
+      border: 'color-mix(in srgb, #B3402E 24%, transparent)',
+    };
+  }
+  if (normalized.includes('tva')) {
+    return {
+      bg: '#F7F1DD',
+      text: '#8A6D1F',
+      border: 'color-mix(in srgb, #8A6D1F 26%, transparent)',
+    };
+  }
+  if (normalized.includes('nouveau')) {
     return {
       bg: cssVar('--color-neutral-bg'),
       text: cssVar('--color-neutral-text'),
@@ -91,8 +115,6 @@ function daysOnlineLabel(days: number): string {
   return `${days} jours`;
 }
 
-const priceFormatter = new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-
 const photoNavStyle: React.CSSProperties = {
   position: 'absolute',
   top: '50%',
@@ -103,7 +125,7 @@ const photoNavStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   border: 0,
-  borderRadius: '50%',
+  borderRadius: 'var(--radius)',
   background: 'color-mix(in srgb, var(--color-text-primary) 48%, transparent)',
   opacity: 0,
   cursor: 'pointer',
@@ -126,21 +148,22 @@ export function PropertyCard({
   contactName,
   signals = [],
 }: PropertyCardProps) {
-  const photos = property.photos.length > 0 ? property.photos : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80'];
+  const photos = property.photos.length > 0 ? property.photos : propertyImageFallbacks(property.id);
   const currentPhoto = photos[carouselIndex % photos.length];
   const status = statusBadge(property);
   const signalLabel = primarySignal ?? property.tag;
   const signal = signalBadge(signalLabel);
-  const price = priceFormatter.format(property.price).replace(/\s?EUR/, ' €');
-  const selectedShadow = '0 0 0 3px color-mix(in srgb, var(--color-brand) 13%, transparent), var(--shadow-sm)';
-  const defaultShadow = 'var(--shadow-xs)';
+  const price = formatEuro(property.price);
+  const selectedShadow = 'none';
+  const defaultShadow = 'none';
 
   return (
     <article
+      className={`lv-property-card ${selected ? 'is-selected' : ''}`}
       style={{
         background: cssVar('--color-bg-surface'),
         border: selected ? '1px solid var(--color-brand)' : '1px solid var(--color-border-default)',
-        borderRadius: 10,
+        borderRadius: 'var(--radius)',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
@@ -150,7 +173,7 @@ export function PropertyCard({
       }}
       onClick={onSelect}
       onMouseEnter={(event) => {
-        event.currentTarget.style.boxShadow = selected ? selectedShadow : 'var(--shadow-sm)';
+        event.currentTarget.style.boxShadow = 'none';
         event.currentTarget.style.borderColor = 'var(--color-border-strong)';
         event.currentTarget.style.transform = 'translateY(-1px)';
         event.currentTarget.querySelectorAll<HTMLElement>('[data-photo-nav]').forEach((button) => { button.style.opacity = '1'; });
@@ -208,9 +231,9 @@ export function PropertyCard({
               border: `1px solid ${signal.border}`,
               fontSize: 10.5,
               fontWeight: 650,
-              fontFamily: 'var(--font-sans, var(--notion-sans))',
+              fontFamily: 'var(--lv-font-mono, var(--notion-mono))',
               padding: '3px 8px',
-              borderRadius: 5,
+              borderRadius: 0,
             }}>
               {signalLabel}
             </span>
@@ -219,10 +242,11 @@ export function PropertyCard({
                 color: cssVar('--color-text-secondary'),
                 background: 'color-mix(in srgb, var(--color-bg-surface) 84%, transparent)',
                 border: '1px solid var(--color-border-default)',
-                borderRadius: 999,
+                borderRadius: 0,
                 padding: '2px 6px',
                 fontSize: 10.5,
                 fontWeight: 650,
+                fontFamily: 'var(--lv-font-mono, var(--notion-mono))',
                 whiteSpace: 'nowrap',
               }}>
                 + {secondarySignalCount} autres
@@ -231,7 +255,7 @@ export function PropertyCard({
           </div>
         )}
 
-        <span style={{ position: 'absolute', top: 6, right: 6, borderRadius: 999, background: 'color-mix(in srgb, var(--color-bg-surface) 88%, transparent)', boxShadow: 'var(--shadow-sm)' }}>
+        <span style={{ position: 'absolute', top: 6, right: 6, borderRadius: 'var(--radius)', background: 'color-mix(in srgb, var(--color-bg-surface) 88%, transparent)', boxShadow: 'none' }}>
           <ScoreRing score={property.score} size="sm" />
         </span>
 
@@ -241,7 +265,7 @@ export function PropertyCard({
               <span key={index} style={{
                 width: 6,
                 height: 6,
-                borderRadius: '50%',
+                borderRadius: 'var(--radius)',
                 background: index === carouselIndex % photos.length ? cssVar('--color-bg-surface') : 'color-mix(in srgb, var(--color-bg-surface) 50%, transparent)',
               }} />
             ))}
@@ -257,7 +281,7 @@ export function PropertyCard({
             display: 'inline-flex',
             alignItems: 'center',
             gap: 4,
-            borderRadius: 3,
+            borderRadius: 'var(--radius)',
             background: 'color-mix(in srgb, var(--color-text-primary) 70%, transparent)',
             color: 'color-mix(in srgb, var(--color-text-inverse) 90%, transparent)',
             fontSize: 10,
@@ -277,7 +301,7 @@ export function PropertyCard({
             position: 'absolute', bottom: 8, right: 8,
             background: isFavorite ? cssVar('--color-favorite-bg') : 'color-mix(in srgb, var(--color-bg-surface) 88%, transparent)',
             border: '1px solid var(--color-border-default)',
-            borderRadius: '50%',
+            borderRadius: 'var(--radius)',
             width: 30,
             height: 30,
             display: 'flex',
@@ -285,7 +309,7 @@ export function PropertyCard({
             justifyContent: 'center',
             cursor: 'pointer',
             padding: 0,
-            boxShadow: 'var(--shadow-sm)',
+            boxShadow: 'none',
           }}
           title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
         >
@@ -295,15 +319,15 @@ export function PropertyCard({
 
       <div style={{ padding: '11px 14px 12px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-sans, var(--notion-sans))', color: cssVar('--color-text-primary'), lineHeight: 1 }}>
+          <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--lv-font-mono, var(--notion-mono))', fontVariantNumeric: 'tabular-nums', color: cssVar('--color-text-primary'), lineHeight: 1 }}>
             {price}
           </span>
           <span style={{
             fontSize: 11,
-            fontWeight: 550,
-            fontFamily: 'var(--font-sans, var(--notion-sans))',
+            fontWeight: 650,
+            fontFamily: 'var(--lv-font-mono, var(--notion-mono))',
             padding: '2px 8px',
-            borderRadius: 99,
+            borderRadius: 0,
             background: status.bg,
             color: status.text,
             border: `1px solid ${status.border}`,
@@ -341,7 +365,7 @@ export function PropertyCard({
               alignItems: 'center',
               gap: 6,
               padding: '7px 8px',
-              borderRadius: 8,
+              borderRadius: 'var(--radius)',
               background: cssVar('--color-signal-price-bg'),
               border: '1px solid var(--color-signal-price-border)',
               color: cssVar('--color-signal-price-text'),
@@ -388,7 +412,7 @@ export function PropertyCard({
           fontWeight: 560,
           marginTop: 1,
         }}>
-          <span>{daysOnlineLabel(property.publishedDays)}</span>
+          <span style={{ fontFamily: 'var(--lv-font-mono, var(--notion-mono))', fontVariantNumeric: 'tabular-nums' }}>{daysOnlineLabel(property.publishedDays)}</span>
           <span aria-hidden="true">-</span>
           <span style={{ color: property.fsbo ? cssVar('--color-brand') : cssVar('--color-text-secondary'), fontWeight: property.fsbo ? 680 : 560 }}>
             {sellerLabel(property)}
@@ -398,15 +422,15 @@ export function PropertyCard({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: cssVar('--color-text-secondary'), fontSize: 12 }}>
             <Square size={11} />
-            <span>{property.surface} m²</span>
+            <span style={{ fontFamily: 'var(--lv-font-mono, var(--notion-mono))', fontVariantNumeric: 'tabular-nums' }}>{property.surface} m²</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: cssVar('--color-text-secondary'), fontSize: 12 }}>
             <Bed size={11} />
-            <span>{property.bedrooms}</span>
+            <span style={{ fontFamily: 'var(--lv-font-mono, var(--notion-mono))', fontVariantNumeric: 'tabular-nums' }}>{property.bedrooms}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: cssVar('--color-text-secondary'), fontSize: 12 }}>
             <Bath size={11} />
-            <span>{property.bathrooms}</span>
+            <span style={{ fontFamily: 'var(--lv-font-mono, var(--notion-mono))', fontVariantNumeric: 'tabular-nums' }}>{property.bathrooms}</span>
           </div>
         </div>
 

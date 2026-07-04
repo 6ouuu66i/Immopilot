@@ -7,9 +7,7 @@ import {
   ChevronLeft,
   CircleDollarSign,
   ContactRound,
-  Filter,
   Home,
-  Layers3,
   ListChecks,
   LogOut,
   Megaphone,
@@ -18,7 +16,6 @@ import {
   Search,
   Settings,
   Shield,
-  UsersRound,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
@@ -58,12 +55,6 @@ const crmNav: NavItem[] = [
   { key: 'commissions', label: 'Commissions', href: '#commissions', icon: CircleDollarSign },
 ];
 
-const settingsNav: NavItem[] = [
-  { key: 'filters', label: 'Filtres', href: '#biens', icon: Filter },
-  { key: 'team', label: 'Équipe', href: '#contacts', icon: UsersRound },
-  { key: 'settings', label: 'Paramètres', href: '#settings', icon: Settings },
-];
-
 const adminNav: NavItem = { key: 'admin', label: 'Admin', href: '#admin', icon: Shield };
 
 export function AppShell({ activeRoute, children, store }: AppShellProps) {
@@ -75,7 +66,7 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
   const shouldRestoreSidebarRef = useRef(false);
   const { agency, profile, signOut } = useAuth();
   const notificationsState = useNotifications(10);
-  const visibleSettingsNav = profile?.role === 'admin' ? [...settingsNav, adminNav] : settingsNav;
+  const visibleSettingsNav = profile?.role === 'admin' ? [adminNav] : [];
   const unreadNotifications = notificationsState.unreadCount;
   const agentName = profile?.full_name ?? profile?.email ?? 'Agent ImmoPilot';
   const agentSubtitle = agency?.name ?? (profile?.role === 'admin' ? 'Administrateur' : 'Conseiller agence');
@@ -156,8 +147,8 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
   }, []);
 
   return (
-    <div className={`ip-shell app ${collapsed ? 'is-collapsed' : ''}`}>
-      <aside className="ip-sidebar" aria-label="Navigation principale">
+    <div className={`ip-shell lv-page app ${collapsed ? 'is-collapsed' : ''}`}>
+      <aside className="ip-sidebar lv-shell-sidebar lv-lovable-sidebar" aria-label="Navigation principale">
         <div className="ip-sidebar-brand">
           <a className="ip-brand-lockup" href="#dashboard" aria-label="ImmoPilot Dashboard">
             <span className="ip-brand-mark" aria-hidden="true">
@@ -168,6 +159,7 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
               <span className="ip-brand-sub">Prospection CRM</span>
             </span>
           </a>
+          <span className="ip-brand-status">Live</span>
           <button
             className="ip-icon-button"
             type="button"
@@ -179,43 +171,35 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
         </div>
 
         <nav className="ip-sidebar-nav" aria-label="Workspace">
-          <div className="ip-nav-group">
+          <div className="ip-nav-group ip-nav-group-primary">
             {mainNav.map((item) => (
               <SidebarLink key={item.key} item={item} active={activeRoute === item.key} />
             ))}
           </div>
 
-          <div className="ip-nav-group">
+          <div className="ip-nav-group" data-section="Prospection">
             <div className="ip-nav-group-label">Prospection</div>
             {prospectNav.map((item) => (
               <SidebarLink key={item.key} item={item} active={activeRoute === item.key} />
             ))}
           </div>
 
-          <div className="ip-nav-group">
+          <div className="ip-nav-group" data-section="CRM">
             <div className="ip-nav-group-label">CRM</div>
             {crmNav.map((item) => (
               <SidebarLink key={item.key} item={item} active={activeRoute === item.key} />
             ))}
           </div>
 
-          <div className="ip-nav-group ip-saved-views">
-            <div className="ip-nav-group-label">Paramètres</div>
-            {visibleSettingsNav.map((item) => (
-              <SidebarLink key={item.key} item={item} active={activeRoute === item.key} />
-            ))}
-          </div>
+          {visibleSettingsNav.length > 0 && (
+            <div className="ip-nav-group ip-nav-group-settings" data-section="Paramètres">
+              <div className="ip-nav-group-label">Paramètres</div>
+              {visibleSettingsNav.map((item) => (
+                <SidebarLink key={item.key} item={item} active={activeRoute === item.key} />
+              ))}
+            </div>
+          )}
         </nav>
-
-        <div className="ip-sidebar-note" aria-hidden="true">
-          <span className="ip-sidebar-note-icon">
-            <Layers3 size={16} />
-          </span>
-          <div>
-            <strong>Vue active</strong>
-            <p>Biens à traiter cette semaine</p>
-          </div>
-        </div>
 
         <div className="ip-sidebar-footer">
           <a className="ip-sidebar-link" href="#settings">
@@ -240,7 +224,7 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
       </aside>
 
       <div className="ip-workspace">
-        <header className="ip-topbar">
+        <header className="ip-topbar lv-shell-topbar">
           <div className="ip-topbar-left">
             <span className="ip-breadcrumb">Workspace</span>
           </div>
@@ -314,7 +298,7 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
           </div>
         </header>
 
-        <main id="app-content" className="ip-content">
+        <main id="app-content" className="ip-content ip-main">
           {children}
         </main>
       </div>
@@ -349,7 +333,14 @@ function SidebarLink({ active, item }: SidebarLinkProps) {
   const Icon = item.icon;
 
   return (
-    <a className={`ip-sidebar-link ${active ? 'is-active' : ''}`} href={item.href} data-page={item.key}>
+    <a
+      aria-current={active ? 'page' : undefined}
+      className={`ip-sidebar-link ${active ? 'is-active' : ''}`}
+      href={item.href}
+      title={item.label}
+      data-page={item.key}
+    >
+      <i className="ip-sidebar-active-rail" aria-hidden="true" />
       <Icon size={17} strokeWidth={1.9} />
       <span>{item.label}</span>
       {item.count !== undefined && <span className="ip-nav-count">{item.count}</span>}

@@ -30,45 +30,21 @@ export function TaskList({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? 6 : 8 }}>
+    <div className={`lv-task-list ${compact ? 'is-compact' : ''}`}>
       {tasks.map((task) => (
         <button
           key={task.id}
           type="button"
           onClick={() => onToggleTask?.(task.id)}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: compact ? '16px minmax(0, 1fr)' : '18px minmax(0, 1fr) auto',
-            alignItems: 'start',
-            gap: 8,
-            width: '100%',
-            padding: compact ? '4px 0' : '8px 0',
-            border: 0,
-            borderBottom: compact ? 0 : '1px solid var(--color-border-subtle)',
-            background: 'transparent',
-            color: 'var(--color-text-primary)',
-            textAlign: 'left',
-            cursor: onToggleTask ? 'pointer' : 'default',
-            fontFamily: 'var(--notion-sans)',
-          }}
+          className={`lv-task-row ${task.done ? 'is-done' : ''} ${compact ? 'is-compact' : ''}`}
+          data-clickable={onToggleTask ? 'true' : 'false'}
         >
-          <span style={{ color: task.done ? 'var(--color-success-text)' : 'var(--color-text-disabled)', marginTop: 1 }}>
+          <span className="lv-task-check">
             {task.done ? <CheckCircle2 size={compact ? 14 : 16} /> : <Circle size={compact ? 14 : 16} />}
           </span>
-          <span style={{ minWidth: 0 }}>
-            <strong
-              style={{
-                display: 'block',
-                color: task.done ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)',
-                fontSize: compact ? 11.5 : 12.5,
-                fontWeight: 650,
-                lineHeight: 1.25,
-                textDecoration: task.done ? 'line-through' : 'none',
-              }}
-            >
-              {task.title}
-            </strong>
-            <small style={{ display: 'block', marginTop: 3, color: 'var(--color-text-tertiary)', fontSize: compact ? 10 : 11.5 }}>
+          <span className="lv-task-content">
+            <strong className="lv-task-title">{task.title}</strong>
+            <small className="lv-task-meta">
               {getMeta?.(task) ?? `${task.date} · ${task.time}`}
             </small>
           </span>

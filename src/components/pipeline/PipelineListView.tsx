@@ -1,6 +1,7 @@
 // src/components/pipeline/PipelineListView.tsx
 import { useEffect, useRef, useState } from 'react';
 import type { store as appStore } from '../../lib/store';
+import { formatEuro } from '../../lib/formatCurrency';
 import type { Deal, Task } from '../../types';
 import { ScoreRing } from '../biens/ScoreRing';
 
@@ -15,30 +16,19 @@ interface PipelineListViewProps {
   store: Store;
 }
 
-const priceFormatter = new Intl.NumberFormat('fr-BE', {
-  style: 'currency', currency: 'EUR', maximumFractionDigits: 0,
-});
-function fmt(v: number) { return priceFormatter.format(v).replace(/\s?EUR/, ' €'); }
+function fmt(v: number) { return formatEuro(v); }
 
 function stageNameToId(name: string): string {
-  const n = (name ?? '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+  const n = (name ?? '').trim().toLowerCase();
   if (n.includes('nouveau'))  return 'nouveau';
-  if (n.includes('analyser') || n.includes('analyse')) return 'analyse';
-  if (n.includes('a contacter')) return 'a-contacter';
-  if (n === 'rdv' || n.includes('rendez')) return 'rdv';
   if (n.includes('qualif'))   return 'qualifie';
-  if (n.includes('contacte')) return 'contacte';
   if (n.includes('contact'))  return 'contact';
   if (n.includes('visite'))   return 'visite';
   if (n.includes('propos'))   return 'proposition';
   if (n.includes('mandat'))   return 'mandat';
   if (n.includes('vend'))     return 'vendu';
   if (n.includes('perd'))     return 'perdu';
-  return n.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'stage';
+  return 'nouveau';
 }
 
 function localDateKey(date = new Date()): string {

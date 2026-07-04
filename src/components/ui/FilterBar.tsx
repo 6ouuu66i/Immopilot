@@ -23,9 +23,9 @@ export function FilterBar({
         minHeight: 48,
         padding: '8px 12px',
         border: '1px solid var(--color-border-default)',
-        borderRadius: 8,
+        borderRadius: 'var(--radius)',
         background: 'var(--color-bg-muted)',
-        fontFamily: 'var(--notion-sans)',
+        fontFamily: 'var(--font-sans, var(--notion-sans))',
       }}
     >
       <span

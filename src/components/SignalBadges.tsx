@@ -6,7 +6,7 @@ interface SignalBadgesProps {
   signals: ListingSignal[];
 }
 
-type SignalTone = 'price' | 'context' | 'behavior' | 'alert' | 'neutral';
+type SignalTone = 'price' | 'belowMarket' | 'overpriced' | 'context' | 'behavior' | 'alert' | 'neutral';
 
 interface SignalDefinition {
   label: string;
@@ -17,8 +17,8 @@ const MAX_VISIBLE_SIGNALS = 3;
 
 const SIGNAL_DEFINITIONS: Partial<Record<ListingSignalType, SignalDefinition>> = {
   price_drop: { label: 'Baisse prix', tone: 'price' },
-  below_market: { label: 'Sous marche', tone: 'price' },
-  overpriced: { label: 'Surcoté', tone: 'price' },
+  below_market: { label: 'Sous marche', tone: 'belowMarket' },
+  overpriced: { label: 'Surcoté', tone: 'overpriced' },
   fsbo: { label: 'FSBO', tone: 'context' },
   competition_shock: { label: 'Nouvelle concurrence', tone: 'context' },
   republished: { label: 'Republie', tone: 'behavior' },
@@ -35,6 +35,18 @@ const TONE_STYLES: Record<SignalTone, { bg: string; text: string; border: string
     text: 'var(--color-signal-price-text)',
     border: 'var(--color-signal-price-border)',
     dot: 'var(--color-brand)',
+  },
+  belowMarket: {
+    bg: '#E8F0EB',
+    text: '#1E5A3A',
+    border: 'color-mix(in srgb, #1E5A3A 24%, transparent)',
+    dot: '#1E5A3A',
+  },
+  overpriced: {
+    bg: '#FAEDE9',
+    text: '#B3402E',
+    border: 'color-mix(in srgb, #B3402E 24%, transparent)',
+    dot: '#B3402E',
   },
   context: {
     bg: 'var(--color-signal-context-bg)',
@@ -228,27 +240,18 @@ export function SignalBadges({ signals }: SignalBadgesProps) {
               alignItems: 'center',
               gap: 5,
               maxWidth: '100%',
-              borderRadius: 999,
+              borderRadius: 0,
               border: `1px solid ${tone.border}`,
               background: tone.bg,
               color: tone.text,
               padding: '3px 7px',
               fontSize: 10.5,
               fontWeight: 680,
+              fontFamily: 'var(--lv-font-mono, var(--notion-mono))',
               lineHeight: 1.15,
               whiteSpace: 'nowrap',
             }}
           >
-            <span
-              aria-hidden="true"
-              style={{
-                width: 5,
-                height: 5,
-                flex: '0 0 auto',
-                borderRadius: '50%',
-                background: tone.dot,
-              }}
-            />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{definition.label}</span>
           </span>
         );
@@ -260,13 +263,14 @@ export function SignalBadges({ signals }: SignalBadgesProps) {
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: 999,
+            borderRadius: 0,
             border: `1px solid ${TONE_STYLES.neutral.border}`,
             background: TONE_STYLES.neutral.bg,
             color: TONE_STYLES.neutral.text,
             padding: '3px 7px',
             fontSize: 10.5,
             fontWeight: 700,
+            fontFamily: 'var(--lv-font-mono, var(--notion-mono))',
             lineHeight: 1.15,
             whiteSpace: 'nowrap',
           }}

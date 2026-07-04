@@ -38,10 +38,10 @@ export function ObjectTable<T>({
       style={{
         overflow: 'hidden',
         border: '1px solid var(--color-border-default)',
-        borderRadius: 10,
+        borderRadius: 'var(--radius)',
         background: 'var(--color-bg-surface)',
-        fontFamily: 'var(--notion-sans)',
-        boxShadow: 'var(--shadow-xs)',
+        fontFamily: 'var(--font-sans, var(--notion-sans))',
+        boxShadow: 'none',
       }}
     >
       <div
@@ -54,7 +54,7 @@ export function ObjectTable<T>({
           padding: '0 14px',
           borderBottom: '1px solid var(--color-border-default)',
           color: 'var(--color-text-tertiary)',
-          fontFamily: 'var(--notion-sans)',
+          fontFamily: 'var(--font-sans, var(--notion-sans))',
           fontSize: 'var(--text-xs)',
           fontWeight: 500,
           letterSpacing: 0,

@@ -25,6 +25,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const LISTINGS_FETCH_PAGE_SIZE = 1000;
 
 function numericIdFromText(value: string): number {
   let hash = 0;
@@ -133,18 +134,28 @@ function mapListingToProperty(row: ListingWithProperty): Property {
 export async function fetchSupabaseProperties(): Promise<Property[]> {
   if (!supabase) return [];
 
-  const { data, error } = await supabase
-    .from('listings')
-    .select('*, properties(*)')
-    .order('first_seen_at', { ascending: false })
-    .limit(80)
-    .returns<ListingWithProperty[]>();
+  const rows: ListingWithProperty[] = [];
 
-  if (error) {
-    throw new Error(error.message);
+  for (let from = 0; ; from += LISTINGS_FETCH_PAGE_SIZE) {
+    const to = from + LISTINGS_FETCH_PAGE_SIZE - 1;
+    const { data, error } = await supabase
+      .from('listings')
+      .select('*, properties(*)')
+      .order('first_seen_at', { ascending: false })
+      .range(from, to)
+      .returns<ListingWithProperty[]>();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const pageRows = data ?? [];
+    rows.push(...pageRows);
+
+    if (pageRows.length < LISTINGS_FETCH_PAGE_SIZE) break;
   }
 
-  return (data ?? []).map(mapListingToProperty);
+  return rows.map(mapListingToProperty);
 }
 
 export function uniqueSupabaseProperties(properties: Property[]): Property[] {

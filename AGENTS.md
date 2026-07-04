@@ -5,6 +5,13 @@ Update this file whenever the product direction, architecture, or design system 
 
 Last updated: 2026-07-04
 
+Priority override:
+
+- `CONTEXT.md` is the source of authority for the current visual direction ("La Cote") and the seller-tension score architecture.
+- This override applies regardless of file dates.
+- If any design-system or score-related rule in this file conflicts with `CONTEXT.md`, follow `CONTEXT.md`.
+- This includes palette/tokens, `ScoreRing`, `property_id` vs `listing_id`, score naming, score/confidence/mandate-status separation, scoring families, state vs event signals, decays, thresholds, safeguards, and Postgres score architecture.
+
 ---
 
 ## 1. Product Vision

@@ -47,7 +47,7 @@ export function MetricCard({
           style={{
             width: 28,
             height: 28,
-            borderRadius: 8,
+            borderRadius: 'var(--radius)',
             display: 'grid',
             placeItems: 'center',
             background: 'var(--color-bg-muted)',
@@ -75,16 +75,18 @@ export function MetricCard({
             display: 'block',
             marginTop: 7,
             color: 'var(--color-text-primary)',
+            fontFamily: 'var(--font-mono, var(--notion-mono))',
+            fontVariantNumeric: 'tabular-nums',
             fontSize: 28,
             fontWeight: 750,
             lineHeight: 1,
-            letterSpacing: '-0.01em',
+            letterSpacing: 0,
           }}
         >
           {value}
         </strong>
         {delta && (
-          <small style={{ display: 'block', marginTop: 7, color: 'var(--color-text-secondary)', fontSize: 11.5, lineHeight: 1.25 }}>
+          <small style={{ display: 'block', marginTop: 7, color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono, var(--notion-mono))', fontVariantNumeric: 'tabular-nums', fontSize: 11.5, lineHeight: 1.25 }}>
             {delta}
           </small>
         )}

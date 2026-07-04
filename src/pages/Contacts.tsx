@@ -25,7 +25,8 @@ import type { store as appStore } from '../lib/store';
 import type { Contact, ContactRelations, Deal, Property, Task, TaskPriority } from '../types';
 import { ActivityTimeline, NotesList, StatusBadge, TaskList } from '../components/ui';
 import { useAuth } from '../lib/auth';
-import { fetchSupabaseProperties, uniqueSupabaseProperties } from '../lib/supabaseProperties';
+import { formatEuro } from '../lib/formatCurrency';
+import { fetchSupabaseProperties } from '../lib/supabaseProperties';
 import { useContact, useContacts } from '../lib/useContacts';
 import { useNotes } from '../lib/useNotes';
 import { taskToView, useTasks, useTasksFor } from '../lib/useTasks';
@@ -52,14 +53,8 @@ const RELATIONSHIP_OPTIONS: { value: RelationshipOption; label: string }[] = [
   { value: 'tenant', label: 'Locataire' },
 ];
 
-const moneyFormatter = new Intl.NumberFormat('fr-BE', {
-  style: 'currency',
-  currency: 'EUR',
-  maximumFractionDigits: 0,
-});
-
 function formatPrice(value: number) {
-  return moneyFormatter.format(value).replace(/\s?EUR/, ' EUR');
+  return formatEuro(value);
 }
 
 function cleanText(value: string) {
@@ -382,11 +377,11 @@ export function Contacts({ store }: ContactsProps) {
   };
 
   return (
-    <main className={`contacts-page ${panelOpen && selectedRelations ? '' : 'is-panel-closed'}`}>
+    <main className={`lv-contacts lv-page contacts-page ${panelOpen && selectedRelations ? 'has-panel' : 'is-panel-closed'}`}>
       <header className="contacts-head">
         <div className="contacts-title">
-          <h1>Contacts</h1>
-          <p>Gerez vos relations et suivez vos echanges.</p>
+          <h1 className="lv-title">Contacts</h1>
+          <p>Gérez vos relations et suivez vos échanges.</p>
         </div>
 
         <label className="contacts-search">
@@ -425,8 +420,8 @@ export function Contacts({ store }: ContactsProps) {
               </button>
             ))}
             <button className="filter-pill" type="button">Source (Toutes)<ChevronDown size={13} /></button>
-            <button className="filter-pill" type="button">Proprietaire (Tous)<ChevronDown size={13} /></button>
-            <button className="reset-link" type="button" onClick={() => { setRoleFilters([]); setSearch(''); }}>Reinitialiser</button>
+            <button className="filter-pill" type="button">Propriétaire (Tous)<ChevronDown size={13} /></button>
+            <button className="reset-link" type="button" onClick={() => { setRoleFilters([]); setSearch(''); }}>Réinitialiser</button>
             <button className="contacts-filter-square" type="button" title="Colonnes"><Grid2X2 size={16} /></button>
           </div>
 
@@ -442,12 +437,12 @@ export function Contacts({ store }: ContactsProps) {
                   <tr>
                     <th style={{ width: 34 }}><span className="check" /></th>
                     <th>Contact</th>
-                    <th>Telephone</th>
+                    <th>Téléphone</th>
                     <th>Email</th>
                     <th>Statut</th>
                     <th>Biens</th>
                     <th>Deals</th>
-                    <th>Derniere activite</th>
+                    <th>Dernière activité</th>
                     <th>Prochaine action</th>
                     <th style={{ width: 38 }} />
                   </tr>
@@ -830,9 +825,9 @@ function LinkPropertyModal({ contactId, onClose, onLinked }: LinkPropertyModalPr
 
     async function loadProperties() {
       try {
-        const nextProperties = uniqueSupabaseProperties(await fetchSupabaseProperties());
+        const nextProperties = await fetchSupabaseProperties();
         if (!active) return;
-        setProperties(nextProperties);
+        setProperties(nextProperties.filter((property) => property.supabasePropertyId));
         setSelectedPropertyId(nextProperties.find((property) => property.supabasePropertyId)?.supabasePropertyId ?? '');
       } catch (loadError) {
         if (active) setError(loadError instanceof Error ? loadError.message : 'Chargement des biens impossible.');

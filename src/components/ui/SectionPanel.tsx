@@ -21,11 +21,11 @@ export function SectionPanel({
     <section
       style={{
         border: '1px solid var(--color-border-default)',
-        borderRadius: compact ? 8 : 10,
+        borderRadius: 'var(--radius)',
         background: 'var(--color-bg-surface)',
         padding: compact ? 10 : 12,
-        fontFamily: 'var(--notion-sans)',
-        boxShadow: 'var(--shadow-xs)',
+        fontFamily: 'var(--font-sans, var(--notion-sans))',
+        boxShadow: 'none',
       }}
     >
       {(title || eyebrow || action) && (
@@ -44,7 +44,7 @@ export function SectionPanel({
                 style={{
                   marginBottom: 4,
                   color: 'var(--color-text-tertiary)',
-                  fontFamily: 'var(--notion-sans)',
+                  fontFamily: 'var(--font-sans, var(--notion-sans))',
                   fontSize: 'var(--text-xs)',
                   fontWeight: 500,
                   letterSpacing: 0,
@@ -57,7 +57,7 @@ export function SectionPanel({
               <h3 style={{ margin: 0, color: 'var(--color-text-primary)', fontSize: compact ? 12.5 : 13.5, fontWeight: 750 }}>
                 {title}
                 {count !== undefined && (
-                  <span style={{ marginLeft: 7, color: 'var(--color-text-tertiary)', fontSize: 11, fontWeight: 650 }}>
+                  <span style={{ marginLeft: 7, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-mono, var(--notion-mono))', fontVariantNumeric: 'tabular-nums', fontSize: 11, fontWeight: 650 }}>
                     {count}
                   </span>
                 )}

@@ -21,33 +21,13 @@ export function ActivityTimeline({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? 8 : 10, fontFamily: 'var(--notion-sans)' }}>
+    <div className={`lv-activity-timeline ${compact ? 'is-compact' : ''}`}>
       {visibleActivities.map((activity) => (
-        <div
-          key={activity.id}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '9px minmax(0, 1fr)',
-            gap: 8,
-            alignItems: 'start',
-          }}
-        >
-          <span
-            aria-hidden="true"
-            style={{
-              width: 8,
-              height: 8,
-              marginTop: 4,
-              borderRadius: 999,
-              background: 'var(--color-brand)',
-              boxShadow: '0 0 0 3px color-mix(in srgb, var(--color-brand) 9%, transparent)',
-            }}
-          />
-          <span style={{ minWidth: 0 }}>
-            <strong style={{ display: 'block', color: 'var(--color-text-primary)', fontSize: compact ? 11 : 12, fontWeight: 650, lineHeight: 1.3 }}>
-              {activity.text}
-            </strong>
-            <small style={{ display: 'block', marginTop: 3, color: 'var(--color-text-tertiary)', fontSize: compact ? 9.5 : 10.5 }}>
+        <div key={activity.id} className="lv-activity-row">
+          <span aria-hidden="true" className="lv-activity-dot" />
+          <span className="lv-activity-content">
+            <strong className="lv-activity-title">{activity.text}</strong>
+            <small className="lv-activity-meta">
               {activity.agentName} · {activity.date}
             </small>
           </span>

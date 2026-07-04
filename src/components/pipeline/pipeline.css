@@ -1042,3 +1042,57 @@
 .fiche-actions .btn-primary { background: var(--color-brand); color: var(--color-bg-surface); }
 .fiche-actions .btn-primary:hover { background: var(--color-brand-hover); }
 .fiche-actions .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* La Cote component alignment: keep Pipeline on shared tokens even when this CSS chunk loads after index.css. */
+.kanban-board,
+.pipeline-list,
+.deal-fiche-panel,
+.deal-card,
+.list-row,
+.column,
+.list-group,
+.mc-card,
+.timeline,
+.commission-card,
+.notes-list,
+.note-row,
+.task-empty,
+.stage-menu,
+.btn-commission {
+  border-radius: var(--radius) !important;
+  box-shadow: none !important;
+}
+
+.column-count,
+.list-group-count,
+.dc-task-count,
+.lr-followup-count,
+.deal-status,
+.commission-status,
+.prio-chip,
+.task-date,
+.activity-date,
+.note-date,
+.dc-price,
+.dc-commission,
+.lr-price,
+.lr-commission,
+.fiche-price,
+.commission-row .cv,
+.commission-row .cv.amount,
+.commission-row .ck,
+.stage-menu button,
+.sketch-text-score,
+.ai-badge strong,
+.step-label {
+  font-family: var(--font-mono, var(--notion-mono)) !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: 0 !important;
+}
+
+.deal-status.actif,
+.commission-status {
+  background: var(--color-bg-muted) !important;
+  color: var(--color-text-secondary) !important;
+  border-color: var(--color-border-default) !important;
+}

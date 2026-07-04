@@ -34,6 +34,8 @@ import { useDeals } from '../lib/useDeals';
 import { useMyTransfers } from '../lib/useTransfers';
 import { contactsService } from '../lib/services/contactsService';
 import { dealsService } from '../lib/services/dealsService';
+import { propertyImageFallbacks } from '../lib/propertyImageFallbacks';
+import { formatEuro } from '../lib/formatCurrency';
 import type { Property, PropertyInternalStatus } from '../types';
 
 type Store = typeof appStore;
@@ -382,12 +384,6 @@ export function Biens({ store }: BiensProps) {
     property.supabasePropertyId ? openTasksByPropertyId.get(property.supabasePropertyId) ?? [] : []
   );
 
-  const favCount = allProps.filter((p) => propertyMarks.isFavorite(getMarkId(p))).length;
-  const disponibles = allProps.filter((p) => !p.reserved).length;
-  const fsboCount = allProps.filter((p) => p.fsbo).length;
-  const avgScore = allProps.length
-    ? Math.round(allProps.reduce((s, p) => s + p.score, 0) / allProps.length)
-    : 0;
   const highPotentialVisible = filtered.filter((p) => p.score >= 80).length;
   const noContactVisible = filtered.filter((p) => !store.getPropertyContact(p.id)).length;
   const recentDropVisible = filtered.filter((p) => p.tag === 'Baisse de prix').length;
@@ -559,6 +555,7 @@ export function Biens({ store }: BiensProps) {
 
   return (
     <div
+      className={`lv-biens lv-page ${selectedProperty ? 'has-panel' : ''}`}
       style={{
         minHeight: '100%',
         background: 'var(--color-bg-page)',
@@ -570,6 +567,7 @@ export function Biens({ store }: BiensProps) {
     >
       {/* ── Page Header ───────────────────────────── */}
       <div
+        className="lv-biens-head"
         style={{
           padding: selectedProperty ? '24px 4px 0 32px' : '24px 32px 0',
           display: 'flex',
@@ -579,10 +577,11 @@ export function Biens({ store }: BiensProps) {
         }}
       >
         {/* Zone gauche */}
-        <div style={{ flex: 1, display: 'flex', gap: 16, alignItems: 'center', minWidth: 0 }}>
+        <div className="lv-biens-heading" style={{ flex: 1, display: 'flex', gap: 16, alignItems: 'center', minWidth: 0 }}>
           {/* Titre */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <h1
+              className="lv-title"
               style={{
                 margin: 0,
                 fontSize: 32,
@@ -598,6 +597,7 @@ export function Biens({ store }: BiensProps) {
               Base de données des propriétés prospectées
             </p>
             <div
+              className={`lv-biens-sync ${usingLiveData ? 'is-live' : liveError ? 'is-error' : ''}`}
               style={{
                 marginTop: 10,
                 display: 'inline-flex',
@@ -633,8 +633,9 @@ export function Biens({ store }: BiensProps) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'row', gap: 8, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div className="lv-biens-actions" style={{ display: 'flex', flexDirection: 'row', gap: 8, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <button
+            className="lv-secondary-button"
             onClick={openDefaultPanel}
             style={{
               background: 'var(--color-bg-surface)',
@@ -656,6 +657,7 @@ export function Biens({ store }: BiensProps) {
             Ouvrir mini fiche
           </button>
           <button
+            className="lv-primary-button"
             style={{
               background: 'var(--color-brand)',
               border: 'none',
@@ -677,76 +679,12 @@ export function Biens({ store }: BiensProps) {
           </button>
         </div>
 
-      </div>
-
-      {/* ── KPI Row ───────────────────────────────── */}
-      <div style={{ padding: '14px 32px 0', display: 'flex', alignItems: 'stretch', gap: 12, position: 'relative', zIndex: 2 }}>
-        {/* Conteneur blanc : 4 KPI uniquement */}
-        <div
-          style={{
-            flex: 1,
-            background: 'color-mix(in srgb, var(--color-bg-surface) 82%, transparent)',
-            border: '1px solid var(--color-border-default)',
-            borderRadius: 10,
-            display: 'flex',
-            alignItems: 'stretch',
-          }}
-        >
-          <KpiCard label="BIENS DISPONIBLES" value={isInitialLiveLoading ? '—' : disponibles} delta={isInitialLiveLoading ? 'Chargement' : '↑12 nouveaux ce jour'} />
-          <KpiCard label="FSBO" value={isInitialLiveLoading ? '—' : fsboCount} delta={isInitialLiveLoading ? 'Chargement' : '↑5 cette semaine'} />
-          <KpiCard label="SCORE IA MOYEN" value={isInitialLiveLoading ? '—' : avgScore} delta={isInitialLiveLoading ? 'Chargement' : '↑3% ce mois'} />
-          <KpiCard label="MES FAVORIS" value={isInitialLiveLoading ? '—' : favCount} delta={isInitialLiveLoading ? 'Chargement' : '☆2 cette semaine'} last />
-        </div>
-
-        {/* Boutons empilés à droite du conteneur KPI */}
-        <div style={{ display: 'none' }}>
-          <button
-            onClick={openDefaultPanel}
-            style={{
-              background: 'var(--color-bg-surface)',
-              border: '1px solid var(--color-border-default)',
-              borderRadius: 8,
-              padding: '10px 16px',
-              fontSize: 13,
-              fontWeight: 500,
-              fontFamily: 'var(--notion-sans)',
-              color: 'var(--color-text-primary)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <LayoutGrid size={14} />
-            Ouvrir mini fiche
-          </button>
-          <button
-            style={{
-              background: 'var(--color-brand)',
-              border: 'none',
-              borderRadius: 8,
-              padding: '10px 16px',
-              fontSize: 13,
-              fontWeight: 600,
-              fontFamily: 'var(--notion-sans)',
-              color: 'var(--color-text-inverse)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <Plus size={14} />
-            Ajouter un bien
-          </button>
-        </div>
       </div>
 
       {/* ── Toolbar ───────────────────────────────── */}
-      <div style={{ padding: selectedProperty ? '12px 4px 0 32px' : '12px 32px 0' }}>
+      <div className="lv-biens-views" style={{ padding: selectedProperty ? '12px 4px 0 32px' : '12px 32px 0' }}>
         <div
+          className="lv-biens-tabs"
           style={{
             display: 'flex',
             gap: 8,
@@ -759,6 +697,7 @@ export function Biens({ store }: BiensProps) {
             const active = savedView === view.key;
             return (
               <button
+                className={`lv-biens-tab ${active ? 'is-active' : ''}`}
                 key={view.key}
                 type="button"
                 onClick={() => applySavedView(view.key)}
@@ -793,6 +732,7 @@ export function Biens({ store }: BiensProps) {
       </div>
 
       <div
+        className="lv-biens-toolbar"
         style={{
           padding: selectedProperty ? '14px 4px 0 32px' : '14px 32px 0',
           display: 'flex',
@@ -801,12 +741,13 @@ export function Biens({ store }: BiensProps) {
         }}
       >
         {/* Search */}
-        <div style={{ flex: 1, position: 'relative' }}>
+        <div className="lv-biens-search" style={{ flex: 1, position: 'relative' }}>
           <Search
             size={15}
             style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-tertiary)' }}
           />
           <input
+            className="lv-biens-search-input"
             type="text"
             placeholder="Rechercher un bien, ville, source..."
             value={search}
@@ -830,6 +771,7 @@ export function Biens({ store }: BiensProps) {
 
         {/* View toggle */}
         <div
+          className="lv-biens-view-toggle"
           style={{
             display: 'flex',
             border: '1px solid var(--color-border-default)',
@@ -838,6 +780,7 @@ export function Biens({ store }: BiensProps) {
           }}
         >
           <button
+            className={`lv-icon-toggle ${viewMode === 'grid' ? 'is-active' : ''}`}
             onClick={() => setViewMode('grid')}
             style={{
               background: viewMode === 'grid' ? 'var(--color-brand)' : 'var(--color-bg-surface)',
@@ -853,6 +796,7 @@ export function Biens({ store }: BiensProps) {
             <LayoutGrid size={15} />
           </button>
           <button
+            className={`lv-icon-toggle ${viewMode === 'table' ? 'is-active' : ''}`}
             onClick={() => setViewMode('table')}
             style={{
               background: viewMode === 'table' ? 'var(--color-brand)' : 'var(--color-bg-surface)',
@@ -871,8 +815,9 @@ export function Biens({ store }: BiensProps) {
         </div>
 
         {/* Sort dropdown — aligné à droite sous "Ajouter un bien" */}
-        <div style={{ position: 'relative', marginLeft: 'auto' }}>
+        <div className="lv-biens-sort" style={{ position: 'relative', marginLeft: 'auto' }}>
           <button
+            className="lv-secondary-button"
             onClick={() => setSortOpen((o) => !o)}
             style={{
               background: 'var(--color-bg-surface)',
@@ -894,6 +839,7 @@ export function Biens({ store }: BiensProps) {
           </button>
           {sortOpen && (
             <div
+              className="lv-biens-menu"
               style={{
                 position: 'absolute',
                 right: 0,
@@ -934,8 +880,9 @@ export function Biens({ store }: BiensProps) {
       </div>
 
       {/* ── Filter Bar ────────────────────────────── */}
-      <div style={{ padding: '10px 32px 0' }}>
+      <div className="lv-biens-filter-wrap" style={{ padding: '10px 32px 0' }}>
         <div
+          className="lv-biens-filter-bar"
           style={{
             background: 'color-mix(in srgb, var(--color-bg-surface) 68%, transparent)',
             border: '1px solid var(--color-border-default)',
@@ -976,6 +923,7 @@ export function Biens({ store }: BiensProps) {
             onChange={(v) => { setFilterType(v); setPage(1); }}
           />
           <button
+            className="lv-filter-button"
             type="button"
             onClick={() => setAdvancedOpen(true)}
             style={{
@@ -1017,6 +965,7 @@ export function Biens({ store }: BiensProps) {
           />
 
           <button
+            className={`lv-filter-button ${favoritesOnly ? 'is-active' : ''}`}
             onClick={() => { setFavoritesOnly((f) => !f); setPage(1); }}
             style={{
               display: 'flex',
@@ -1039,6 +988,7 @@ export function Biens({ store }: BiensProps) {
 
           {/* Réinitialiser poussé tout à droite */}
           <button
+            className={`lv-filter-button ${activeFilterCount > 0 ? 'is-active' : ''}`}
             type="button"
             onClick={() => setAdvancedOpen(true)}
             style={{
@@ -1062,6 +1012,7 @@ export function Biens({ store }: BiensProps) {
           </button>
 
           <button
+            className="lv-reset-button"
             onClick={resetFilters}
             style={{
               display: 'flex',
@@ -1084,9 +1035,9 @@ export function Biens({ store }: BiensProps) {
       </div>
 
       {/* ── Table / Gallery ───────────────────────── */}
-      <div style={{ padding: selectedProperty ? '14px 4px 32px 32px' : '14px 32px 32px' }}>
+      <div className="lv-biens-results" style={{ padding: selectedProperty ? '14px 4px 32px 32px' : '14px 32px 32px' }}>
         {isInitialLiveLoading ? (
-          <div style={{ margin: '0 auto', maxWidth: 560, textAlign: 'center', padding: '56px 0', color: 'var(--color-text-secondary)', fontSize: 14 }}>
+          <div className="lv-biens-empty" style={{ margin: '0 auto', maxWidth: 560, textAlign: 'center', padding: '56px 0', color: 'var(--color-text-secondary)', fontSize: 14 }}>
             <div style={{ width: 46, height: 46, borderRadius: 14, border: '1px solid var(--color-border-default)', background: 'var(--color-bg-surface)', display: 'grid', placeItems: 'center', margin: '0 auto 12px', color: 'var(--color-brand)' }}>
               <Loader2 size={18} className="animate-spin" />
             </div>
@@ -1095,6 +1046,7 @@ export function Biens({ store }: BiensProps) {
           </div>
         ) : viewMode === 'grid' ? (
           <div
+            className="lv-biens-grid"
             style={{
               display: 'grid',
               gridTemplateColumns: selectedProperty ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)',
@@ -1135,7 +1087,7 @@ export function Biens({ store }: BiensProps) {
         )}
 
         {!isInitialLiveLoading && pageItems.length === 0 && (
-          <div style={{ margin: '0 auto', maxWidth: 520, textAlign: 'center', padding: '52px 0', color: 'var(--color-text-secondary)', fontSize: 14 }}>
+          <div className="lv-biens-empty" style={{ margin: '0 auto', maxWidth: 520, textAlign: 'center', padding: '52px 0', color: 'var(--color-text-secondary)', fontSize: 14 }}>
             <div style={{ width: 46, height: 46, borderRadius: 14, border: '1px solid var(--color-border-default)', background: 'var(--color-bg-surface)', display: 'grid', placeItems: 'center', margin: '0 auto 12px', color: 'var(--color-brand)' }}>
               <Search size={18} />
             </div>
@@ -1156,7 +1108,7 @@ export function Biens({ store }: BiensProps) {
         )}
 
         {!isInitialLiveLoading && filtered.length > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '26px 0 4px' }}>
+          <div className="lv-biens-pagination" style={{ display: 'flex', justifyContent: 'center', padding: '26px 0 4px' }}>
             <div
               style={{
                 display: 'flex',
@@ -1334,7 +1286,7 @@ function AdvancedFiltersPanel(props: AdvancedFiltersPanelProps) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(31,31,31,0.18)', display: 'flex', justifyContent: 'flex-end' }} onClick={onClose}>
-      <aside style={{ width: 420, maxWidth: 'calc(100vw - 24px)', height: '100%', background: 'var(--color-bg-surface)', borderLeft: '1px solid var(--color-border-default)', boxShadow: '-14px 0 34px rgba(31,31,31,0.12)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--notion-sans)' }} onClick={(event) => event.stopPropagation()} aria-label="Filtres avancés des biens">
+      <aside className="lv-biens-advanced" style={{ width: 420, maxWidth: 'calc(100vw - 24px)', height: '100%', background: 'var(--color-bg-surface)', borderLeft: '1px solid var(--color-border-default)', boxShadow: '-14px 0 34px rgba(31,31,31,0.12)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--notion-sans)' }} onClick={(event) => event.stopPropagation()} aria-label="Filtres avancés des biens">
         <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--color-border-default)', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 18, color: 'var(--color-text-primary)' }}>Filtres avancés</h2>
@@ -1439,48 +1391,6 @@ function TogglePill({ label, checked, onChange }: { label: string; checked: bool
   );
 }
 
-interface KpiCardProps {
-  label: string;
-  value: number | string;
-  delta: string;
-  last?: boolean;
-}
-
-function KpiCard({ label, value, delta, last }: KpiCardProps) {
-  const cleanLabel = label
-    .replace('BIENS DISPONIBLES', 'Biens disponibles')
-    .replace('SCORE IA MOYEN', 'Score IA moyen')
-    .replace('MES FAVORIS', 'Mes favoris');
-  const cleanDelta = delta
-    .replace('↑12 nouveaux ce jour', 'Annonces actives')
-    .replace('↑5 cette semaine', 'Particuliers')
-    .replace('↑3% ce mois', 'Listings actifs')
-    .replace('☆2 cette semaine', 'Suivi personnel');
-
-  return (
-    <div
-      style={{
-        flex: 1,
-        padding: '12px 18px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 5,
-        borderRight: last ? 'none' : '1px solid var(--color-border-default)',
-      }}
-    >
-      <span style={{ fontSize: 11.5, fontWeight: 560, letterSpacing: 0, color: 'var(--color-text-secondary)', fontFamily: 'var(--notion-sans)' }}>
-        {cleanLabel}
-      </span>
-      <span style={{ fontSize: 24, fontWeight: 720, color: 'var(--color-text-primary)', fontFamily: 'var(--notion-sans)', lineHeight: 1 }}>
-        {value}
-      </span>
-      <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontFamily: 'var(--notion-sans)' }}>
-        {cleanDelta}
-      </span>
-    </div>
-  );
-}
-
 interface FilterChipProps {
   label: string;
   options: string[];
@@ -1558,8 +1468,6 @@ function FilterChip({ label, options, value, onChange }: FilterChipProps) {
   );
 }
 
-const priceFormatter = new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-
 interface MiniFicheBienProps {
   property: Property;
   store: Store;
@@ -1593,9 +1501,9 @@ function MiniFicheBien({
 }: MiniFicheBienProps) {
   const photos = property.photos.length > 0
     ? property.photos
-    : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=900&q=80'];
+    : propertyImageFallbacks(property.id);
   const currentPhoto = photos[photoIndex % photos.length];
-  const price = priceFormatter.format(property.price).replace(/\s?EUR/, ' €');
+  const price = formatEuro(property.price);
   const relatedSignals = store.getSignals().filter((signal) => signal.propertyId === property.id).slice(0, 4);
   const relatedDeal = store.getDeals().find((deal) => deal.propertyId === property.id);
   const relatedContact = relatedDeal ? store.getContact(relatedDeal.contactId) : undefined;
@@ -1783,7 +1691,7 @@ function MiniFicheBien({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
               <MiniTag label={property.tag || 'Nouveau'} tone="warm" />
               {property.fsbo && <MiniTag label="FSBO" tone="green" />}
-              {latestDrop > 0 && <MiniTag label={`Baisse ${priceFormatter.format(latestDrop).replace(/\s?EUR/, ' €')}`} tone="red" />}
+              {latestDrop > 0 && <MiniTag label={`Baisse ${formatEuro(latestDrop)}`} tone="red" />}
               <MiniTag label={`Suivi par ${ownerAgent?.name ?? currentAgentName}`} tone="neutral" />
             </div>
           </section>
@@ -1822,7 +1730,7 @@ function MiniFicheBien({
             {priceHistory.length > 0 ? (
               <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {priceHistory.map((point) => (
-                  <InfoRow key={`${point.date}-${point.price}`} label={point.date} value={priceFormatter.format(point.price).replace(/\s?EUR/, ' €')} />
+                  <InfoRow key={`${point.date}-${point.price}`} label={point.date} value={formatEuro(point.price)} />
                 ))}
               </div>
             ) : (
@@ -1951,9 +1859,9 @@ function LegacyMiniFicheBien({
   const [transferRequestMessage, setTransferRequestMessage] = useState('');
   const photos = property.photos.length > 0
     ? property.photos
-    : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=900&q=80'];
+    : propertyImageFallbacks(property.id);
   const currentPhoto = photos[photoIndex % photos.length];
-  const price = priceFormatter.format(property.price).replace(/\s?EUR/, ' €');
+  const price = formatEuro(property.price);
   const relatedDeal = store.getDeals().find((deal) => deal.propertyId === property.id);
   const { profile } = useAuth();
   const dealsState = useDeals({ includeClosed: false });
@@ -2196,6 +2104,7 @@ function LegacyMiniFicheBien({
   return (
     <>
       <aside
+        className="lv-biens-mini"
         style={{
           position: 'fixed',
           top: 58,
@@ -2326,7 +2235,7 @@ function LegacyMiniFicheBien({
                   Rapport d'analyse IA
                 </span>
                 <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)', fontSize: 11.5, lineHeight: 1.45 }}>
-                  Cette propriété à <strong>{property.city}</strong> présente une valorisation de <strong>{priceFormatter.format(propPpm).replace(/\s?EUR/, ' €')}/m²</strong> contre une moyenne locale de <strong>{priceFormatter.format(cityAvg).replace(/\s?EUR/, ' €')}/m²</strong>.
+                  Cette propriété à <strong>{property.city}</strong> présente une valorisation de <strong>{formatEuro(propPpm)}/m²</strong> contre une moyenne locale de <strong>{formatEuro(cityAvg)}/m²</strong>.
                 </p>
               </div>
             </div>
@@ -2357,8 +2266,8 @@ function LegacyMiniFicheBien({
           <section style={legacyModuleStyle}>
             <div style={legacyLabelStyle}>SITUATION PAR RAPPORT AU MARCHÉ LOCAL</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              <LegacyMarketCell label="Prix moyen de la commune" value={`${priceFormatter.format(cityAvg).replace(/\s?EUR/, ' €')} / m²`} />
-              <LegacyMarketCell label="Prix au m² de ce bien" value={priceFormatter.format(propPpm).replace(/\s?EUR/, ' €')} delta={`${deltaPercent >= 0 ? '+' : ''}${deltaPercent}%`} positive={deltaPercent < 0} />
+              <LegacyMarketCell label="Prix moyen de la commune" value={`${formatEuro(cityAvg)} / m²`} />
+              <LegacyMarketCell label="Prix au m² de ce bien" value={formatEuro(propPpm)} delta={`${deltaPercent >= 0 ? '+' : ''}${deltaPercent}%`} positive={deltaPercent < 0} />
             </div>
             <div style={legacyMarketBarStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 11 }}>
@@ -2388,7 +2297,7 @@ function LegacyMiniFicheBien({
               <LegacyPriceHistoryRow
                 key={`${point.date}-${point.price}`}
                 date={index === priceHistory.length - 1 ? "Aujourd'hui" : point.date}
-                price={priceFormatter.format(point.price).replace(/\s?EUR/, ' €')}
+                price={formatEuro(point.price)}
                 label={index === 0 ? 'Mise en ligne' : 'Stable'}
                 tone="stable"
               />
@@ -2636,7 +2545,7 @@ function GrandeFicheBien({
   const [noteDraft, setNoteDraft] = useState('');
   const photos = property.photos.length > 0
     ? property.photos
-    : ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&q=80'];
+    : propertyImageFallbacks(property.id);
   const currentPhoto = photos[photoIndex % photos.length];
   const relatedDeal = store.getPropertyDeal(property.id);
   const relatedContact = relatedDeal ? store.getContact(relatedDeal.contactId) : store.getPropertyContact(property.id);
@@ -2644,7 +2553,7 @@ function GrandeFicheBien({
   const propertyTasks = useTasksFor({ propertyId: property.supabasePropertyId });
   const relatedTasks = propertyTasks.tasks.map(taskToView);
   const activities = store.getPropertyActivities(property.id).slice(0, 5);
-  const price = priceFormatter.format(property.price).replace(/\s?EUR/, ' €');
+  const price = formatEuro(property.price);
   const propType = property.title.toLowerCase().includes('appartement')
     ? 'Appartement'
     : property.title.toLowerCase().includes('loft')
@@ -2864,7 +2773,7 @@ function GrandeFicheBien({
             <DossierCard title="Marché local" icon={<FileText size={14} />} action="Voir le rapport" style={{ gridColumn: 'span 5', order: 5 }}>
               <div style={{ color: 'var(--color-text-secondary)', fontSize: 11.5, marginBottom: 10 }}>{property.city} · Quartier cible</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 7 }}>
-                <DossierMarketStat label="Prix médian" value={`${priceFormatter.format(cityAvg).replace(/\s?EUR/, ' €')}/m²`} delta="+3%" />
+                <DossierMarketStat label="Prix médian" value={`${formatEuro(cityAvg)}/m²`} delta="+3%" />
                 <DossierMarketStat label="Délai médian" value={`${28 + property.id * 2} jours`} delta="+5 jours" />
                 <DossierMarketStat label="Demandes actives" value={String(88 + property.id * 6)} delta="+12%" />
               </div>
@@ -3760,7 +3669,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 // ── Biens database table ────────────────────────────────────────────────────
 
-const TABLE_COLUMNS = '32px minmax(200px, 2.2fr) 112px 96px 118px 96px 64px 104px 118px 122px 96px';
+const TABLE_COLUMNS = '30px minmax(178px, 1.8fr) 92px 82px 108px 82px 58px 86px 88px 96px 74px';
 
 function deriveType(p: Property): string {
   const t = p.title.toLowerCase();
@@ -3807,6 +3716,7 @@ interface BiensTableProps {
 function BiensTable({ items, selectedId, isFavorite, onToggleFavorite, onSelect }: BiensTableProps) {
   return (
     <div
+      className="lv-biens-table-shell"
       style={{
         border: '1px solid var(--color-border-default)',
         borderRadius: 10,
@@ -3814,9 +3724,10 @@ function BiensTable({ items, selectedId, isFavorite, onToggleFavorite, onSelect 
         background: 'var(--color-bg-surface)',
       }}
     >
-      <div style={{ minWidth: 1080 }}>
+      <div className="lv-biens-table" style={{ minWidth: 1080 }}>
         {/* Header */}
         <div
+          className="lv-biens-table-head"
           style={{
             display: 'grid',
             gridTemplateColumns: TABLE_COLUMNS,
@@ -3873,13 +3784,14 @@ interface BiensTableRowProps {
 }
 
 function BiensTableRow({ property: p, selected, favorite, onToggleFavorite, onSelect }: BiensTableRowProps) {
-  const price = priceFormatter.format(p.price).replace(/\s?EUR/, ' €');
+  const price = formatEuro(p.price);
   const drop = deriveDrop(p);
   const status = statusMeta(p);
   const mono = 'var(--notion-mono)';
 
   return (
     <div
+      className={`lv-biens-table-row ${selected ? 'is-selected' : ''}`}
       role="row"
       tabIndex={0}
       onClick={onSelect}
@@ -3913,9 +3825,9 @@ function BiensTableRow({ property: p, selected, favorite, onToggleFavorite, onSe
       {/* Bien (thumbnail + title) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
         <img
-          src={p.photos[0]}
+          src={p.photos[0] ?? propertyImageFallbacks(p.id)[0]}
           alt=""
-          loading="lazy"
+          loading="eager"
           style={{ width: 44, height: 34, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: 'var(--color-bg-hover)' }}
         />
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -3936,7 +3848,7 @@ function BiensTableRow({ property: p, selected, favorite, onToggleFavorite, onSe
       <span style={{ textAlign: 'right' }}>
         {drop > 0 ? (
           <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 6, background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', fontSize: 11.5, fontWeight: 600, fontFamily: mono, whiteSpace: 'nowrap' }}>
-            −{priceFormatter.format(drop).replace(/\s?EUR/, ' €')}
+            −{formatEuro(drop)}
           </span>
         ) : (
           <span style={{ color: 'var(--color-border-strong)', fontSize: 13 }}>—</span>
