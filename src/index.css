@@ -623,8 +623,8 @@
 @theme {
   --color-forest: #1E5A3A;
   --color-forest-soft: #CFE1D2;
-  --color-sand: #EFE6DD;
-  --color-sand-deep: #DFD3C3;
+  --color-surface-tint: #F6F7F5;
+  --color-surface-tint-strong: #E6E4DF;
   --color-bone: #FBF2ED;
   --color-ink: #1D1F1E;
   --color-stone: #6B6F6D;
@@ -636,8 +636,8 @@
 :root {
   --forest: #1E5A3A;
   --forest-soft: #CFE1D2;
-  --sand: #EFE6DD;
-  --sand-deep: #DFD3C3;
+  --surface-tint: #F6F7F5;
+  --surface-tint-strong: #E6E4DF;
   --bone: #FBF2ED;
   --ink: #1D1F1E;
   --stone: #6B6F6D;
@@ -706,7 +706,7 @@
 
 /* â”€â”€ SKETCH IMPERFECT BORDER BADGE / CARDS â”€â”€ */
 .sketch-card {
-  border: 1.5px solid var(--sand-deep) !important;
+  border: 1.5px solid var(--surface-tint-strong) !important;
   border-radius: 255px 15px 225px 15px/15px 225px 15px 255px !important;
   background-color: #FFFFFF !important;
 }
@@ -757,7 +757,7 @@ body {
 .sidebar {
   width: var(--sidebar-width);
   background: #FCFAF5;
-  border-right: 1px solid var(--sand-deep);
+  border-right: 1px solid var(--surface-tint-strong);
   display: flex;
   flex-direction: column;
   padding: 24px 14px;
@@ -917,7 +917,7 @@ body {
 .sidebar-doodles-container {
   padding: 12px 14px;
   margin-bottom: 4px;
-  border-top: 1px dashed var(--sand-deep);
+  border-top: 1px dashed var(--surface-tint-strong);
   flex-shrink: 0;
   pointer-events: none;
   opacity: 0.65;
@@ -942,7 +942,7 @@ body {
   flex-direction: column;
   gap: 4px;
   margin-bottom: 16px;
-  border-top: 1px solid var(--sand-deep);
+  border-top: 1px solid var(--surface-tint-strong);
   padding-top: 16px;
   flex-shrink: 0;
 }
@@ -956,7 +956,7 @@ body {
   align-items: center;
   gap: 10px;
   padding: 10px;
-  border-top: 1px solid var(--sand-deep);
+  border-top: 1px solid var(--surface-tint-strong);
   cursor: pointer;
   border-radius: 6px;
   overflow: hidden;
@@ -9824,7 +9824,7 @@ table.contacts-table {
   width: 48px;
   height: 48px;
   border-radius: 6px;
-  background: linear-gradient(135deg, var(--color-sage), var(--color-sand));
+  background: linear-gradient(135deg, var(--color-sage), var(--color-bg-muted));
   overflow: hidden;
 }
 
@@ -10566,9 +10566,9 @@ table.contacts-table {
 }
 
 /* ============================================================
-   ImmoPilot Design Tokens â€” Design Board Edition
-   Direction : Cottage anglais moderne, chaleureux et pro
-   Version : palette originelle Bone/Sand/Forest + rÃ´les mÃ©tier
+   ImmoPilot Design Tokens
+   Direction : La Cote, workspace calme et sobre
+   Version : palette active et roles metier
    ============================================================ */
 
 :root {
@@ -10646,7 +10646,7 @@ table.contacts-table {
   --color-info-border:    #B5CBE0;
   --color-info-dot:       #2D6CDF;
 
-  /* Neutral â€” Sand dÃ©saturÃ© */
+  /* Neutral â€” base attenuee */
   --color-neutral-bg:     #F4F6F4;
   --color-neutral-text:   #5B625D;
   --color-neutral-border: var(--border-default);
@@ -10716,7 +10716,7 @@ table.contacts-table {
      ============================================================ */
 
   /* Nouveau, QualifiÃ© â€” gris chaud neutre */
-  --color-stage-new-bg:          #EFE6DD;
+  --color-stage-new-bg:          var(--color-bg-muted);
   --color-stage-new-text:        #6B6F6D;
   --color-stage-new-border:      #DFD3C3;
 
@@ -10741,7 +10741,7 @@ table.contacts-table {
   --color-stage-won-border:      #7FA68E;
 
   /* Perdu â€” gris dÃ©saturÃ© */
-  --color-stage-lost-bg:         #EFE6DD;
+  --color-stage-lost-bg:         var(--color-bg-muted);
   --color-stage-lost-text:       #9A9C99;
   --color-stage-lost-border:     #DFD3C3;
 
@@ -10750,7 +10750,7 @@ table.contacts-table {
      7. COMMISSIONS â€” progression gris â†’ vert
      ============================================================ */
 
-  --color-commission-draft-bg:      #EFE6DD;
+  --color-commission-draft-bg:      var(--color-bg-muted);
   --color-commission-draft-text:    #6B6F6D;
 
   --color-commission-expected-bg:   #DEE9F2;
@@ -10762,7 +10762,7 @@ table.contacts-table {
   --color-commission-paid-bg:       var(--color-brand-bg);
   --color-commission-paid-text:     #1E5A3A;
 
-  --color-commission-cancelled-bg:  #EFE6DD;
+  --color-commission-cancelled-bg:  var(--color-bg-muted);
   --color-commission-cancelled-text:#9A9C99;
 
 
@@ -10779,7 +10779,7 @@ table.contacts-table {
   --color-transfer-refused-bg:    #F5DFD5;
   --color-transfer-refused-text:  #8A3A25;
 
-  --color-transfer-cancelled-bg:  #EFE6DD;
+  --color-transfer-cancelled-bg:  var(--color-bg-muted);
   --color-transfer-cancelled-text:#9A9C99;
 
 
@@ -10791,14 +10791,14 @@ table.contacts-table {
   --color-favorite-bg:           #F5E3C2;
 
   --color-ignored:               #9A9C99;
-  --color-ignored-bg:            #EFE6DD;
+  --color-ignored-bg:            var(--color-bg-muted);
 
 
   /* ============================================================
      10. SOURCES â€” badges neutres sobres
      ============================================================ */
 
-  --color-source-bg:             #EFE6DD;
+  --color-source-bg:             var(--color-bg-muted);
   --color-source-text:           #4A4842;
   --color-source-border:         #DFD3C3;
 
@@ -10922,11 +10922,11 @@ table.contacts-table {
   --ip-danger-text:       var(--color-danger-text);
   --danger-soft:          var(--color-danger-bg);
 
-  /* Anciens tokens design board */
+  /* Legacy aliases */
   --forest:               var(--color-brand);
   --forest-soft:          var(--color-brand-100);
-  --sand:                 var(--color-bg-muted);
-  --sand-deep:            var(--color-border-default);
+  --surface-tint:         var(--color-bg-muted);
+  --surface-tint-strong:  var(--color-border-default);
   --bone:                 var(--color-bg-page);
   --paper:                var(--color-bg-surface);
   --moss:                 var(--color-brand-100);
