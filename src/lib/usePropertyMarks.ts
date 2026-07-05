@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { useAuth } from './auth';
+import { queryKeys } from './queryKeys';
 import { propertyMarksService, type PropertyMarks } from './services/propertyMarksService';
 
 interface UsePropertyMarksResult {
@@ -25,7 +26,7 @@ export function usePropertyMarks(): UsePropertyMarksResult {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [mutationError, setMutationError] = useState<string | null>(null);
-  const queryKey = ['property-marks', user?.id ?? 'anonymous'];
+  const queryKey = queryKeys.propertyMarks(user?.id);
 
   const marksQuery = useQuery({
     queryKey,

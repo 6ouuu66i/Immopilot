@@ -28,3 +28,37 @@ export function normalizePropertyListFilters(filters: SupabasePropertyListFilter
     source: filters.source ?? null,
   };
 }
+
+export const queryKeys = {
+  propertyMarks(userId: string | null | undefined) {
+    return ['property-marks', userId ?? 'anonymous'] as const;
+  },
+  supabaseProperties(userId: string | null | undefined) {
+    return ['supabase-properties', userId ?? 'anonymous'] as const;
+  },
+  supabasePropertiesPage(
+    userId: string | null | undefined,
+    page: number,
+    pageSize: number,
+    sort: 'recent' | 'price_asc' | 'price_desc' | 'score' = 'recent',
+    filters: SupabasePropertyListFilters = {},
+  ) {
+    return [
+      'supabase-properties-page',
+      userId ?? 'anonymous',
+      page,
+      pageSize,
+      sort,
+      normalizePropertyListFilters(filters),
+    ] as const;
+  },
+  listingScores(userId: string | null | undefined, propertyIds: string[]) {
+    return ['listing-scores', userId ?? 'anonymous', createPropertyIdsKey(propertyIds)] as const;
+  },
+  listingSignals(userId: string | null | undefined, propertyIds: string[]) {
+    return ['listing-signals', userId ?? 'anonymous', createPropertyIdsKey(propertyIds)] as const;
+  },
+  dashboardSnapshot(userId: string | null | undefined, limit = 8) {
+    return ['dashboard-snapshot', userId ?? 'anonymous', limit] as const;
+  },
+};

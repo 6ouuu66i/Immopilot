@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { Property } from '../types';
-import { normalizePropertyListFilters } from './queryKeys';
+import { normalizePropertyListFilters, queryKeys } from './queryKeys';
 import type { Json, Tables } from './database.types';
 import { supabase } from './supabase';
 
@@ -437,7 +437,7 @@ export function uniqueSupabaseProperties(properties: Property[]): Property[] {
 
 export function useSupabasePropertiesQuery(options: UseSupabasePropertiesQueryOptions = {}) {
   return useQuery({
-    queryKey: ['supabase-properties', options.userId ?? 'anonymous'],
+    queryKey: queryKeys.supabaseProperties(options.userId),
     queryFn: fetchSupabaseProperties,
     enabled: options.enabled ?? true,
   });
@@ -449,14 +449,13 @@ export function useSupabasePropertiesPageQuery(
   const normalizedFilters = normalizePropertyListFilters(options.filters);
 
   return useQuery({
-    queryKey: [
-      'supabase-properties-page',
-      options.userId ?? 'anonymous',
+    queryKey: queryKeys.supabasePropertiesPage(
+      options.userId,
       options.page,
       options.pageSize,
       options.sort ?? 'recent',
       normalizedFilters,
-    ],
+    ),
     queryFn: () => fetchSupabasePropertiesPage(options),
     enabled: options.enabled ?? true,
     placeholderData: keepPreviousData,

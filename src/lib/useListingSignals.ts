@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useAuth } from './auth';
-import { createPropertyIdsKey } from './queryKeys';
+import { createPropertyIdsKey, queryKeys } from './queryKeys';
 import {
   listingSignalsService,
   type SignalsByProperty,
@@ -17,7 +17,7 @@ export function useListingSignals(propertyIds: string[]): UseListingSignalsResul
   const stablePropertyIds = useMemo(() => createPropertyIdsKey(propertyIds), [propertyIds]);
 
   const query = useQuery({
-    queryKey: ['listing-signals', user?.id ?? 'anonymous', stablePropertyIds],
+    queryKey: queryKeys.listingSignals(user?.id, stablePropertyIds),
     queryFn: () => listingSignalsService.listByPropertyIds(stablePropertyIds),
     enabled: Boolean(user) && stablePropertyIds.length > 0,
   });

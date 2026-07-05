@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useAuth } from './auth';
-import { createPropertyIdsKey } from './queryKeys';
+import { createPropertyIdsKey, queryKeys } from './queryKeys';
 import {
   listingScoresService,
   type ListingScoresByProperty,
@@ -17,7 +17,7 @@ export function useListingScores(propertyIds: string[]): UseListingScoresResult 
   const stablePropertyIds = useMemo(() => createPropertyIdsKey(propertyIds), [propertyIds]);
 
   const query = useQuery({
-    queryKey: ['listing-scores', user?.id ?? 'anonymous', stablePropertyIds],
+    queryKey: queryKeys.listingScores(user?.id, stablePropertyIds),
     queryFn: () => listingScoresService.listByPropertyIds(stablePropertyIds),
     enabled: Boolean(user) && stablePropertyIds.length > 0,
   });
