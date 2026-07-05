@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { PropertyCard } from '../components/biens/PropertyCard';
 import { SellerTensionScoreZone } from '../components/biens/SellerTensionScoreZone';
 import { ImageLightbox, NotesList } from '../components/ui';
+import { DeferredImage } from '../components/ui/DeferredImage';
 import type { store as appStore } from '../lib/store';
 import { isSupabaseConfigured } from '../lib/supabase';
 import {
@@ -1218,12 +1219,13 @@ export function Biens({ store }: BiensProps) {
               gap: 14,
             }}
           >
-            {pageItems.map((p) => {
+            {pageItems.map((p, index) => {
               const cardSignals = getCardSignals(p, store);
               return (
                 <PropertyCard
                   key={p.id}
                   property={p}
+                  priorityImage={index === 0}
                   carouselIndex={carouselMap[p.id] ?? 0}
                   onCarouselPrev={handleCarousel(p.id, -1)}
                   onCarouselNext={handleCarousel(p.id, 1)}
@@ -1880,7 +1882,13 @@ function MiniFicheBien({
 
       <div style={{ overflowY: 'auto', minHeight: 0, flex: 1 }}>
         <div style={{ position: 'relative', height: 218, background: 'var(--color-bg-hover)', overflow: 'hidden' }}>
-          <img src={currentPhoto} alt={property.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <img
+            src={currentPhoto}
+            alt={property.title}
+            loading="eager"
+            decoding="async"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
           {photos.length > 1 && (
             <>
               <button
@@ -2462,7 +2470,13 @@ function LegacyMiniFicheBien({
               aria-label="Agrandir la photo"
               style={{ width: '100%', height: '100%', border: 0, padding: 0, background: 'transparent', cursor: 'zoom-in', display: 'block' }}
             >
-              <img src={currentPhoto} alt={property.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <img
+                src={currentPhoto}
+                alt={property.title}
+                loading="eager"
+                decoding="async"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
             </button>
             <span style={legacyGalleryCounterStyle}>{(photoIndex % photos.length) + 1} / {photos.length}</span>
             {photos.length > 1 && (
@@ -2487,7 +2501,13 @@ function LegacyMiniFicheBien({
                 onClick={() => setPhotoIndex(targetIndex)}
                 style={legacyThumbStyle(targetIndex === photoIndex % photos.length, isMoreThumb)}
               >
-                <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                <img
+                  src={url}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
                 {isMoreThumb && (
                   <span style={legacyMoreThumbOverlayStyle}>
                     +{hiddenPhotoCount}
@@ -2884,7 +2904,13 @@ function GrandeFicheBien({
           <div style={{ display: 'grid', gridTemplateColumns: '570px minmax(0, 1fr)', gap: 24, padding: '2px 2px 16px' }}>
             <div>
               <div style={{ position: 'relative', height: 326, borderRadius: 7, background: 'var(--color-border-default)', overflow: 'hidden', border: '1px solid var(--color-border-default)' }}>
-                <img src={currentPhoto} alt={property.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                <img
+                  src={currentPhoto}
+                  alt={property.title}
+                  loading="eager"
+                  decoding="async"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
                 <span style={{ position: 'absolute', top: 13, left: 14, padding: '5px 9px', borderRadius: 6, background: 'var(--color-success-bg)', color: 'var(--color-brand)', border: '1px solid var(--color-success-border)', fontSize: 11, fontWeight: 750 }}>
                   {property.reserved ? 'Réservé' : 'Disponible'}
                 </span>
@@ -2906,7 +2932,13 @@ function GrandeFicheBien({
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginTop: 8 }}>
                 {photos.slice(0, 6).map((url, index) => (
                   <button key={`${url}-${index}`} type="button" onClick={() => setPhotoIndex(index)} style={dossierThumbStyle(index === photoIndex % photos.length)}>
-                    <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <img
+                      src={url}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
                     {index === 5 && photos.length > 6 && (
                       <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'rgba(29,31,30,0.52)', color: 'var(--color-text-inverse)', fontWeight: 800, fontSize: 13 }}>
                         +{photos.length - 5}
@@ -4032,7 +4064,7 @@ function BiensTable({
         </div>
 
         {/* Rows */}
-        {items.map((p) => (
+        {items.map((p, index) => (
           <BiensTableRow
             key={p.id}
             property={p}
@@ -4040,6 +4072,7 @@ function BiensTable({
             liveSignals={p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] ?? [] : []}
             selected={selectedId === p.id}
             favorite={isFavorite(p.id)}
+            priorityImage={index === 0}
             onToggleFavorite={onToggleFavorite(p.id)}
             onSelect={() => onSelect(p.id)}
           />
@@ -4055,6 +4088,7 @@ interface BiensTableRowProps {
   liveSignals?: ListingSignal[];
   selected: boolean;
   favorite: boolean;
+  priorityImage?: boolean;
   onToggleFavorite: (e: React.MouseEvent) => void;
   onSelect: () => void;
 }
@@ -4065,6 +4099,7 @@ function BiensTableRow({
   liveSignals = [],
   selected,
   favorite,
+  priorityImage = false,
   onToggleFavorite,
   onSelect,
 }: BiensTableRowProps) {
@@ -4108,10 +4143,12 @@ function BiensTableRow({
 
       {/* Bien (thumbnail + title) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-        <img
+        <DeferredImage
           src={p.photos[0] ?? propertyImageFallbacks(p.id)[0]}
           alt=""
-          loading="eager"
+          eager={priorityImage}
+          loading={priorityImage ? 'eager' : 'lazy'}
+          decoding="async"
           style={{ width: 44, height: 34, objectFit: 'cover', borderRadius: 6, flexShrink: 0, background: 'var(--color-bg-hover)' }}
         />
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

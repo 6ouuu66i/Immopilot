@@ -4,11 +4,13 @@ import { SignalBadges } from '../SignalBadges';
 import type { ListingSignal } from '../../lib/services/listingSignalsService';
 import { propertyImageFallbacks } from '../../lib/propertyImageFallbacks';
 import { formatEuro } from '../../lib/formatCurrency';
+import { DeferredImage } from '../ui/DeferredImage';
 
 type SignalFamily = 'price' | 'behavior' | 'context' | 'alert';
 
 interface PropertyCardProps {
   property: Property;
+  priorityImage?: boolean;
   carouselIndex: number;
   onCarouselPrev: (e: React.MouseEvent) => void;
   onCarouselNext: (e: React.MouseEvent) => void;
@@ -135,6 +137,7 @@ const photoNavStyle: React.CSSProperties = {
 
 export function PropertyCard({
   property,
+  priorityImage = false,
   carouselIndex,
   onCarouselPrev,
   onCarouselNext,
@@ -187,11 +190,13 @@ export function PropertyCard({
       }}
     >
       <div style={{ position: 'relative', height: 168, overflow: 'hidden', background: cssVar('--color-bg-muted'), flexShrink: 0 }}>
-        <img
+        <DeferredImage
           src={currentPhoto}
           alt={property.title}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: cssVar('--color-bg-muted') }}
-          loading="lazy"
+          eager={priorityImage}
+          loading={priorityImage ? 'eager' : 'lazy'}
+          decoding="async"
           onError={(event) => {
             event.currentTarget.style.opacity = '0';
           }}
