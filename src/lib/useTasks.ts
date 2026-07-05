@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './auth';
 import type { Task, TaskPriority } from '../types';
@@ -156,71 +157,79 @@ export function taskLinkLabel(task: TaskWithRelations): string {
 
 export function useTasks(filters: UseTasksFilters = {}): UseTasksResult {
   const { user, profile } = useAuth();
-  const [tasks, setTasks] = useState<TaskWithRelations[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [mutationError, setMutationError] = useState<string | null>(null);
   const key = useMemo(() => filtersKey(filters), [filters]);
+  const queryKey = useMemo(
+    () => ['tasks', user?.id ?? 'anonymous', key] as const,
+    [key, user?.id],
+  );
 
-  const refresh = useCallback(async () => {
-    if (!user) {
-      setTasks([]);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    try {
+  const tasksQuery = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!user) return [];
       const nextTasks = filters.agency
         ? await tasksService.listAgencyTasks({ owner_id: filters.owner_id, scope: filters.scope })
         : await tasksService.listMyTasks({ scope: filters.scope });
-      setTasks(nextTasks);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Chargement des taches impossible.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [filters.agency, filters.owner_id, filters.scope, user]);
+      return nextTasks;
+    },
+    enabled: Boolean(user),
+  });
 
-  useEffect(() => {
-    void refresh();
-  }, [key, refresh]);
+  const tasks = tasksQuery.data ?? [];
+  const isLoading = tasksQuery.isLoading;
+  const error = mutationError ?? (tasksQuery.error instanceof Error ? tasksQuery.error.message : null);
+  const refresh = useCallback(async () => {
+    await tasksQuery.refetch();
+  }, [tasksQuery]);
 
   const createTask = useCallback(async (input: CreateTaskInput) => {
     if (!user) throw new Error('Utilisateur non connecte.');
     const previous = tasks;
     const temp = optimisticTask(input, user.id, profile?.agency_id);
-    setError(null);
-    setTasks((current) => [temp, ...current]);
+    setMutationError(null);
+    queryClient.setQueryData<TaskWithRelations[]>(queryKey, [temp, ...tasks]);
 
     try {
       const created = await tasksService.createTask(input);
-      setTasks((current) => [created, ...current.filter((task) => task.id !== temp.id)]);
+      queryClient.setQueryData<TaskWithRelations[]>(
+        queryKey,
+        (current = []) => [created, ...current.filter((task) => task.id !== temp.id)],
+      );
+      await queryClient.invalidateQueries({ queryKey: ['tasks', user.id] });
       return created;
     } catch (createError) {
-      setTasks(previous);
+      queryClient.setQueryData<TaskWithRelations[]>(queryKey, previous);
       const message = createError instanceof Error ? createError.message : 'Creation de la tache impossible.';
-      setError(message);
+      setMutationError(message);
       throw new Error(message);
     }
-  }, [profile?.agency_id, tasks, user]);
+  }, [profile?.agency_id, queryClient, queryKey, tasks, user]);
 
   const updateTask = useCallback(async (taskId: string, patch: UpdateTaskInput) => {
     const previous = tasks;
-    setError(null);
-    setTasks((current) => current.map((task) => (task.id === taskId ? patchTask(task, patch) : task)));
+    setMutationError(null);
+    queryClient.setQueryData<TaskWithRelations[]>(
+      queryKey,
+      (current = []) => current.map((task) => (task.id === taskId ? patchTask(task, patch) : task)),
+    );
 
     try {
       const updated = await tasksService.updateTask(taskId, patch);
-      setTasks((current) => replaceTask(current, updated));
+      queryClient.setQueryData<TaskWithRelations[]>(
+        queryKey,
+        (current = []) => replaceTask(current, updated),
+      );
+      if (user) await queryClient.invalidateQueries({ queryKey: ['tasks', user.id] });
       return updated;
     } catch (updateError) {
-      setTasks(previous);
+      queryClient.setQueryData<TaskWithRelations[]>(queryKey, previous);
       const message = updateError instanceof Error ? updateError.message : 'Modification de la tache impossible.';
-      setError(message);
+      setMutationError(message);
       throw new Error(message);
     }
-  }, [tasks]);
+  }, [queryClient, queryKey, tasks, user]);
 
   const completeTask = useCallback((taskId: string) => updateTask(taskId, { is_completed: true }), [updateTask]);
   const uncompleteTask = useCallback((taskId: string) => updateTask(taskId, { is_completed: false }), [updateTask]);
@@ -233,17 +242,21 @@ export function useTasks(filters: UseTasksFilters = {}): UseTasksResult {
 
   const deleteTask = useCallback(async (taskId: string) => {
     const previous = tasks;
-    setError(null);
-    setTasks((current) => current.filter((task) => task.id !== taskId));
+    setMutationError(null);
+    queryClient.setQueryData<TaskWithRelations[]>(
+      queryKey,
+      (current = []) => current.filter((task) => task.id !== taskId),
+    );
     try {
       await tasksService.deleteTask(taskId);
+      if (user) await queryClient.invalidateQueries({ queryKey: ['tasks', user.id] });
     } catch (deleteError) {
-      setTasks(previous);
+      queryClient.setQueryData<TaskWithRelations[]>(queryKey, previous);
       const message = deleteError instanceof Error ? deleteError.message : 'Suppression de la tache impossible.';
-      setError(message);
+      setMutationError(message);
       throw new Error(message);
     }
-  }, [tasks]);
+  }, [queryClient, queryKey, tasks, user]);
 
   return { tasks, isLoading, error, refresh, createTask, updateTask, completeTask, uncompleteTask, toggleTask, deleteTask };
 }

@@ -18,6 +18,7 @@
     "@fontsource/lora": "^5.2.8",
     "@supabase/supabase-js": "^2.108.2",
     "@tailwindcss/vite": "^4.1.14",
+    "@tanstack/react-query": "^5.101.2",
     "@vitejs/plugin-react": "^5.0.4",
     "lucide-react": "^0.546.0",
     "react": "^19.0.1",

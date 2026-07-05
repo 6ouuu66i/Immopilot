@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { useAuth } from './auth';
+import { createPropertyIdsKey } from './queryKeys';
 import {
   listingScoresService,
   type ListingScoresByProperty,
@@ -10,37 +12,18 @@ interface UseListingScoresResult {
   isLoading: boolean;
 }
 
-function propertyIdsKey(propertyIds: string[]) {
-  return Array.from(new Set(propertyIds.filter(Boolean))).sort().join('|');
-}
-
 export function useListingScores(propertyIds: string[]): UseListingScoresResult {
   const { user } = useAuth();
-  const key = propertyIdsKey(propertyIds);
-  const stablePropertyIds = useMemo(() => (key ? key.split('|') : []), [key]);
-  const [scoresByProperty, setScoresByProperty] = useState<ListingScoresByProperty>({});
-  const [isLoading, setIsLoading] = useState(false);
+  const stablePropertyIds = useMemo(() => createPropertyIdsKey(propertyIds), [propertyIds]);
 
-  const refresh = useCallback(async () => {
-    if (!user || stablePropertyIds.length === 0) {
-      setScoresByProperty({});
-      setIsLoading(false);
-      return;
-    }
+  const query = useQuery({
+    queryKey: ['listing-scores', user?.id ?? 'anonymous', stablePropertyIds],
+    queryFn: () => listingScoresService.listByPropertyIds(stablePropertyIds),
+    enabled: Boolean(user) && stablePropertyIds.length > 0,
+  });
 
-    setIsLoading(true);
-    try {
-      setScoresByProperty(await listingScoresService.listByPropertyIds(stablePropertyIds));
-    } catch {
-      setScoresByProperty({});
-    } finally {
-      setIsLoading(false);
-    }
-  }, [stablePropertyIds, user]);
-
-  useEffect(() => {
-    void refresh();
-  }, [key, refresh]);
-
-  return { scoresByProperty, isLoading };
+  return {
+    scoresByProperty: query.data ?? {},
+    isLoading: query.isLoading,
+  };
 }

@@ -1,4 +1,6 @@
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { Property } from '../types';
+import { normalizePropertyListFilters } from './queryKeys';
 import type { Json, Tables } from './database.types';
 import { supabase } from './supabase';
 
@@ -77,6 +79,11 @@ export interface FetchSupabasePropertiesPageOptions {
 export interface FetchSupabasePropertiesPageResult {
   properties: Property[];
   totalCount: number;
+}
+
+interface UseSupabasePropertiesQueryOptions {
+  enabled?: boolean;
+  userId?: string | null;
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -425,5 +432,33 @@ export function uniqueSupabaseProperties(properties: Property[]): Property[] {
     if (seen.has(property.supabasePropertyId)) return false;
     seen.add(property.supabasePropertyId);
     return true;
+  });
+}
+
+export function useSupabasePropertiesQuery(options: UseSupabasePropertiesQueryOptions = {}) {
+  return useQuery({
+    queryKey: ['supabase-properties', options.userId ?? 'anonymous'],
+    queryFn: fetchSupabaseProperties,
+    enabled: options.enabled ?? true,
+  });
+}
+
+export function useSupabasePropertiesPageQuery(
+  options: FetchSupabasePropertiesPageOptions & UseSupabasePropertiesQueryOptions,
+) {
+  const normalizedFilters = normalizePropertyListFilters(options.filters);
+
+  return useQuery({
+    queryKey: [
+      'supabase-properties-page',
+      options.userId ?? 'anonymous',
+      options.page,
+      options.pageSize,
+      options.sort ?? 'recent',
+      normalizedFilters,
+    ],
+    queryFn: () => fetchSupabasePropertiesPage(options),
+    enabled: options.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 }

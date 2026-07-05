@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo, useState } from 'react';
 import { useAuth } from './auth';
 import { propertyMarksService, type PropertyMarks } from './services/propertyMarksService';
 
@@ -22,45 +23,38 @@ function replaceMark(list: string[], propertyId: string, active: boolean): strin
 
 export function usePropertyMarks(): UsePropertyMarksResult {
   const { user } = useAuth();
-  const [marks, setMarks] = useState<PropertyMarks>(EMPTY_MARKS);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const queryKey = ['property-marks', user?.id ?? 'anonymous'];
 
-  useEffect(() => {
-    let active = true;
+  const marksQuery = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!user) return EMPTY_MARKS;
+      return propertyMarksService.getMarks(user.id);
+    },
+    enabled: Boolean(user),
+  });
 
-    async function loadMarks() {
-      if (!user) {
-        setMarks(EMPTY_MARKS);
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const nextMarks = await propertyMarksService.getMarks(user.id);
-        if (active) setMarks(nextMarks);
-      } catch (loadError) {
-        if (active) setError(loadError instanceof Error ? loadError.message : 'Chargement des favoris impossible.');
-      } finally {
-        if (active) setIsLoading(false);
-      }
-    }
-
-    void loadMarks();
-
-    return () => {
-      active = false;
-    };
-  }, [user]);
-
+  const marks = marksQuery.data ?? EMPTY_MARKS;
+  const isLoading = marksQuery.isLoading;
+  const error = mutationError ?? (marksQuery.error instanceof Error ? marksQuery.error.message : null);
   const favoriteSet = useMemo(() => new Set(marks.favorites), [marks.favorites]);
   const ignoredSet = useMemo(() => new Set(marks.ignored), [marks.ignored]);
 
   const isFavorite = useCallback((propertyId: string | undefined) => Boolean(propertyId && favoriteSet.has(propertyId)), [favoriteSet]);
   const isIgnored = useCallback((propertyId: string | undefined) => Boolean(propertyId && ignoredSet.has(propertyId)), [ignoredSet]);
+
+  const favoriteMutation = useMutation({
+    mutationFn: async (propertyId: string) => {
+      await propertyMarksService.toggleFavorite(propertyId);
+    },
+  });
+  const ignoredMutation = useMutation({
+    mutationFn: async (propertyId: string) => {
+      await propertyMarksService.toggleIgnored(propertyId);
+    },
+  });
 
   const toggleFavorite = useCallback(
     async (propertyId: string | undefined) => {
@@ -68,21 +62,22 @@ export function usePropertyMarks(): UsePropertyMarksResult {
 
       const previousMarks = marks;
       const nextFavoriteState = !favoriteSet.has(propertyId);
-
-      setError(null);
-      setMarks({
+      const nextMarks = {
         favorites: replaceMark(marks.favorites, propertyId, nextFavoriteState),
         ignored: nextFavoriteState ? replaceMark(marks.ignored, propertyId, false) : marks.ignored,
-      });
+      };
+
+      setMutationError(null);
+      queryClient.setQueryData<PropertyMarks>(queryKey, nextMarks);
 
       try {
-        await propertyMarksService.toggleFavorite(propertyId);
+        await favoriteMutation.mutateAsync(propertyId);
       } catch (toggleError) {
-        setMarks(previousMarks);
-        setError(toggleError instanceof Error ? toggleError.message : 'Mise à jour du favori impossible.');
+        queryClient.setQueryData<PropertyMarks>(queryKey, previousMarks);
+        setMutationError(toggleError instanceof Error ? toggleError.message : 'Mise Ã  jour du favori impossible.');
       }
     },
-    [favoriteSet, marks],
+    [favoriteMutation, favoriteSet, marks, queryClient, queryKey],
   );
 
   const toggleIgnored = useCallback(
@@ -91,21 +86,22 @@ export function usePropertyMarks(): UsePropertyMarksResult {
 
       const previousMarks = marks;
       const nextIgnoredState = !ignoredSet.has(propertyId);
-
-      setError(null);
-      setMarks({
+      const nextMarks = {
         favorites: nextIgnoredState ? replaceMark(marks.favorites, propertyId, false) : marks.favorites,
         ignored: replaceMark(marks.ignored, propertyId, nextIgnoredState),
-      });
+      };
+
+      setMutationError(null);
+      queryClient.setQueryData<PropertyMarks>(queryKey, nextMarks);
 
       try {
-        await propertyMarksService.toggleIgnored(propertyId);
+        await ignoredMutation.mutateAsync(propertyId);
       } catch (toggleError) {
-        setMarks(previousMarks);
-        setError(toggleError instanceof Error ? toggleError.message : 'Mise à jour du statut ignoré impossible.');
+        queryClient.setQueryData<PropertyMarks>(queryKey, previousMarks);
+        setMutationError(toggleError instanceof Error ? toggleError.message : 'Mise Ã  jour du statut ignorÃ© impossible.');
       }
     },
-    [ignoredSet, marks],
+    [ignoredMutation, ignoredSet, marks, queryClient, queryKey],
   );
 
   return {

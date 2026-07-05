@@ -14,12 +14,11 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ScoreRing } from '../components/biens/ScoreRing';
 import { useAuth } from '../lib/auth';
 import {
-  getDashboardSnapshot,
   type DashboardOpportunity,
   type DashboardSignalItem,
-  type DashboardSnapshot,
 } from '../lib/services/dashboardService';
 import type { store as appStore } from '../lib/store';
+import { useDashboardSnapshot } from '../lib/useDashboardSnapshot';
 import { taskLinkLabel, taskToView, useTasks } from '../lib/useTasks';
 import type { TaskWithRelations } from '../lib/services/tasksService';
 
@@ -133,33 +132,11 @@ export function Dashboard({ store: _store }: DashboardProps) {
   const { profile } = useAuth();
   const todayTasksState = useTasks({ scope: 'today' });
   const overdueTasksState = useTasks({ scope: 'overdue' });
-  const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
-  const [dashboardLoading, setDashboardLoading] = useState(true);
-  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const dashboardQuery = useDashboardSnapshot(8);
+  const snapshot = dashboardQuery.data ?? null;
+  const dashboardLoading = dashboardQuery.isLoading;
+  const dashboardError = dashboardQuery.error instanceof Error ? dashboardQuery.error.message : null;
   const firstName = (profile?.full_name ?? profile?.email ?? 'Agent').split(' ')[0] || 'Agent';
-
-  useEffect(() => {
-    let active = true;
-    setDashboardLoading(true);
-    getDashboardSnapshot(8)
-      .then((data) => {
-        if (!active) return;
-        setSnapshot(data);
-        setDashboardError(null);
-      })
-      .catch((error: unknown) => {
-        if (!active) return;
-        setSnapshot(null);
-        setDashboardError(error instanceof Error ? error.message : 'Impossible de charger le dashboard.');
-      })
-      .finally(() => {
-        if (active) setDashboardLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const visibleTodayTasks = useMemo(
     () => todayTasksState.tasks

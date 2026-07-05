@@ -24,11 +24,11 @@ import { ImageLightbox, NotesList } from '../components/ui';
 import type { store as appStore } from '../lib/store';
 import { isSupabaseConfigured } from '../lib/supabase';
 import {
-  fetchSupabasePropertiesPage,
   fetchPropertyDetail,
-  fetchSupabaseProperties,
   type PropertyDetail,
   type SupabasePropertyListFilters,
+  useSupabasePropertiesPageQuery,
+  useSupabasePropertiesQuery,
 } from '../lib/supabaseProperties';
 import { useListingSignals } from '../lib/useListingSignals';
 import { useListingScores } from '../lib/useListingScores';
@@ -186,6 +186,7 @@ function supportsServerPagination(params: {
 
 export function Biens({ store }: BiensProps) {
   const [, forceUpdate] = useState(0);
+  const { user } = useAuth();
   const propertyMarks = usePropertyMarks();
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -219,10 +220,6 @@ export function Biens({ store }: BiensProps) {
   const [fullPropertyId, setFullPropertyId] = useState<number | null>(null);
   const [panelPhotoIndex, setPanelPhotoIndex] = useState(0);
   const [noteDraft, setNoteDraft] = useState('');
-  const [liveProperties, setLiveProperties] = useState<Property[]>([]);
-  const [liveTotalCount, setLiveTotalCount] = useState(0);
-  const [liveLoading, setLiveLoading] = useState(isSupabaseConfigured);
-  const [liveError, setLiveError] = useState<string | null>(null);
   const [propertyDetailsById, setPropertyDetailsById] = useState<Record<string, PropertyDetail>>({});
   const [detailLoadingIds, setDetailLoadingIds] = useState<Record<string, boolean>>({});
 
@@ -263,7 +260,6 @@ export function Biens({ store }: BiensProps) {
     }),
     [contactFilter, pipelineFilter, search, statusFilter, taskFilter],
   );
-  const pageFetchCursor = useServerPagination ? page : 1;
   const serverFilters = useMemo<SupabasePropertyListFilters>(() => ({
     city: filterCommune !== 'Toutes' ? filterCommune : null,
     source: filterSource !== 'Toutes' ? filterSource : null,
@@ -296,51 +292,29 @@ export function Biens({ store }: BiensProps) {
     sellerFilter,
     surfaceFloor,
   ]);
-
-  useEffect(() => {
-    let ignore = false;
-
-    if (!isSupabaseConfigured) {
-      setLiveLoading(false);
-      return () => {
-        ignore = true;
-      };
-    }
-
-    setLiveLoading(true);
-    setLiveError(null);
-
-    const loader = useServerPagination
-      ? fetchSupabasePropertiesPage({
-          page,
-          pageSize: PAGE_SIZE,
-          sort,
-          filters: serverFilters,
-        }).then((result) => {
-          if (ignore) return;
-          setLiveProperties(result.properties);
-          setLiveTotalCount(result.totalCount);
-        })
-      : fetchSupabaseProperties().then((properties) => {
-          if (ignore) return;
-          setLiveProperties(properties);
-          setLiveTotalCount(properties.length);
-        });
-
-    loader
-      .catch((error: unknown) => {
-        if (ignore) return;
-        setLiveError(error instanceof Error ? error.message : 'Connexion Supabase indisponible');
-      })
-      .finally(() => {
-        if (!ignore) setLiveLoading(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [pageFetchCursor, serverFilters, sort, useServerPagination]);
-
+  const pagedPropertiesQuery = useSupabasePropertiesPageQuery({
+    enabled: isSupabaseConfigured && useServerPagination && Boolean(user),
+    filters: serverFilters,
+    page,
+    pageSize: PAGE_SIZE,
+    sort,
+    userId: user?.id,
+  });
+  const allPropertiesQuery = useSupabasePropertiesQuery({
+    enabled: isSupabaseConfigured && !useServerPagination && Boolean(user),
+    userId: user?.id,
+  });
+  const activePropertiesQuery = useServerPagination ? pagedPropertiesQuery : allPropertiesQuery;
+  const liveProperties = useServerPagination
+    ? (pagedPropertiesQuery.data?.properties ?? [])
+    : (allPropertiesQuery.data ?? []);
+  const liveTotalCount = useServerPagination
+    ? (pagedPropertiesQuery.data?.totalCount ?? 0)
+    : liveProperties.length;
+  const liveLoading = activePropertiesQuery.isLoading;
+  const liveError = activePropertiesQuery.error instanceof Error
+    ? activePropertiesQuery.error.message
+    : null;
   const usingLiveData = liveProperties.length > 0;
   const isInitialLiveLoading = isSupabaseConfigured && liveLoading && liveProperties.length === 0;
   const allProps = isSupabaseConfigured ? liveProperties : [];
