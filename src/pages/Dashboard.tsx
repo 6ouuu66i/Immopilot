@@ -13,14 +13,18 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ScoreRing } from '../components/biens/ScoreRing';
 import { useAuth } from '../lib/auth';
-import { listDashboardOpportunities, type DashboardOpportunity } from '../lib/services/dashboardService';
+import {
+  getDashboardSnapshot,
+  type DashboardOpportunity,
+  type DashboardSignalItem,
+  type DashboardSnapshot,
+} from '../lib/services/dashboardService';
 import type { store as appStore } from '../lib/store';
-import { taskToView, useTasks } from '../lib/useTasks';
-import type { Property, PropertySignal, Task } from '../types';
+import { taskLinkLabel, taskToView, useTasks } from '../lib/useTasks';
+import type { TaskWithRelations } from '../lib/services/tasksService';
 
 type Store = typeof appStore;
 type KpiTone = 'good' | 'risk' | 'watch' | 'neutral';
-type TaskOrigin = 'local' | 'supabase';
 
 interface DashboardProps {
   store: Store;
@@ -34,27 +38,6 @@ interface KpiCard {
   spark: number[];
   tone: KpiTone;
   value: string;
-}
-
-interface PriorityOpportunity {
-  actionLabel: string;
-  href: string;
-  id: string;
-  photo: string | null;
-  previousPrice: number | null;
-  price: number | null;
-  score: number;
-  seenLabel: string;
-  signal: string;
-  source: string;
-  subtitle: string;
-  surface: number | null;
-  title: string;
-}
-
-interface DashboardTask {
-  origin: TaskOrigin;
-  task: Task;
 }
 
 const integerFormatter = new Intl.NumberFormat('fr-BE', {
@@ -81,22 +64,11 @@ function formatSurface(value: number | null): string {
   return typeof value === 'number' && value > 0 ? `${Math.round(value)} m2` : '-';
 }
 
-function formatAddedAt(value: string | null): string {
+function formatDateTime(value: string | null): string {
   if (!value) return '-';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
-  const diffMs = Date.now() - date.getTime();
-  const diffHours = Math.max(0, Math.round(diffMs / 36e5));
-  if (diffHours < 1) return "A l'instant";
-  if (diffHours < 24) return `Il y a ${diffHours} h`;
-  const diffDays = Math.round(diffHours / 24);
-  return `Il y a ${diffDays} j`;
-}
-
-function formatPublishedDays(days: number): string {
-  if (days <= 0) return "A l'instant";
-  if (days === 1) return '1 j en ligne';
-  return `${days} j en ligne`;
+  return date.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
 }
 
 function cleanText(value: string): string {
@@ -115,141 +87,54 @@ function cleanText(value: string): string {
     [/\u00c2\u00b7/g, ' - '],
     [/\u00c2\u00b2/g, '2'],
     [/\u00e2\u201a\u00ac/g, 'EUR'],
-    [/ÃƒÆ’Ã‚Â©/g, 'e'],
-    [/ÃƒÆ’Ã‚Â¨/g, 'e'],
-    [/ÃƒÆ’Ã‚Âª/g, 'e'],
-    [/ÃƒÆ’Ã‚Â /g, 'a'],
-    [/ÃƒÆ’Ã‚Â§/g, 'c'],
-    [/ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬/g, 'EUR'],
-    [/Ãƒâ€šÃ‚Â·/g, ' - '],
-    [/Ãƒâ€šÃ‚Â²/g, '2'],
+    [/ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©/g, 'e'],
+    [/ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¨/g, 'e'],
+    [/ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âª/g, 'e'],
+    [/ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â /g, 'a'],
+    [/ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§/g, 'c'],
+    [/ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬/g, 'EUR'],
+    [/ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·/g, ' - '],
+    [/ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â²/g, '2'],
   ];
 
   return replacements.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), value);
 }
 
-function getPreviousPrice(property: Property): number | null {
-  const previousPrices = property.priceHistory
-    .map((item) => item.price)
-    .filter((price) => price > property.price);
-
-  if (previousPrices.length === 0) return null;
-  return Math.max(...previousPrices);
-}
-
-function getPriceDrop(property: Property): number {
-  const previousPrice = getPreviousPrice(property);
-  return previousPrice ? previousPrice - property.price : 0;
-}
-
-function getPropertySignal(property: Property): string {
-  if (getPriceDrop(property) > 0) return 'Baisse de prix';
-  if (property.fsbo) return 'FSBO';
-  if (property.score >= 85) return 'Score IA haut';
-  return cleanText(String(property.tag || 'Signal'));
-}
-
-function getSignalTone(label: string): KpiTone {
-  const normalized = label.toLowerCase();
-  if (normalized.includes('baisse') || normalized.includes('drop')) return 'risk';
-  if (normalized.includes('fsbo') || normalized.includes('ancien') || normalized.includes('repub')) return 'watch';
-  if (normalized.includes('score') || normalized.includes('nouveau')) return 'good';
-  return 'neutral';
-}
-
-function getSignalToneFromRecord(signal: PropertySignal): KpiTone {
-  if (signal.type === 'drop') return 'risk';
-  if (signal.type === 'fsbo' || signal.type === 'old' || signal.type === 'repub') return 'watch';
-  if (signal.type === 'high' || signal.type === 'new') return 'good';
-  return getSignalTone(signal.heading);
-}
-
-function propertyToOpportunity(property: Property): PriorityOpportunity {
-  const previousPrice = getPreviousPrice(property);
-  const typeLabel = cleanText(property.propertyType ?? (property.bedrooms >= 3 ? 'Maison' : 'Appartement'));
-
-  return {
-    actionLabel: property.fsbo ? 'Appeler vendeur' : previousPrice ? 'Verifier baisse' : 'Ouvrir fiche',
-    href: `#biens?propertyId=${property.id}`,
-    id: `property-${property.id}`,
-    photo: property.photos[0] ?? null,
-    previousPrice,
-    price: property.price,
-    score: property.score,
-    seenLabel: formatPublishedDays(property.publishedDays),
-    signal: getPropertySignal(property),
-    source: cleanText(String(property.source)),
-    subtitle: `${cleanText(property.city)} - ${typeLabel} - ${cleanText(String(property.source))}`,
-    surface: property.surface,
-    title: cleanText(property.title),
-  };
-}
-
-function supabaseToOpportunity(opportunity: DashboardOpportunity): PriorityOpportunity {
-  return {
-    actionLabel: 'Ouvrir fiche',
-    href: opportunity.propertyId ? `#biens?propertyId=${opportunity.propertyId}` : '#biens',
-    id: `listing-${opportunity.id}`,
-    photo: opportunity.photo,
-    previousPrice: null,
-    price: opportunity.price,
-    score: opportunity.score,
-    seenLabel: formatAddedAt(opportunity.addedAt),
-    signal: cleanText(opportunity.signal),
-    source: cleanText(opportunity.source),
-    subtitle: cleanText(opportunity.subtitle),
-    surface: opportunity.surface,
-    title: cleanText(opportunity.title),
-  };
-}
-
-function sortPropertiesForDashboard(properties: Property[]): Property[] {
-  return properties
-    .slice()
-    .sort((a, b) => {
-      const scoreDelta = b.score - a.score;
-      if (scoreDelta !== 0) return scoreDelta;
-      return a.publishedDays - b.publishedDays;
-    });
-}
-
-function getTodayKey(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function buildKpis({
-  activeSignals,
   fsboCount,
   hotCount,
   overdueCount,
   priceDropCount,
   priceDropTotal,
+  scoreAverage,
+  surveillerCount,
   todayTaskCount,
 }: {
-  activeSignals: number;
   fsboCount: number;
   hotCount: number;
   overdueCount: number;
   priceDropCount: number;
   priceDropTotal: number;
+  scoreAverage: number;
+  surveillerCount: number;
   todayTaskCount: number;
 }): KpiCard[] {
   return [
     {
-      delta: `${activeSignals} signaux`,
-      deltaLabel: 'a inspecter',
-      hint: '7 j',
+      delta: `${surveillerCount} a surveiller`,
+      deltaLabel: `score moy. ${scoreAverage.toFixed(1)}`,
+      hint: 'bandes',
       label: 'Opportunites chaudes',
-      spark: [3, 4, 3, 5, 4, 6, 7, 8],
-      tone: 'good',
+      spark: [0, 0, 1, 1, 1, 0, 0, 0],
+      tone: hotCount > 0 ? 'good' : 'neutral',
       value: String(hotCount),
     },
     {
       delta: priceDropTotal > 0 ? `-${formatCurrency(priceDropTotal)}` : '0 EUR',
-      deltaLabel: 'baisse cumulee',
+      deltaLabel: '7 derniers jours',
       hint: '7 j',
       label: 'Baisses de prix',
-      spark: [1, 1, 2, 1, 2, 3, 2, 2],
+      spark: [0, 0, 1, 0, 0, 1, 0, 0],
       tone: priceDropCount > 0 ? 'risk' : 'neutral',
       value: String(priceDropCount),
     },
@@ -264,7 +149,7 @@ function buildKpis({
     {
       delta: `${fsboCount} a contacter`,
       deltaLabel: 'particuliers',
-      hint: '30 j',
+      hint: 'actifs',
       label: 'Particuliers FSBO',
       spark: [0, 1, 1, 2, 2, 2, 3, 2],
       tone: fsboCount > 0 ? 'good' : 'neutral',
@@ -273,43 +158,31 @@ function buildKpis({
   ];
 }
 
-export function Dashboard({ store }: DashboardProps) {
+export function Dashboard({ store: _store }: DashboardProps) {
   const { profile } = useAuth();
   const todayTasksState = useTasks({ scope: 'today' });
   const overdueTasksState = useTasks({ scope: 'overdue' });
-  const [storeRevision, setStoreRevision] = useState(0);
-  const [opportunities, setOpportunities] = useState<DashboardOpportunity[]>([]);
-  const [opportunitiesLoading, setOpportunitiesLoading] = useState(true);
-  const [opportunitiesError, setOpportunitiesError] = useState<string | null>(null);
-  const todayKey = getTodayKey();
+  const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
   const firstName = (profile?.full_name ?? profile?.email ?? 'Agent').split(' ')[0] || 'Agent';
 
   useEffect(() => {
-    const bumpStoreRevision = () => setStoreRevision((version) => version + 1);
-    window.addEventListener('ip-state-changed', bumpStoreRevision);
-    window.addEventListener('ip-agent-changed', bumpStoreRevision);
-    return () => {
-      window.removeEventListener('ip-state-changed', bumpStoreRevision);
-      window.removeEventListener('ip-agent-changed', bumpStoreRevision);
-    };
-  }, []);
-
-  useEffect(() => {
     let active = true;
-    setOpportunitiesLoading(true);
-    listDashboardOpportunities(8)
-      .then((items) => {
+    setDashboardLoading(true);
+    getDashboardSnapshot(8)
+      .then((data) => {
         if (!active) return;
-        setOpportunities(items);
-        setOpportunitiesError(null);
+        setSnapshot(data);
+        setDashboardError(null);
       })
       .catch((error: unknown) => {
         if (!active) return;
-        setOpportunities([]);
-        setOpportunitiesError(error instanceof Error ? error.message : 'Impossible de charger les opportunites.');
+        setSnapshot(null);
+        setDashboardError(error instanceof Error ? error.message : 'Impossible de charger le dashboard.');
       })
       .finally(() => {
-        if (active) setOpportunitiesLoading(false);
+        if (active) setDashboardLoading(false);
       });
 
     return () => {
@@ -317,66 +190,35 @@ export function Dashboard({ store }: DashboardProps) {
     };
   }, []);
 
-  const localProperties = useMemo(() => store.getProperties(), [store, storeRevision]);
-  const localSignals = useMemo(() => store.getActiveSignals(), [store, storeRevision]);
-  const localTodayTasks = useMemo(() => store.getTasksForDate(todayKey), [store, storeRevision, todayKey]);
-  const localOverdueTasks = useMemo(
-    () => store.getTasks().filter((task) => !task.done && task.date < todayKey),
-    [store, storeRevision, todayKey],
-  );
-  const supabaseTodayTasks = useMemo(() => todayTasksState.tasks.map(taskToView), [todayTasksState.tasks]);
-  const taskItems: DashboardTask[] = useMemo(() => {
-    if (supabaseTodayTasks.length > 0) {
-      return supabaseTodayTasks
-        .slice()
-        .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
-        .map((task) => ({ origin: 'supabase', task }));
-    }
-
-    return localTodayTasks
+  const visibleTodayTasks = useMemo(
+    () => todayTasksState.tasks
+      .filter((task) => !task.is_completed)
       .slice()
-      .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
-      .map((task) => ({ origin: 'local', task }));
-  }, [localTodayTasks, supabaseTodayTasks]);
-
-  const localPriorities = useMemo(
-    () => sortPropertiesForDashboard(localProperties).slice(0, 8).map(propertyToOpportunity),
-    [localProperties],
+      .sort((a, b) => `${a.due_date ?? ''}`.localeCompare(`${b.due_date ?? ''}`))
+      .slice(0, 5),
+    [todayTasksState.tasks],
   );
-  const supabasePriorities = useMemo(() => opportunities.map(supabaseToOpportunity), [opportunities]);
-  const priorityItems = supabasePriorities.length > 0 ? supabasePriorities : localPriorities;
-  const hasLocalFallback = supabasePriorities.length === 0 && localPriorities.length > 0;
-  const prioritySource = supabasePriorities.length > 0 ? 'Supabase' : 'Local';
-  const priceDropProperties = localProperties.filter((property) => getPriceDrop(property) > 0);
-  const hotCount = supabasePriorities.length > 0
-    ? supabasePriorities.filter((item) => item.score >= 80).length
-    : localProperties.filter((property) => property.score >= 80).length;
-  const priceDropTotal = priceDropProperties.reduce((sum, property) => sum + getPriceDrop(property), 0);
-  const overdueCount = overdueTasksState.tasks.length > 0 ? overdueTasksState.tasks.length : localOverdueTasks.length;
+  const overdueOpenTasks = useMemo(
+    () => overdueTasksState.tasks.filter((task) => !task.is_completed),
+    [overdueTasksState.tasks],
+  );
+
   const kpis = buildKpis({
-    activeSignals: localSignals.length,
-    fsboCount: localProperties.filter((property) => property.fsbo).length,
-    hotCount,
-    overdueCount,
-    priceDropCount: priceDropProperties.length,
-    priceDropTotal,
-    todayTaskCount: taskItems.filter((item) => !item.task.done).length,
+    fsboCount: snapshot?.fsboCount ?? 0,
+    hotCount: snapshot?.hotOpportunitiesCount ?? 0,
+    overdueCount: overdueOpenTasks.length,
+    priceDropCount: snapshot?.priceDropCount ?? 0,
+    priceDropTotal: snapshot?.priceDropTotal ?? 0,
+    scoreAverage: snapshot?.scoreAverage ?? 0,
+    surveillerCount: snapshot?.scoreDistribution.surveiller ?? 0,
+    todayTaskCount: visibleTodayTasks.length,
   });
 
   const metaDate = cleanText(longDateFormatter.format(new Date()));
-  const lastSync = new Date().toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
-  const visibleTasks = taskItems.slice(0, 5);
-  const visibleSignals = localSignals.slice(0, 4);
-
-  const toggleTask = (item: DashboardTask) => {
-    if (item.origin === 'supabase') {
-      void todayTasksState.toggleTask(item.task.id);
-      return;
-    }
-
-    store.toggleTask(item.task.id);
-    setStoreRevision((version) => version + 1);
-  };
+  const lastSync = formatDateTime(snapshot?.lastSyncAt ?? null);
+  const visibleSignals = snapshot?.signals ?? [];
+  const opportunities = snapshot?.opportunities ?? [];
+  const tasksError = todayTasksState.error ?? overdueTasksState.error;
 
   return (
     <main className="lv-dashboard lv-page">
@@ -397,18 +239,24 @@ export function Dashboard({ store }: DashboardProps) {
         <span className="lv-live-pill">Live</span>
         <span>{metaDate}</span>
         <span className="lv-meta-separator" aria-hidden="true" />
-        <span><b>{localSignals.length}</b> nouveaux signaux</span>
+        <span><b>{formatNumber(snapshot?.activeSignalsCount ?? 0)}</b> signaux actifs</span>
         <span className="lv-meta-separator" aria-hidden="true" />
-        <span><b>{formatNumber(localProperties.length)}</b> biens suivis</span>
+        <span><b>{formatNumber(snapshot?.activePropertiesCount ?? 0)}</b> biens actifs</span>
+        <span className="lv-meta-separator" aria-hidden="true" />
+        <span><b>{formatNumber(snapshot?.scoredPropertiesCount ?? 0)}</b> biens scores</span>
+        <span className="lv-meta-separator" aria-hidden="true" />
+        <span>Moyenne <b>{snapshot?.scoreAverage.toFixed(1) ?? '0.0'}</b></span>
+        <span className="lv-meta-separator" aria-hidden="true" />
+        <span>Bandes <b>{snapshot?.scoreDistribution.forte ?? 0}</b> / <b>{snapshot?.scoreDistribution.surveiller ?? 0}</b> / <b>{snapshot?.scoreDistribution.faible ?? 0}</b></span>
         <span className="lv-meta-separator" aria-hidden="true" />
         <span>Derniere sync <b>{lastSync}</b></span>
-        {hasLocalFallback ? (
-          <>
-            <span className="lv-meta-separator" aria-hidden="true" />
-            <span>Mode <b>{prioritySource}</b></span>
-          </>
-        ) : null}
       </div>
+
+      {dashboardError && (
+        <div className="lv-dashboard-empty is-error" style={{ marginTop: 16 }}>
+          {dashboardError}
+        </div>
+      )}
 
       <section className="lv-dashboard-kpis" aria-label="Indicateurs principaux">
         {kpis.map((kpi) => (
@@ -421,7 +269,7 @@ export function Dashboard({ store }: DashboardProps) {
           <header className="lv-panel-head">
             <div>
               <h2>Priorites commerciales</h2>
-              <p>Les biens avec signaux exploitables maintenant.</p>
+              <p>Biens actifs tries sur le score vendeur reel.</p>
             </div>
             <a href="#biens">
               <Filter size={14} />
@@ -430,9 +278,9 @@ export function Dashboard({ store }: DashboardProps) {
           </header>
 
           <OpportunityList
-            error={hasLocalFallback ? null : opportunitiesError}
-            isLoading={opportunitiesLoading && priorityItems.length === 0}
-            opportunities={priorityItems}
+            error={dashboardError}
+            isLoading={dashboardLoading}
+            opportunities={opportunities}
           />
 
           <a className="lv-panel-link" href="#biens">
@@ -442,15 +290,17 @@ export function Dashboard({ store }: DashboardProps) {
         </section>
 
         <aside className="lv-dashboard-rail" aria-label="Taches et signaux">
-          <MiniPanel title="Taches du jour" count={visibleTasks.length} actionHref="#agenda">
+          <MiniPanel title="Taches du jour" count={visibleTodayTasks.length} actionHref="#agenda">
             <div className="lv-task-list">
-              {todayTasksState.isLoading && visibleTasks.length === 0 ? (
+              {todayTasksState.isLoading ? (
                 <EmptyDashboardLine>Chargement des taches...</EmptyDashboardLine>
-              ) : visibleTasks.length === 0 ? (
+              ) : tasksError ? (
+                <EmptyDashboardLine>{tasksError}</EmptyDashboardLine>
+              ) : visibleTodayTasks.length === 0 ? (
                 <EmptyDashboardLine>Aucune tache prevue aujourd'hui.</EmptyDashboardLine>
               ) : (
-                visibleTasks.map((item) => (
-                  <TaskRow key={`${item.origin}-${item.task.id}`} store={store} task={item.task} onToggle={() => toggleTask(item)} />
+                visibleTodayTasks.map((task) => (
+                  <TaskRow key={task.id} task={task} onToggle={() => { void todayTasksState.toggleTask(task.id); }} />
                 ))
               )}
             </div>
@@ -459,8 +309,12 @@ export function Dashboard({ store }: DashboardProps) {
 
           <MiniPanel title="Signaux a surveiller" count={visibleSignals.length}>
             <div className="lv-signal-list">
-              {visibleSignals.length === 0 ? (
-                <EmptyDashboardLine>Les signaux apparaitront ici quand le moteur de detection sera actif.</EmptyDashboardLine>
+              {dashboardLoading ? (
+                <EmptyDashboardLine>Chargement des signaux...</EmptyDashboardLine>
+              ) : dashboardError ? (
+                <EmptyDashboardLine>{dashboardError}</EmptyDashboardLine>
+              ) : visibleSignals.length === 0 ? (
+                <EmptyDashboardLine>Aucun signal actif a afficher.</EmptyDashboardLine>
               ) : (
                 visibleSignals.map((signal) => <SignalRow key={signal.id} signal={signal} />)
               )}
@@ -474,7 +328,7 @@ export function Dashboard({ store }: DashboardProps) {
             </span>
             <div>
               <strong>Prochaine action</strong>
-              <p>Ouvrez la vue Biens pour traiter les favoris, les baisses et les FSBO en priorité.</p>
+              <p>Ouvrez la vue Biens pour traiter les scores surveiller et les signaux actifs en priorite.</p>
             </div>
             <ArrowUpRight size={16} />
           </a>
@@ -556,7 +410,7 @@ function OpportunityList({
 }: {
   error: string | null;
   isLoading: boolean;
-  opportunities: PriorityOpportunity[];
+  opportunities: DashboardOpportunity[];
 }) {
   if (isLoading) {
     return (
@@ -568,12 +422,12 @@ function OpportunityList({
     );
   }
 
-  if (error && opportunities.length === 0) {
+  if (error) {
     return <div className="lv-dashboard-empty is-error">{error}</div>;
   }
 
   if (opportunities.length === 0) {
-    return <div className="lv-dashboard-empty">Vos opportunites apparaitront ici apres le premier scraping.</div>;
+    return <div className="lv-dashboard-empty">Aucune opportunite scoree a afficher.</div>;
   }
 
   return (
@@ -585,26 +439,25 @@ function OpportunityList({
   );
 }
 
-function OpportunityRow({ opportunity }: { opportunity: PriorityOpportunity }) {
-  const drop = opportunity.previousPrice && opportunity.price ? opportunity.previousPrice - opportunity.price : 0;
-  const tone = getSignalTone(opportunity.signal);
+function OpportunityRow({ opportunity }: { opportunity: DashboardOpportunity }) {
+  const tone = opportunity.band === 'forte' ? 'good' : opportunity.band === 'surveiller' ? 'watch' : 'neutral';
 
   return (
-    <a className="lv-priority-row" href={opportunity.href}>
+    <a className="lv-priority-row" href={opportunity.propertyId ? `#biens?propertyId=${opportunity.propertyId}` : '#biens'}>
       {opportunity.photo ? <img src={opportunity.photo} alt="" /> : <span className="lv-property-thumb" aria-hidden="true" />}
       <span className="lv-row-title">
         <span className="lv-row-title-line">
-          <strong>{opportunity.title}</strong>
-          <Badge tone={tone}>{opportunity.signal}</Badge>
+          <strong>{cleanText(opportunity.title)}</strong>
+          <Badge tone={tone}>{cleanText(opportunity.signal)}</Badge>
         </span>
-        <small>{opportunity.subtitle}</small>
+        <small>{cleanText(opportunity.subtitle)}</small>
       </span>
       <span className="lv-row-price">
         <b>{formatCurrency(opportunity.price)}</b>
-        {drop > 0 ? <small>-{formatCurrency(drop)}</small> : <small>{formatSurface(opportunity.surface)}</small>}
+        <small>{formatSurface(opportunity.surface)}</small>
       </span>
       <ScoreRing score={opportunity.score} size="sm" />
-      <span className="lv-row-actions" aria-label={opportunity.actionLabel}>
+      <span className="lv-row-actions" aria-label="Actions">
         <Phone size={13} />
         <Mail size={13} />
         <MoreHorizontal size={13} />
@@ -613,37 +466,34 @@ function OpportunityRow({ opportunity }: { opportunity: PriorityOpportunity }) {
   );
 }
 
-function TaskRow({ store, task, onToggle }: { store: Store; task: Task; onToggle: () => void }) {
-  const relatedProperty = task.propertyId ? store.getProperty(task.propertyId) : undefined;
+function TaskRow({ task, onToggle }: { task: TaskWithRelations; onToggle: () => void }) {
+  const view = taskToView(task);
   const meta = [
-    task.time,
-    relatedProperty ? cleanText(relatedProperty.city) : task.place ? cleanText(task.place) : null,
+    view.time,
+    task.relations.property?.locality ?? taskLinkLabel(task),
   ].filter(Boolean).join(' - ');
 
   return (
-    <button className="lv-task-row" type="button" onClick={onToggle} aria-pressed={task.done}>
-      <span className={`lv-task-check ${task.done ? 'is-done' : ''}`}>
-        {task.done ? <CheckCircle2 size={15} /> : <Circle size={15} />}
+    <button className="lv-task-row" type="button" onClick={onToggle} aria-pressed={task.is_completed}>
+      <span className={`lv-task-check ${task.is_completed ? 'is-done' : ''}`}>
+        {task.is_completed ? <CheckCircle2 size={15} /> : <Circle size={15} />}
       </span>
       <span>
         <b>{cleanText(task.title)}</b>
-        <small>{meta}</small>
+        <small>{cleanText(meta)}</small>
       </span>
     </button>
   );
 }
 
-function SignalRow({ signal }: { signal: PropertySignal }) {
-  const tone = getSignalToneFromRecord(signal);
-  const value = signal.value ?? signal.info;
-
+function SignalRow({ signal }: { signal: DashboardSignalItem }) {
   return (
-    <a className={`lv-signal-row tone-${tone}`} href={`#biens?signalId=${signal.id}`}>
+    <a className={`lv-signal-row tone-${signal.tone}`} href={`#biens?propertyId=${signal.propertyId}`}>
       <span>
-        <strong>{cleanText(signal.heading)}</strong>
-        <small>{cleanText(signal.source ? `${signal.source} - ${signal.time}` : signal.time)}</small>
+        <strong>{cleanText(signal.title)}</strong>
+        <small>{cleanText(`${signal.source} - ${signal.timeLabel}`)}</small>
       </span>
-      <b>{cleanText(value)}</b>
+      <b>{cleanText(signal.value)}</b>
     </a>
   );
 }
