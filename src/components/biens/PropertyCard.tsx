@@ -2,7 +2,6 @@ import { Bath, Bed, ChevronLeft, ChevronRight, Globe, Heart, MapPin, Square, Sta
 import type { Property } from '../../types';
 import { SignalBadges } from '../SignalBadges';
 import type { ListingSignal } from '../../lib/services/listingSignalsService';
-import { ScoreRing } from './ScoreRing';
 import { propertyImageFallbacks } from '../../lib/propertyImageFallbacks';
 import { formatEuro } from '../../lib/formatCurrency';
 
@@ -23,6 +22,7 @@ interface PropertyCardProps {
   nextAction?: string;
   contactName?: string;
   signals?: ListingSignal[];
+  scoreContent?: React.ReactNode;
 }
 
 function cssVar(name: string) {
@@ -147,6 +147,7 @@ export function PropertyCard({
   opportunityReason,
   contactName,
   signals = [],
+  scoreContent,
 }: PropertyCardProps) {
   const photos = property.photos.length > 0 ? property.photos : propertyImageFallbacks(property.id);
   const currentPhoto = photos[carouselIndex % photos.length];
@@ -255,10 +256,6 @@ export function PropertyCard({
           </div>
         )}
 
-        <span style={{ position: 'absolute', top: 6, right: 6, borderRadius: 'var(--radius)', background: 'color-mix(in srgb, var(--color-bg-surface) 88%, transparent)', boxShadow: 'none' }}>
-          <ScoreRing score={property.score} size="sm" />
-        </span>
-
         {photos.length > 1 && (
           <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 4 }}>
             {photos.map((_, index) => (
@@ -357,7 +354,9 @@ export function PropertyCard({
 
         <SignalBadges signals={signals} />
 
-        {contactName ? opportunityReason && (
+        {scoreContent}
+
+        {contactName && opportunityReason && (
           <div
             style={{
               display: 'grid',
@@ -380,27 +379,6 @@ export function PropertyCard({
               {opportunityReason}
             </span>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onSelect();
-            }}
-            style={{
-              width: 'fit-content',
-              border: 0,
-              background: 'transparent',
-              color: cssVar('--color-brand'),
-              padding: 0,
-              font: 'inherit',
-              fontSize: 12,
-              fontWeight: 650,
-              cursor: 'pointer',
-            }}
-          >
-            + Lier un contact
-          </button>
         )}
 
         <div style={{

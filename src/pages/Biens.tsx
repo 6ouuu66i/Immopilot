@@ -19,12 +19,14 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { PropertyCard } from '../components/biens/PropertyCard';
-import { ScoreRing } from '../components/biens/ScoreRing';
+import { SellerTensionScoreZone } from '../components/biens/SellerTensionScoreZone';
 import { ImageLightbox, NotesList } from '../components/ui';
 import type { store as appStore } from '../lib/store';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { fetchSupabaseProperties, uniqueSupabaseProperties } from '../lib/supabaseProperties';
 import { useListingSignals } from '../lib/useListingSignals';
+import { useListingScores } from '../lib/useListingScores';
+import type { ListingSignal } from '../lib/services/listingSignalsService';
 import { usePropertyMarks } from '../lib/usePropertyMarks';
 import { useNotes } from '../lib/useNotes';
 import { taskToView, useTasks, useTasksFor } from '../lib/useTasks';
@@ -34,6 +36,7 @@ import { useDeals } from '../lib/useDeals';
 import { useMyTransfers } from '../lib/useTransfers';
 import { contactsService } from '../lib/services/contactsService';
 import { dealsService } from '../lib/services/dealsService';
+import type { ListingScore } from '../lib/services/listingScoresService';
 import { propertyImageFallbacks } from '../lib/propertyImageFallbacks';
 import { formatEuro } from '../lib/formatCurrency';
 import type { Property, PropertyInternalStatus } from '../types';
@@ -365,9 +368,15 @@ export function Biens({ store }: BiensProps) {
     () => pageItems.map((property) => property.supabasePropertyId).filter((id): id is string => Boolean(id)),
     [pageItems],
   );
-  const { signalsByProperty } = useListingSignals(visiblePropertyIds);
   const selectedProperty = selectedPropertyId ? allProps.find((property) => property.id === selectedPropertyId) : undefined;
   const fullProperty = fullPropertyId ? allProps.find((property) => property.id === fullPropertyId) : undefined;
+  const scorePropertyIds = useMemo(() => {
+    const extraIds = [selectedProperty?.supabasePropertyId, fullProperty?.supabasePropertyId]
+      .filter((id): id is string => Boolean(id));
+    return Array.from(new Set([...visiblePropertyIds, ...extraIds]));
+  }, [fullProperty?.supabasePropertyId, selectedProperty?.supabasePropertyId, visiblePropertyIds]);
+  const { signalsByProperty } = useListingSignals(scorePropertyIds);
+  const { scoresByProperty } = useListingScores(scorePropertyIds);
   const panelOpen = Boolean(selectedProperty);
   const openTasksByPropertyId = useMemo(() => {
     const map = new Map<string, ReturnType<typeof taskToView>[]>();
@@ -1069,6 +1078,14 @@ export function Biens({ store }: BiensProps) {
                   primarySignal={cardSignals.primarySignal}
                   secondarySignalCount={cardSignals.secondarySignalCount}
                   signals={p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] ?? [] : []}
+                  scoreContent={(
+                    <SellerTensionScoreZone
+                      score={p.supabasePropertyId ? scoresByProperty[p.supabasePropertyId] : undefined}
+                      fallbackScore={p.score}
+                      signals={p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] ?? [] : []}
+                      isInactive={p.reserved || p.status?.startsWith('archiv')}
+                    />
+                  )}
                   opportunityReason={getOpportunityReason(p, store)}
                   nextAction={getOpenPropertyTasks(p)[0]?.title ?? (store.getPropertyDeal(p.id) ? `Deal: ${store.getPropertyDeal(p.id)?.stage}` : 'Qualifier ce bien')}
                   contactName={store.getPropertyContact(p.id)?.name}
@@ -1080,6 +1097,8 @@ export function Biens({ store }: BiensProps) {
           <BiensTable
             items={pageItems}
             selectedId={selectedPropertyId}
+            scoresByProperty={scoresByProperty}
+            signalsByProperty={signalsByProperty}
             isFavorite={(id) => propertyMarks.isFavorite(getMarkId(allProps.find((property) => property.id === id)))}
             onToggleFavorite={handleFav}
             onSelect={selectProperty}
@@ -1200,6 +1219,8 @@ export function Biens({ store }: BiensProps) {
         <LegacyMiniFicheBien
           property={selectedProperty}
           store={store}
+          score={selectedProperty.supabasePropertyId ? scoresByProperty[selectedProperty.supabasePropertyId] : undefined}
+          liveSignals={selectedProperty.supabasePropertyId ? signalsByProperty[selectedProperty.supabasePropertyId] ?? [] : []}
           currentAgentName={currentAgent.name}
           photoIndex={panelPhotoIndex}
           setPhotoIndex={setPanelPhotoIndex}
@@ -1217,6 +1238,8 @@ export function Biens({ store }: BiensProps) {
         <GrandeFicheBien
           property={fullProperty}
           store={store}
+          score={fullProperty.supabasePropertyId ? scoresByProperty[fullProperty.supabasePropertyId] : undefined}
+          liveSignals={fullProperty.supabasePropertyId ? signalsByProperty[fullProperty.supabasePropertyId] ?? [] : []}
           currentAgentName={currentAgent.name}
           isFavorite={propertyMarks.isFavorite(getMarkId(fullProperty))}
           onToggleFavorite={() => void propertyMarks.toggleFavorite(getMarkId(fullProperty))}
@@ -1471,6 +1494,8 @@ function FilterChip({ label, options, value, onChange }: FilterChipProps) {
 interface MiniFicheBienProps {
   property: Property;
   store: Store;
+  score?: ListingScore;
+  liveSignals?: ListingSignal[];
   currentAgentName: string;
   photoIndex: number;
   setPhotoIndex: (index: number) => void;
@@ -1484,9 +1509,117 @@ interface MiniFicheBienProps {
   onOpenFull?: () => void;
 }
 
+function scoreBandLabel(score: ListingScore | undefined) {
+  if (!score) return 'Faible';
+  if (score.band === 'forte') return 'Forte';
+  if (score.band === 'surveiller') return 'Surveiller';
+  return 'Faible';
+}
+
+function scoreFactsLabel(facts: string[]) {
+  if (facts.length === 0) return 'Signal';
+  return facts.join(' · ');
+}
+
+function reasonBarWidth(contribution: number) {
+  return `${Math.max(12, Math.min(100, Math.round((contribution / 28) * 100)))}%`;
+}
+
+function WhyThisScorePanel({
+  score,
+  compact = false,
+}: {
+  score?: ListingScore;
+  compact?: boolean;
+}) {
+  const [showExcluded, setShowExcluded] = useState(false);
+  const reasons = score?.breakdown.reasons ?? [];
+  const visibleReasons = reasons.slice(0, 3);
+  const remainingReasons = Math.max(0, reasons.length - visibleReasons.length);
+  const excluded = score?.breakdown.excluded ?? [];
+
+  return (
+    <section style={compact ? miniSectionStyle : legacyModuleStyle}>
+      <div style={compact ? undefined : legacyLabelStyle}>Pourquoi cet indice</div>
+      {compact && <MiniSectionTitle title="Pourquoi cet indice" />}
+
+      {visibleReasons.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? 10 : 12, marginTop: compact ? 9 : 8 }}>
+          {visibleReasons.map((reason, index) => (
+            <div
+              key={`${reason.signal}-${index}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: compact ? '84px minmax(0, 1fr) 42px' : '108px minmax(0, 1fr) 48px',
+                gap: 10,
+                alignItems: 'start',
+              }}
+            >
+              <span style={{ color: 'var(--color-text-secondary)', fontSize: compact ? 10.5 : 11, fontFamily: 'var(--notion-mono)', lineHeight: 1.35 }}>
+                {scoreFactsLabel(reason.facts)}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: 'var(--color-text-primary)', fontSize: compact ? 11.5 : 12.5, fontWeight: 650, lineHeight: 1.35 }}>
+                  {reason.reason_fr}
+                </div>
+                <div style={{ marginTop: 6, height: 6, background: 'var(--color-bg-muted)', overflow: 'hidden' }}>
+                  <div style={{ width: reasonBarWidth(reason.contribution), height: '100%', background: '#1E5A3A' }} />
+                </div>
+              </div>
+              <span style={{ color: 'var(--color-text-primary)', fontSize: compact ? 11 : 12, fontWeight: 700, textAlign: 'right', fontFamily: 'var(--notion-mono)' }}>
+                {reason.contribution.toFixed(1)}
+              </span>
+            </div>
+          ))}
+          {remainingReasons > 0 && (
+            <span style={{ color: 'var(--color-text-secondary)', fontSize: compact ? 11 : 11.5, fontWeight: 650 }}>
+              + {remainingReasons} autres signaux
+            </span>
+          )}
+        </div>
+      ) : (
+        <p style={{ margin: compact ? '9px 0 0' : '8px 0 0', color: 'var(--color-text-tertiary)', fontSize: compact ? 11.5 : 12 }}>
+          Aucun motif score disponible.
+        </p>
+      )}
+
+      {excluded.length > 0 && (
+        <div style={{ marginTop: compact ? 10 : 12 }}>
+          <button
+            type="button"
+            onClick={() => setShowExcluded((current) => !current)}
+            style={{
+              border: 0,
+              background: 'transparent',
+              padding: 0,
+              color: 'var(--color-text-secondary)',
+              fontSize: compact ? 11 : 11.5,
+              fontWeight: 650,
+              cursor: 'pointer',
+            }}
+          >
+            Signaux non evalués
+          </button>
+          {showExcluded && (
+            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {excluded.map((item, index) => (
+                <div key={`${item}-${index}`} style={{ color: 'var(--color-text-secondary)', fontSize: compact ? 11 : 11.5, lineHeight: 1.45 }}>
+                  {item}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function MiniFicheBien({
   property,
   store,
+  score,
+  liveSignals = [],
   currentAgentName,
   photoIndex,
   setPhotoIndex,
@@ -1674,14 +1807,22 @@ function MiniFicheBien({
               <MiniMetric icon={<Bed size={14} />} label="Chambres" value={String(property.bedrooms)} />
               <MiniMetric icon={<Bath size={14} />} label="Sdb" value={String(property.bathrooms)} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 10 }}>
-              <MiniMetric label="Score IA">
-                <ScoreRing score={property.score} size="lg" />
-              </MiniMetric>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginTop: 10 }}>
               <MiniMetric icon={<Clock size={14} />} label="En ligne" value={`${property.publishedDays} j`} />
               <MiniMetric icon={<FileText size={14} />} label="PEB" value={property.peb} />
             </div>
+            <div style={{ marginTop: 12 }}>
+              <SellerTensionScoreZone
+                score={score}
+                fallbackScore={property.score}
+                size="panel"
+                signals={liveSignals}
+                isInactive={property.reserved || property.status?.startsWith('archiv')}
+              />
+            </div>
           </section>
+
+          <WhyThisScorePanel score={score} compact />
 
           <section style={miniSectionStyle}>
             <MiniSectionTitle title="Résumé" />
@@ -1840,6 +1981,8 @@ function galleryButtonStyle(side: 'left' | 'right'): React.CSSProperties {
 function LegacyMiniFicheBien({
   property,
   store,
+  score,
+  liveSignals = [],
   currentAgentName,
   photoIndex,
   setPhotoIndex,
@@ -2058,7 +2201,9 @@ function LegacyMiniFicheBien({
   };
 
   const renderDealActionButton = (variant: 'small' | 'large' = 'small') => {
-    const buttonStyle = variant === 'large' ? legacyPrimaryButtonStyle : { ...smallPrimaryButtonStyle, height: 36, justifyContent: 'center' };
+    const buttonStyle = variant === 'large'
+      ? { ...legacyPrimaryButtonStyle, width: '100%', height: 38 }
+      : { ...smallPrimaryButtonStyle, height: 36, justifyContent: 'center' };
 
     if (!dealForActions) {
       return <button type="button" onClick={handleCreateDeal} style={buttonStyle}>Creer un deal</button>;
@@ -2121,7 +2266,10 @@ function LegacyMiniFicheBien({
         }}
         aria-label="Mini fiche bien"
       >
-      <div style={{ padding: '14px 16px 12px', borderBottom: 'none', flexShrink: 0 }}>
+
+      <div style={{ overflowY: 'auto', minHeight: 0, flex: 1, background: 'var(--color-bg-surface)' }}>
+        <div style={{ paddingTop: 12 }}>
+          <div style={{ padding: '2px 16px 12px', borderBottom: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 7 }}>
           <h2 style={{ margin: 0, color: 'var(--color-text-primary)', fontSize: 18, fontWeight: 750, lineHeight: 1.18, flex: 1, minWidth: 0 }}>
             {property.title}
@@ -2151,9 +2299,6 @@ function LegacyMiniFicheBien({
           </span>
         </div>
       </div>
-
-      <div style={{ overflowY: 'auto', minHeight: 0, flex: 1, background: 'var(--color-bg-surface)' }}>
-        <div style={{ paddingTop: 12 }}>
           <div style={legacyGalleryMainStyle}>
             <button
               type="button"
@@ -2226,28 +2371,20 @@ function LegacyMiniFicheBien({
           </section>
 
           <section style={legacyModuleStyle}>
-            <div style={legacyLabelStyle}>Score IA & Confiance</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr', gap: 12, alignItems: 'center' }}>
-              <ScoreRing score={property.score} size="lg" />
-              <div>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--color-brand)', fontSize: 12, fontWeight: 700 }}>
-                  <FileText size={13} />
-                  Rapport d'analyse IA
-                </span>
-                <p style={{ margin: '6px 0 0', color: 'var(--color-text-secondary)', fontSize: 11.5, lineHeight: 1.45 }}>
-                  Cette propriété à <strong>{property.city}</strong> présente une valorisation de <strong>{formatEuro(propPpm)}/m²</strong> contre une moyenne locale de <strong>{formatEuro(cityAvg)}/m²</strong>.
-                </p>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-              <LegacyBadge>PEB : {property.peb}</LegacyBadge>
-              <LegacyBadge>Rapport Qualité/Prix optimal</LegacyBadge>
-              <LegacyBadge>Analyse certifiée</LegacyBadge>
-            </div>
-            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--color-border-subtle)' }}>
-              <span style={legacyAlertChipStyle}>Audit PEB valide · précision de marché élevée</span>
+            <div style={legacyLabelStyle}>Indice de tension vendeur</div>
+            <SellerTensionScoreZone
+              score={score}
+              fallbackScore={property.score}
+              size="panel"
+              signals={liveSignals}
+              isInactive={property.reserved || property.status?.startsWith('archiv')}
+            />
+            <div style={{ marginTop: 10 }}>
+              <span style={legacyAlertChipStyle}>Bande {scoreBandLabel(score)} · score vendeur recalcule en base</span>
             </div>
           </section>
+
+          <WhyThisScorePanel score={score} />
 
           <section style={legacyModuleStyle}>
             <div style={legacyLabelStyle}>CARACTÉRISTIQUES</div>
@@ -2343,150 +2480,101 @@ function LegacyMiniFicheBien({
           </section>
 
           <section style={legacyModuleStyle}>
-            <div style={legacyLabelStyle}>SIGNAUX LIÉS</div>
-            {relatedSignals.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {relatedSignals.map((signal) => (
-                  <div key={signal.id} style={{ display: 'grid', gridTemplateColumns: '9px minmax(0, 1fr) auto', gap: 8, alignItems: 'start' }}>
-                    <span style={{ width: 8, height: 8, marginTop: 5, borderRadius: 999, background: signal.type === 'drop' ? 'var(--color-favorite)' : 'var(--color-brand)' }} />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ color: 'var(--color-text-primary)', fontSize: 12.5, fontWeight: 700, lineHeight: 1.25 }}>{signal.heading}</div>
-                      <div style={{ color: 'var(--color-text-tertiary)', fontSize: 11, marginTop: 2 }}>{signal.time} · {signal.source ?? property.source}</div>
-                    </div>
-                    <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, fontFamily: 'var(--notion-mono)' }}>{signal.value ?? signal.type}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={miniEmptyActionStyle}>
-                <p style={emptyMiniTextStyle}>Aucun signal actif lie a ce bien.</p>
-                <button type="button" style={smallSecondaryButtonStyle} onClick={() => setActionMessage('Surveillance du prix activee dans cette session mock.')}>
-                  Surveiller le prix
+            <div style={legacyLabelStyle}>NOTES INTERNES</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={noteDraft}
+                  onChange={(event) => setNoteDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') handleSaveNote();
+                  }}
+                  placeholder="Ajouter une note de visite interne..."
+                  style={{ flex: 1, height: 34, border: '1px solid var(--color-border-default)', borderRadius: 6, padding: '0 10px', font: 'inherit', fontSize: 12.5, outline: 'none' }}
+                />
+                <button type="button" onClick={handleSaveNote} style={{ ...smallPrimaryButtonStyle, height: 34 }}>
+                  <FileText size={14} />
                 </button>
               </div>
-            )}
-          </section>
-
-          <section style={legacyModuleStyle}>
-            <div style={legacyLabelStyle}>TÂCHES LIÉES</div>
-            {relatedTasks.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {relatedTasks.map((task) => (
-                  <button
-                    key={task.id}
-                    type="button"
-                    onClick={() => { void propertyTasks.toggleTask(task.id); }}
-                    style={{ display: 'grid', gridTemplateColumns: '13px minmax(0, 1fr) auto', gap: 8, alignItems: 'start', width: '100%', border: 0, background: 'transparent', padding: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
-                  >
-                    <span style={{ width: 12, height: 12, marginTop: 2, borderRadius: 4, border: '1px solid var(--color-border-strong)', background: task.done ? 'var(--color-brand)' : 'var(--color-bg-surface)' }} />
-                    <span style={{ minWidth: 0 }}>
-                      <span style={{ display: 'block', color: task.done ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)', fontSize: 12.5, fontWeight: 650, textDecoration: task.done ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {task.title}
-                      </span>
-                      <span style={{ display: 'block', color: 'var(--color-text-tertiary)', fontSize: 10.5, marginTop: 2 }}>{task.date} · {task.time}</span>
-                    </span>
-                    <span style={{ color: task.priority === 'haute' ? 'var(--color-danger-text)' : 'var(--color-text-secondary)', fontSize: 10.5, fontWeight: 700 }}>{task.priority}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div style={miniEmptyActionStyle}>
-                <p style={emptyMiniTextStyle}>Aucune tache attachee a ce bien.</p>
-                <button type="button" style={smallSecondaryButtonStyle} onClick={() => setTaskTitle('Relancer le proprietaire')}>
-                  Creer une tache
-                </button>
-              </div>
-            )}
-          </section>
-
-          <section style={legacyModuleStyle}>
-            <div style={legacyLabelStyle}>ACTIONS CRM</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <label style={legacyFieldLabelStyle}>
-                Statut du bien
-                <select
-                  value={propertyStatus}
-                  onChange={(event) => handleStatusChange(event.target.value as PropertyInternalStatus)}
-                  style={legacyControlStyle}
-                >
-                  <option value="disponible">Disponible</option>
-                  <option value="réservé">Réservé</option>
-                  <option value="archivé">Archivé</option>
-                </select>
-              </label>
-
-              <label style={legacyFieldLabelStyle}>
-                Contact lié
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 84px', gap: 8 }}>
-                  <select value={selectedContactId} onChange={(event) => setSelectedContactId(event.target.value)} style={legacyControlStyle}>
-                    <option value="">Choisir un contact</option>
-                    {contacts.map((contact) => (
-                      <option key={contact.id} value={contact.id}>{contact.full_name}</option>
-                    ))}
-                  </select>
-                  <button type="button" onClick={handleLinkSupabaseContact} style={smallSecondaryButtonStyle}>Lier</button>
-                </div>
-              </label>
-
-              <label style={legacyFieldLabelStyle}>
-                Nouvelle tâche
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 84px', gap: 8 }}>
-                  <input
-                    value={taskTitle}
-                    onChange={(event) => setTaskTitle(event.target.value)}
-                    onKeyDown={(event) => { if (event.key === 'Enter') handleCreateTask(); }}
-                    placeholder="Ex: Appeler propriétaire"
-                    style={legacyControlStyle}
-                  />
-                  <button type="button" onClick={handleCreateTask} style={smallSecondaryButtonStyle}>Créer</button>
-                </div>
-              </label>
-
-              {renderDealActionButton('small')}
-
-              {actionMessage && (
-                <p style={{ margin: 0, padding: '8px 10px', borderRadius: 8, background: 'var(--color-bg-page)', color: 'var(--color-text-secondary)', fontSize: 11.5, lineHeight: 1.4 }}>
-                  {actionMessage}
-                </p>
-              )}
-            </div>
-          </section>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {renderDealActionButton('large')}
-            <button type="button" onClick={onToggleFavorite} style={legacySecondaryButtonStyle}>
-              <Heart size={13} fill={isFavorite ? 'currentColor' : 'none'} />
-              Favoris
-            </button>
-            <button type="button" onClick={onToggleIgnored} style={legacySecondaryButtonStyle}>Ignorer</button>
-            <button type="button" onClick={onOpenFull} style={legacySecondaryButtonStyle}>Voir plus</button>
-          </div>
-
-          <section style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 12, borderTop: '1px solid var(--color-border-subtle)' }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                value={noteDraft}
-                onChange={(event) => setNoteDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') handleSaveNote();
-                }}
-                placeholder="Ajouter une note de visite interne..."
-                style={{ flex: 1, height: 34, border: '1px solid var(--color-border-default)', borderRadius: 6, padding: '0 10px', font: 'inherit', fontSize: 12.5, outline: 'none' }}
+              <NotesList
+                notes={propertyNotes.notes.slice(0, 3)}
+                isLoading={propertyNotes.isLoading}
+                canEditNote={propertyNotes.canEditNote}
+                onUpdate={propertyNotes.updateNote}
+                onDelete={propertyNotes.deleteNote}
+                emptyText="Aucune note pour ce bien."
+                compact
               />
-              <button type="button" onClick={handleSaveNote} style={{ ...smallPrimaryButtonStyle, height: 34 }}>
-                <FileText size={14} />
-              </button>
             </div>
-            <NotesList
-              notes={propertyNotes.notes.slice(0, 3)}
-              isLoading={propertyNotes.isLoading}
-              canEditNote={propertyNotes.canEditNote}
-              onUpdate={propertyNotes.updateNote}
-              onDelete={propertyNotes.deleteNote}
-              emptyText="Aucune note pour ce bien."
-              compact
-            />
           </section>
+
+          <div
+            style={{
+              position: 'sticky',
+              bottom: 0,
+              zIndex: 2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              marginTop: 4,
+              padding: '10px 0 6px',
+              background: 'var(--color-bg-surface)',
+              borderTop: '1px solid var(--color-border-subtle)',
+              boxShadow: '0 -8px 18px rgba(29, 31, 30, 0.05)',
+            }}
+          >
+            <div style={{ flex: '1 1 40%', minWidth: 0 }}>
+              {renderDealActionButton('large')}
+            </div>
+            <button
+              type="button"
+              onClick={onToggleFavorite}
+              style={{
+                ...legacySecondaryButtonStyle,
+                height: 36,
+                padding: '0 12px',
+                fontSize: 12,
+                fontWeight: 650,
+                gap: 5,
+                flex: '0 0 auto',
+              }}
+            >
+              <Heart size={12} fill={isFavorite ? 'currentColor' : 'none'} />
+              Favori
+            </button>
+            <button
+              type="button"
+              onClick={onToggleIgnored}
+              style={{
+                ...legacySecondaryButtonStyle,
+                height: 36,
+                padding: '0 12px',
+                fontSize: 12,
+                fontWeight: 650,
+                gap: 5,
+                flex: '0 0 auto',
+              }}
+            >
+              <X size={12} />
+              Ignorer
+            </button>
+            <button
+              type="button"
+              onClick={onOpenFull}
+              style={{
+                ...legacySecondaryButtonStyle,
+                height: 36,
+                padding: '0 12px',
+                fontSize: 12,
+                fontWeight: 650,
+                gap: 5,
+                flex: '0 0 auto',
+              }}
+            >
+              <LayoutGrid size={12} />
+              Detail
+            </button>
+          </div>
         </div>
       </div>
       </aside>
@@ -2525,6 +2613,8 @@ function LegacyMiniFicheBien({
 interface GrandeFicheBienProps {
   property: Property;
   store: Store;
+  score?: ListingScore;
+  liveSignals?: ListingSignal[];
   currentAgentName: string;
   isFavorite: boolean;
   onToggleFavorite: () => void;
@@ -2535,6 +2625,8 @@ interface GrandeFicheBienProps {
 function GrandeFicheBien({
   property,
   store,
+  score,
+  liveSignals = [],
   currentAgentName,
   isFavorite,
   onToggleFavorite,
@@ -2703,6 +2795,16 @@ function GrandeFicheBien({
                 <DossierTopMetric label="PEB" value={property.peb} badge />
               </div>
 
+              <div style={{ marginTop: 16, padding: '14px 0', borderBottom: '1px solid var(--color-border-subtle)' }}>
+                <SellerTensionScoreZone
+                  score={score}
+                  fallbackScore={property.score}
+                  size="panel"
+                  signals={liveSignals}
+                  isInactive={property.reserved || property.status?.startsWith('archiv')}
+                />
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 28px', marginTop: 15, paddingRight: 8 }}>
                 <DossierInfo label="Type de bien" value={propType} />
                 <DossierInfo label="Terrain" value={`${Math.round(property.surface * 3.2)} m²`} />
@@ -2787,6 +2889,10 @@ function GrandeFicheBien({
                 </div>
                 <p style={{ margin: '9px 0 0', color: 'var(--color-text-secondary)', fontSize: 11.5 }}>Positionnement premium justifié par l’état, le PEB et les équipements.</p>
               </div>
+            </DossierCard>
+
+            <DossierCard title="Pourquoi cet indice" icon={<FileText size={14} />} style={{ gridColumn: 'span 5', order: 5 }}>
+              <WhyThisScorePanel score={score} />
             </DossierCard>
 
             <DossierCard title="Contact / Pipeline" avatar={vendorName.slice(0, 2).toUpperCase()} style={{ gridColumn: 'span 4', order: 6 }}>
@@ -3669,7 +3775,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 // ── Biens database table ────────────────────────────────────────────────────
 
-const TABLE_COLUMNS = '30px minmax(178px, 1.8fr) 92px 82px 108px 82px 58px 86px 88px 96px 74px';
+const TABLE_COLUMNS = '30px minmax(178px, 1.8fr) 92px 82px 108px 82px 240px 86px 88px 96px 74px';
 
 function deriveType(p: Property): string {
   const t = p.title.toLowerCase();
@@ -3708,12 +3814,22 @@ function statusMeta(p: Property): { label: string; bg: string; color: string } {
 interface BiensTableProps {
   items: Property[];
   selectedId: number | null;
+  scoresByProperty: Record<string, ListingScore>;
+  signalsByProperty: Record<string, ListingSignal[]>;
   isFavorite: (id: number) => boolean;
   onToggleFavorite: (id: number) => (e: React.MouseEvent) => void;
   onSelect: (id: number) => void;
 }
 
-function BiensTable({ items, selectedId, isFavorite, onToggleFavorite, onSelect }: BiensTableProps) {
+function BiensTable({
+  items,
+  selectedId,
+  scoresByProperty,
+  signalsByProperty,
+  isFavorite,
+  onToggleFavorite,
+  onSelect,
+}: BiensTableProps) {
   return (
     <div
       className="lv-biens-table-shell"
@@ -3764,6 +3880,8 @@ function BiensTable({ items, selectedId, isFavorite, onToggleFavorite, onSelect 
           <BiensTableRow
             key={p.id}
             property={p}
+            score={p.supabasePropertyId ? scoresByProperty[p.supabasePropertyId] : undefined}
+            liveSignals={p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] ?? [] : []}
             selected={selectedId === p.id}
             favorite={isFavorite(p.id)}
             onToggleFavorite={onToggleFavorite(p.id)}
@@ -3777,13 +3895,23 @@ function BiensTable({ items, selectedId, isFavorite, onToggleFavorite, onSelect 
 
 interface BiensTableRowProps {
   property: Property;
+  score?: ListingScore;
+  liveSignals?: ListingSignal[];
   selected: boolean;
   favorite: boolean;
   onToggleFavorite: (e: React.MouseEvent) => void;
   onSelect: () => void;
 }
 
-function BiensTableRow({ property: p, selected, favorite, onToggleFavorite, onSelect }: BiensTableRowProps) {
+function BiensTableRow({
+  property: p,
+  score,
+  liveSignals = [],
+  selected,
+  favorite,
+  onToggleFavorite,
+  onSelect,
+}: BiensTableRowProps) {
   const price = formatEuro(p.price);
   const drop = deriveDrop(p);
   const status = statusMeta(p);
@@ -3802,7 +3930,7 @@ function BiensTableRow({ property: p, selected, favorite, onToggleFavorite, onSe
         alignItems: 'center',
         gap: 12,
         padding: '0 16px',
-        height: 56,
+        minHeight: 72,
         borderBottom: '1px solid var(--color-border-subtle)',
         cursor: 'pointer',
         background: selected ? 'var(--color-bg-hover)' : 'var(--color-bg-surface)',
@@ -3856,8 +3984,14 @@ function BiensTableRow({ property: p, selected, favorite, onToggleFavorite, onSe
       </span>
 
       {/* Score */}
-      <span style={{ display: 'flex', justifyContent: 'center' }}>
-        <ScoreRing score={p.score} size="sm" />
+      <span style={{ display: 'flex', justifyContent: 'flex-start', minWidth: 0, padding: '8px 0' }}>
+        <SellerTensionScoreZone
+          score={score}
+          fallbackScore={p.score}
+          signals={liveSignals}
+          isInactive={p.reserved || p.status?.startsWith('archiv')}
+          size="compact"
+        />
       </span>
 
       {/* Source */}
@@ -3880,3 +4014,4 @@ function BiensTableRow({ property: p, selected, favorite, onToggleFavorite, onSe
     </div>
   );
 }
+
