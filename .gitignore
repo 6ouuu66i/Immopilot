@@ -20,3 +20,4 @@ tmp-*.png
 tmp-phase3-*.png
 .gstack/
 .worktrees/
+supabase/.temp/
