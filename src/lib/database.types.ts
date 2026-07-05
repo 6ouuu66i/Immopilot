@@ -710,7 +710,46 @@ export type Database = {
         };
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      active_properties_canonical: {
+        Row: {
+          ai_badges: string[] | null;
+          ai_gross_yield: number | null;
+          ai_summary: string | null;
+          bathroom_count: number | null;
+          bedroom_count: number | null;
+          canonical_property_id: string | null;
+          days_online: number;
+          first_seen_at: string;
+          has_price_drop: boolean;
+          has_republished_signal: boolean;
+          house_number: string | null;
+          is_fsbo: boolean | null;
+          land_area: number | null;
+          last_seen_at: string;
+          listing_id: string;
+          living_area: number | null;
+          locality: string | null;
+          old_price: number | null;
+          postal_code: string | null;
+          price: number | null;
+          primary_photo_url: string | null;
+          property_id: string | null;
+          property_subtype: string | null;
+          property_type: string | null;
+          province: string | null;
+          published_at: string | null;
+          seller_score: number | null;
+          source: string;
+          status: string;
+          street: string | null;
+          surface_value: number | null;
+          title_fr: string | null;
+          title_nl: string | null;
+          url: string | null;
+        };
+      };
+    };
     Functions: Record<string, never>;
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

@@ -18,7 +18,7 @@ async function login(page: Page) {
   await page.getByPlaceholder('agent@agence.be').fill(email);
   await page.getByPlaceholder('Votre mot de passe').fill(password);
   await page.getByRole('button', { name: 'Se connecter' }).click();
-  await expect(page.getByRole('link', { name: /Biens/ })).toBeVisible();
+  await expect(page.locator('a.ip-sidebar-link[href="#biens"]').first()).toBeVisible();
 }
 
 test('seller score remains visible on Biens and Pipeline without console errors', async ({ page }) => {

@@ -24,10 +24,11 @@ import { ImageLightbox, NotesList } from '../components/ui';
 import type { store as appStore } from '../lib/store';
 import { isSupabaseConfigured } from '../lib/supabase';
 import {
+  fetchSupabasePropertiesPage,
   fetchPropertyDetail,
   fetchSupabaseProperties,
   type PropertyDetail,
-  uniqueSupabaseProperties,
+  type SupabasePropertyListFilters,
 } from '../lib/supabaseProperties';
 import { useListingSignals } from '../lib/useListingSignals';
 import { useListingScores } from '../lib/useListingScores';
@@ -167,6 +168,22 @@ function getCardSignals(property: Property, store: Store): { primarySignal: stri
   };
 }
 
+function supportsServerPagination(params: {
+  contactFilter: ContactFilter;
+  search: string;
+  statusFilter: StatusFilter;
+  pipelineFilter: PipelineFilter;
+  taskFilter: TaskFilter;
+}) {
+  return (
+    !params.search.trim() &&
+    params.contactFilter === 'Tous' &&
+    params.pipelineFilter === 'Tous' &&
+    params.taskFilter === 'Tous' &&
+    (params.statusFilter === 'Tous' || params.statusFilter === 'Disponible')
+  );
+}
+
 export function Biens({ store }: BiensProps) {
   const [, forceUpdate] = useState(0);
   const propertyMarks = usePropertyMarks();
@@ -203,6 +220,7 @@ export function Biens({ store }: BiensProps) {
   const [panelPhotoIndex, setPanelPhotoIndex] = useState(0);
   const [noteDraft, setNoteDraft] = useState('');
   const [liveProperties, setLiveProperties] = useState<Property[]>([]);
+  const [liveTotalCount, setLiveTotalCount] = useState(0);
   const [liveLoading, setLiveLoading] = useState(isSupabaseConfigured);
   const [liveError, setLiveError] = useState<string | null>(null);
   const [propertyDetailsById, setPropertyDetailsById] = useState<Record<string, PropertyDetail>>({});
@@ -228,6 +246,57 @@ export function Biens({ store }: BiensProps) {
     };
   }, []);
 
+  const getMarkId = (property: Property | undefined) => property?.supabasePropertyId;
+  const minPrice = minValue(priceMin);
+  const maxPrice = minValue(priceMax);
+  const bedroomFloor = minValue(bedroomsMin);
+  const surfaceFloor = minValue(surfaceMin);
+  const scoreFloor = minValue(scoreMin);
+  const ageFloor = minValue(ageFilter.replace(' jours', ''));
+  const useServerPagination = useMemo(
+    () => supportsServerPagination({
+      search,
+      contactFilter,
+      pipelineFilter,
+      taskFilter,
+      statusFilter,
+    }),
+    [contactFilter, pipelineFilter, search, statusFilter, taskFilter],
+  );
+  const pageFetchCursor = useServerPagination ? page : 1;
+  const serverFilters = useMemo<SupabasePropertyListFilters>(() => ({
+    city: filterCommune !== 'Toutes' ? filterCommune : null,
+    source: filterSource !== 'Toutes' ? filterSource : null,
+    propertyTypeLabel: filterType !== 'Tous' ? filterType : null,
+    minPrice,
+    maxPrice,
+    signalFilter: filterSignal !== 'Tous' ? filterSignal : null,
+    minBedrooms: bedroomFloor,
+    minSurface: surfaceFloor,
+    sellerFilter,
+    minScore: scoreFloor,
+    ageMinDays: ageFloor,
+    favoritePropertyIds: favoritesOnly || savedView === 'favoris' ? propertyMarks.favorites : undefined,
+    ignoredPropertyIds: propertyMarks.ignored,
+    fsboOnly: savedView === 'fsbo',
+  }), [
+    ageFloor,
+    bedroomFloor,
+    favoritesOnly,
+    filterCommune,
+    filterSignal,
+    filterSource,
+    filterType,
+    maxPrice,
+    minPrice,
+    propertyMarks.favorites,
+    propertyMarks.ignored,
+    savedView,
+    scoreFloor,
+    sellerFilter,
+    surfaceFloor,
+  ]);
+
   useEffect(() => {
     let ignore = false;
 
@@ -241,11 +310,24 @@ export function Biens({ store }: BiensProps) {
     setLiveLoading(true);
     setLiveError(null);
 
-    fetchSupabaseProperties()
-      .then((properties) => {
-        if (ignore) return;
-        setLiveProperties(uniqueSupabaseProperties(properties));
-      })
+    const loader = useServerPagination
+      ? fetchSupabasePropertiesPage({
+          page,
+          pageSize: PAGE_SIZE,
+          sort,
+          filters: serverFilters,
+        }).then((result) => {
+          if (ignore) return;
+          setLiveProperties(result.properties);
+          setLiveTotalCount(result.totalCount);
+        })
+      : fetchSupabaseProperties().then((properties) => {
+          if (ignore) return;
+          setLiveProperties(properties);
+          setLiveTotalCount(properties.length);
+        });
+
+    loader
       .catch((error: unknown) => {
         if (ignore) return;
         setLiveError(error instanceof Error ? error.message : 'Connexion Supabase indisponible');
@@ -257,7 +339,7 @@ export function Biens({ store }: BiensProps) {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [pageFetchCursor, serverFilters, sort, useServerPagination]);
 
   const usingLiveData = liveProperties.length > 0;
   const isInitialLiveLoading = isSupabaseConfigured && liveLoading && liveProperties.length === 0;
@@ -270,7 +352,6 @@ export function Biens({ store }: BiensProps) {
     store.addNotification('property_mark_error', 'Synchronisation favoris impossible', propertyMarks.error, '#biens');
   }, [propertyMarks.error, store]);
 
-  const getMarkId = (property: Property | undefined) => property?.supabasePropertyId;
 
   const communes = useMemo(() => {
     const set = new Set(allProps.map((p) => p.city));
@@ -290,87 +371,88 @@ export function Biens({ store }: BiensProps) {
   const filtered = useMemo(() => {
     let list = allProps;
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          p.city.toLowerCase().includes(q) ||
-          p.source.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q) ||
-          p.tag.toLowerCase().includes(q) ||
-          String(p.id).includes(q) ||
-          String(p.price).includes(q)
-      );
-    }
-    if (filterCommune !== 'Toutes') list = list.filter((p) => p.city === filterCommune);
-    if (filterSource !== 'Toutes') list = list.filter((p) => p.source === filterSource);
-    if (filterType !== 'Tous') list = list.filter((p) => getPropertyType(p) === filterType);
-    const minPrice = minValue(priceMin);
-    const maxPrice = minValue(priceMax);
-    if (minPrice !== null) list = list.filter((p) => p.price >= minPrice);
-    if (maxPrice !== null) list = list.filter((p) => p.price <= maxPrice);
-    if (filterSignal === 'FSBO') list = list.filter((p) => p.fsbo);
-    if (filterSignal === 'Baisse de prix') list = list.filter((p) => p.tag === 'Baisse de prix');
-    if (filterSignal === 'Nouveau') list = list.filter((p) => p.tag === 'Nouveau');
-    if (filterSignal === 'Republié') list = list.filter((p) => p.tag === 'Republié');
-    if (filterSignal === 'Archivé') list = list.filter((p) => p.status === 'archivé');
-    const bedroomFloor = minValue(bedroomsMin);
-    const surfaceFloor = minValue(surfaceMin);
-    const scoreFloor = minValue(scoreMin);
-    const ageFloor = minValue(ageFilter.replace(' jours', ''));
-    if (bedroomFloor !== null) list = list.filter((p) => p.bedrooms >= bedroomFloor);
-    if (surfaceFloor !== null) list = list.filter((p) => p.surface >= surfaceFloor);
-    if (sellerFilter !== 'Tous') list = list.filter((p) => getSellerType(p) === sellerFilter);
-    if (scoreFloor !== null) list = list.filter((p) => p.score >= scoreFloor);
-    if (ageFloor !== null) list = list.filter((p) => p.publishedDays >= ageFloor);
-    if (contactFilter === 'Sans contact') list = list.filter((p) => !store.getPropertyContact(p.id));
-    if (contactFilter === 'Avec contact') list = list.filter((p) => Boolean(store.getPropertyContact(p.id)));
-    if (pipelineFilter === 'En pipeline') list = list.filter((p) => Boolean(store.getPropertyDeal(p.id)));
-    if (pipelineFilter === 'Hors pipeline') list = list.filter((p) => !store.getPropertyDeal(p.id));
-    if (taskFilter === 'Avec tâche ouverte') list = list.filter((p) => getOpenPropertyTasks(p).length > 0);
-    if (taskFilter === 'Sans tâche ouverte') list = list.filter((p) => getOpenPropertyTasks(p).length === 0);
-    if (statusFilter === 'Disponible') list = list.filter((p) => !p.reserved && p.status !== 'archivé');
-    if (statusFilter === 'Réservé') list = list.filter((p) => p.reserved || p.status === 'réservé');
-    if (statusFilter === 'Archivé') list = list.filter((p) => p.status === 'archivé');
-    list = list.filter((p) => !propertyMarks.isIgnored(getMarkId(p)));
-    if (favoritesOnly) list = list.filter((p) => propertyMarks.isFavorite(getMarkId(p)));
+    if (!useServerPagination) {
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        list = list.filter(
+          (p) =>
+            p.title.toLowerCase().includes(q) ||
+            p.city.toLowerCase().includes(q) ||
+            p.source.toLowerCase().includes(q) ||
+            p.description.toLowerCase().includes(q) ||
+            p.tag.toLowerCase().includes(q) ||
+            String(p.id).includes(q) ||
+            String(p.price).includes(q),
+        );
+      }
+      if (filterCommune !== 'Toutes') list = list.filter((p) => p.city === filterCommune);
+      if (filterSource !== 'Toutes') list = list.filter((p) => p.source === filterSource);
+      if (filterType !== 'Tous') list = list.filter((p) => getPropertyType(p) === filterType);
+      if (minPrice !== null) list = list.filter((p) => p.price >= minPrice);
+      if (maxPrice !== null) list = list.filter((p) => p.price <= maxPrice);
+      if (filterSignal === 'FSBO') list = list.filter((p) => p.fsbo);
+      if (filterSignal === 'Baisse de prix') list = list.filter((p) => p.tag === 'Baisse de prix');
+      if (filterSignal === 'Nouveau') list = list.filter((p) => p.tag === 'Nouveau');
+      if (filterSignal === 'Republié') list = list.filter((p) => p.tag === 'Republié');
+      if (filterSignal === 'Archivé') list = list.filter((p) => p.status === 'archivé');
+      if (bedroomFloor !== null) list = list.filter((p) => p.bedrooms >= bedroomFloor);
+      if (surfaceFloor !== null) list = list.filter((p) => p.surface >= surfaceFloor);
+      if (sellerFilter !== 'Tous') list = list.filter((p) => getSellerType(p) === sellerFilter);
+      if (scoreFloor !== null) list = list.filter((p) => p.score >= scoreFloor);
+      if (ageFloor !== null) list = list.filter((p) => p.publishedDays >= ageFloor);
+      if (contactFilter === 'Sans contact') list = list.filter((p) => !store.getPropertyContact(p.id));
+      if (contactFilter === 'Avec contact') list = list.filter((p) => Boolean(store.getPropertyContact(p.id)));
+      if (pipelineFilter === 'En pipeline') list = list.filter((p) => Boolean(store.getPropertyDeal(p.id)));
+      if (pipelineFilter === 'Hors pipeline') list = list.filter((p) => !store.getPropertyDeal(p.id));
+      if (taskFilter === 'Avec tâche ouverte') list = list.filter((p) => getOpenPropertyTasks(p).length > 0);
+      if (taskFilter === 'Sans tâche ouverte') list = list.filter((p) => getOpenPropertyTasks(p).length === 0);
+      if (statusFilter === 'Disponible') list = list.filter((p) => !p.reserved && p.status !== 'archivé');
+      if (statusFilter === 'Réservé') list = list.filter((p) => p.reserved || p.status === 'réservé');
+      if (statusFilter === 'Archivé') list = list.filter((p) => p.status === 'archivé');
+      list = list.filter((p) => !propertyMarks.isIgnored(getMarkId(p)));
+      if (favoritesOnly) list = list.filter((p) => propertyMarks.isFavorite(getMarkId(p)));
 
-    switch (sort) {
-      case 'price_asc': list = [...list].sort((a, b) => a.price - b.price); break;
-      case 'price_desc': list = [...list].sort((a, b) => b.price - a.price); break;
-      case 'score': list = [...list].sort((a, b) => b.score - a.score); break;
-      default: list = [...list].sort((a, b) => a.publishedDays - b.publishedDays); break;
+      switch (sort) {
+        case 'price_asc': list = [...list].sort((a, b) => a.price - b.price); break;
+        case 'price_desc': list = [...list].sort((a, b) => b.price - a.price); break;
+        case 'score': list = [...list].sort((a, b) => b.score - a.score); break;
+        default: list = [...list].sort((a, b) => a.publishedDays - b.publishedDays); break;
+      }
     }
 
     return list;
   }, [
+    ageFloor,
     allProps,
-    search,
+    bedroomFloor,
+    contactFilter,
     filterCommune,
+    filterSignal,
     filterSource,
     filterType,
-    priceMin,
-    priceMax,
-    filterSignal,
-    bedroomsMin,
-    surfaceMin,
-    sellerFilter,
-    scoreMin,
-    ageFilter,
-    contactFilter,
-    pipelineFilter,
-    taskFilter,
-    statusFilter,
     favoritesOnly,
+    maxPrice,
+    minPrice,
+    pipelineFilter,
     propertyMarks,
-    savedView,
+    scoreFloor,
+    search,
+    sellerFilter,
     sort,
+    statusFilter,
     store,
+    surfaceFloor,
+    taskFilter,
+    useServerPagination,
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil((useServerPagination ? liveTotalCount : filtered.length) / PAGE_SIZE));
+  const pageItems = useServerPagination ? filtered : filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
   const visiblePropertyIds = useMemo(
     () => pageItems.map((property) => property.supabasePropertyId).filter((id): id is string => Boolean(id)),
     [pageItems],
@@ -4114,4 +4196,5 @@ function BiensTableRow({
     </div>
   );
 }
+
 
