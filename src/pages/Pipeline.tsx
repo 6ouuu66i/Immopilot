@@ -6,8 +6,10 @@ import { KanbanBoard } from '../components/pipeline/KanbanBoard';
 import { PipelineListView } from '../components/pipeline/PipelineListView';
 import { DealFichePanel } from '../components/pipeline/DealFichePanel';
 import { useDeals } from '../lib/useDeals';
+import { useListingScores } from '../lib/useListingScores';
 import { usePipelineStages } from '../lib/usePipelineStages';
 import type { DealFull } from '../lib/services/dealsService';
+import type { ListingScoresByProperty } from '../lib/services/listingScoresService';
 import type { PipelineStageRow } from '../lib/services/pipelineStagesService';
 import { formatEuro } from '../lib/formatCurrency';
 import type { Activity, Agent, Contact, Deal, PipelineStage, Property, Task } from '../types';
@@ -45,10 +47,11 @@ function mapStage(stage: PipelineStageRow): PipelineStage {
   };
 }
 
-function mapProperty(deal: DealFull): Property {
+function mapProperty(deal: DealFull, scoresByProperty: ListingScoresByProperty): Property {
   const property = deal.property;
   const listing = deal.currentListing;
   const title = listing?.title_fr ?? listing?.title_nl ?? deal.title ?? deal.reference ?? 'Deal';
+  const listingScore = scoresByProperty[deal.property_id];
 
   return {
     id: numericIdFromText(deal.property_id),
@@ -59,7 +62,7 @@ function mapProperty(deal: DealFull): Property {
     price: listing?.price ?? 0,
     photos: listing?.photo_urls ?? [],
     tag: listing?.is_fsbo ? 'FSBO' : 'Nouveau',
-    score: listing?.ai_score ?? 70,
+    score: listingScore?.score ?? 0,
     peb: 'N/A',
     surface: property?.living_area ?? property?.land_area ?? 0,
     bedrooms: property?.bedroom_count ?? 0,
@@ -160,9 +163,14 @@ function mapDeal(deal: DealFull): Deal {
   };
 }
 
-function createPipelineStoreFacade(baseStore: Store, dealsFull: DealFull[], stagesRows: PipelineStageRow[]): Store {
+function createPipelineStoreFacade(
+  baseStore: Store,
+  dealsFull: DealFull[],
+  stagesRows: PipelineStageRow[],
+  scoresByProperty: ListingScoresByProperty,
+): Store {
   const deals = dealsFull.map(mapDeal);
-  const properties = new Map(dealsFull.map((deal) => [numericIdFromText(deal.property_id), mapProperty(deal)]));
+  const properties = new Map(dealsFull.map((deal) => [numericIdFromText(deal.property_id), mapProperty(deal, scoresByProperty)]));
   const contacts = new Map(
     dealsFull
       .map(mapContact)
@@ -224,6 +232,11 @@ export function Pipeline({ store }: PipelineProps) {
   const stagesState = usePipelineStages();
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [selectedDealId, setSelectedDealId] = useState<string | null>(() => getDealParamFromHash());
+  const scorePropertyIds = useMemo(
+    () => Array.from(new Set(dealsState.deals.map((deal) => deal.property_id).filter(Boolean))),
+    [dealsState.deals],
+  );
+  const { scoresByProperty } = useListingScores(scorePropertyIds);
 
   useEffect(() => {
     const syncSelectedDeal = () => setSelectedDealId(getDealParamFromHash());
@@ -233,8 +246,8 @@ export function Pipeline({ store }: PipelineProps) {
   }, []);
 
   const pipelineStore = useMemo(
-    () => createPipelineStoreFacade(store, dealsState.deals, stagesState.stages),
-    [dealsState.deals, stagesState.stages, store],
+    () => createPipelineStoreFacade(store, dealsState.deals, stagesState.stages, scoresByProperty),
+    [dealsState.deals, scoresByProperty, stagesState.stages, store],
   );
   const deals = pipelineStore.getDeals();
   const stages = pipelineStore.getPipelineStages();

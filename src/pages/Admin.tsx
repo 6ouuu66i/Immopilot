@@ -21,6 +21,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AdminTransfersPanel } from '../components/AdminTransfersPanel';
 import { ScoreRing } from '../components/biens/ScoreRing';
 import { useAuth } from '../lib/auth';
+import { useListingScores } from '../lib/useListingScores';
 import { adminService, type AdminOverviewData, type AgentActivityDetails, type ReservedDealRow } from '../lib/services/adminService';
 import { agentsService, type AgentWithStats, type InvitationResult } from '../lib/services/agentsService';
 import { auditLogsService, type AuditLogFull } from '../lib/services/auditLogsService';
@@ -394,6 +395,8 @@ function DeleteStageModal({ stage, stages, onClose, onDeleted }: { stage: Pipeli
 function ReservedDealsTab({ onToast }: { onToast: (message: string) => void }) {
   const [deals, setDeals] = useState<ReservedDealRow[]>([]);
   const [releaseDeal, setReleaseDeal] = useState<ReservedDealRow | null>(null);
+  const scorePropertyIds = useMemo(() => Array.from(new Set(deals.map((deal) => deal.property_id).filter(Boolean))), [deals]);
+  const { scoresByProperty } = useListingScores(scorePropertyIds);
   const refresh = () => { void adminService.listReservedDeals().then(setDeals); };
   useEffect(refresh, []);
   return (
@@ -404,7 +407,7 @@ function ReservedDealsTab({ onToast }: { onToast: (message: string) => void }) {
             <img src={deal.listing?.photo_urls?.[0] ?? ''} alt="" />
             <div><strong>{formatAddress(deal.property)}</strong><span>{deal.reference ?? deal.title ?? 'Deal'} · {profileName(deal.owner)}</span></div>
             <span>{formatDate(deal.created_at)}</span>
-            <span className="admin-score-cell">{typeof deal.listing?.ai_score === 'number' ? <ScoreRing score={deal.listing.ai_score} size="sm" /> : '-'}</span>
+            <span className="admin-score-cell">{scoresByProperty[deal.property_id] ? <ScoreRing score={scoresByProperty[deal.property_id].score} size="sm" /> : '-'}</span>
             <span>{deal.listing?.price ? formatAmount(deal.listing.price * 100) : '-'}</span>
             <button type="button" onClick={() => setReleaseDeal(deal)}><RotateCcw size={14} /> Libérer ce bien</button>
           </article>

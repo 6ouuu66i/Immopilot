@@ -35,17 +35,6 @@ function numericIdFromText(value: string): number {
   return Math.abs(hash) + 100000;
 }
 
-function clampScore(score: number | null, listing: ListingRow): number {
-  if (typeof score === 'number' && Number.isFinite(score)) {
-    return Math.max(0, Math.min(99, Math.round(score)));
-  }
-
-  if (listing.is_fsbo) return 82;
-  if (listing.old_price && listing.price && listing.old_price > listing.price) return 76;
-  if (listing.is_new_build) return 54;
-  return 68;
-}
-
 function daysSince(dateValue: string | null): number {
   if (!dateValue) return 0;
   const date = new Date(dateValue);
@@ -112,7 +101,7 @@ function mapListingToProperty(row: ListingWithProperty): Property {
     price: row.price ?? 0,
     photos: row.photo_urls ?? [],
     tag: propertyTag(row, publishedDays),
-    score: clampScore(row.ai_score, row),
+    score: 0,
     peb: 'N/A',
     surface: livingArea,
     bedrooms: row.properties?.bedroom_count ?? 0,

@@ -154,7 +154,7 @@ function propertyLinkToProperty(link: ContactPropertyLink): Property {
     price: link.currentPrice ?? 0,
     photos: link.photos,
     tag: link.relationship,
-    score: listing?.ai_score ?? 0,
+    score: 0,
     peb: 'N/A',
     surface: property?.living_area ?? property?.land_area ?? 0,
     bedrooms: property?.bedroom_count ?? 0,

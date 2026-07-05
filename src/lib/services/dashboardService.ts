@@ -31,7 +31,7 @@ function signalFor(row: ListingWithProperty) {
   if (row.ai_badges?.[0]) return row.ai_badges[0];
   if (row.old_price && row.price && row.old_price > row.price) return 'Baisse de prix';
   if (row.is_fsbo) return 'FSBO';
-  return 'Score IA';
+  return 'Prospection';
 }
 
 export async function listDashboardOpportunities(limit = 8): Promise<DashboardOpportunity[]> {
@@ -41,8 +41,6 @@ export async function listDashboardOpportunities(limit = 8): Promise<DashboardOp
     .from('listings')
     .select('*, properties(*)')
     .eq('status', 'active')
-    .not('ai_score', 'is', null)
-    .order('ai_score', { ascending: false })
     .order('first_seen_at', { ascending: false })
     .limit(limit)
     .returns<ListingWithProperty[]>();
@@ -55,7 +53,7 @@ export async function listDashboardOpportunities(limit = 8): Promise<DashboardOp
     photo: row.photo_urls?.[0] ?? null,
     price: row.price,
     propertyId: row.property_id,
-    score: Math.round(row.ai_score ?? 0),
+    score: 0,
     signal: signalFor(row),
     source: row.source,
     surface: row.properties?.living_area ?? row.properties?.land_area ?? null,
