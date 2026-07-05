@@ -377,11 +377,11 @@ export function Biens({ store }: BiensProps) {
   );
   const selectedPropertyBase = selectedPropertyId ? allProps.find((property) => property.id === selectedPropertyId) : undefined;
   const fullPropertyBase = fullPropertyId ? allProps.find((property) => property.id === fullPropertyId) : undefined;
-  const selectedProperty = selectedPropertyBase?.supabasePropertyId
-    ? propertyDetailsById[selectedPropertyBase.supabasePropertyId] ?? selectedPropertyBase
+  const selectedProperty = selectedPropertyBase?.supabaseListingId
+    ? propertyDetailsById[selectedPropertyBase.supabaseListingId] ?? selectedPropertyBase
     : selectedPropertyBase;
-  const fullProperty = fullPropertyBase?.supabasePropertyId
-    ? propertyDetailsById[fullPropertyBase.supabasePropertyId] ?? fullPropertyBase
+  const fullProperty = fullPropertyBase?.supabaseListingId
+    ? propertyDetailsById[fullPropertyBase.supabaseListingId] ?? fullPropertyBase
     : fullPropertyBase;
   const scorePropertyIds = useMemo(() => {
     const extraIds = [selectedProperty?.supabasePropertyId, fullProperty?.supabasePropertyId]
@@ -395,30 +395,31 @@ export function Biens({ store }: BiensProps) {
   useEffect(() => {
     let cancelled = false;
     const targets = [selectedPropertyBase, fullPropertyBase]
-      .filter((property): property is Property => Boolean(property?.supabasePropertyId));
+      .filter((property): property is Property => Boolean(property?.supabaseListingId));
 
     targets.forEach((property) => {
-      const propertyId = property.supabasePropertyId as string;
-      if (propertyDetailsById[propertyId] || detailLoadingIds[propertyId]) return;
+      const listingId = property.supabaseListingId as string;
+      if (propertyDetailsById[listingId] || detailLoadingIds[listingId]) return;
 
-      setDetailLoadingIds((current) => ({ ...current, [propertyId]: true }));
-      fetchPropertyDetail(propertyId)
+      setDetailLoadingIds((current) => ({ ...current, [listingId]: true }));
+      fetchPropertyDetail(listingId)
         .then((detail) => {
           if (cancelled || !detail) return;
           setPropertyDetailsById((current) => ({
             ...current,
-            [propertyId]: {
+            [listingId]: {
               ...property,
               ...detail,
               id: property.id,
               supabasePropertyId: property.supabasePropertyId,
+              supabaseListingId: property.supabaseListingId,
             },
           }));
         })
         .catch((error: unknown) => {
           if (cancelled) return;
           store.addNotification(
-            `property_detail_error_${propertyId}`,
+            `property_detail_error_${listingId}`,
             'Chargement de la fiche impossible',
             error instanceof Error ? error.message : 'Le detail du bien est indisponible.',
             '#biens',
@@ -428,7 +429,7 @@ export function Biens({ store }: BiensProps) {
           if (cancelled) return;
           setDetailLoadingIds((current) => {
             const next = { ...current };
-            delete next[propertyId];
+            delete next[listingId];
             return next;
           });
         });
@@ -599,6 +600,39 @@ export function Biens({ store }: BiensProps) {
   };
 
   const selectProperty = (id: number) => {
+    const property = allProps.find((item) => item.id === id);
+    if (property?.supabaseListingId && !propertyDetailsById[property.supabaseListingId] && !detailLoadingIds[property.supabaseListingId]) {
+      setDetailLoadingIds((current) => ({ ...current, [property.supabaseListingId as string]: true }));
+      fetchPropertyDetail(property.supabaseListingId)
+        .then((detail) => {
+          if (!detail) return;
+          setPropertyDetailsById((current) => ({
+            ...current,
+            [property.supabaseListingId as string]: {
+              ...property,
+              ...detail,
+              id: property.id,
+              supabasePropertyId: property.supabasePropertyId,
+              supabaseListingId: property.supabaseListingId,
+            },
+          }));
+        })
+        .catch((error: unknown) => {
+          store.addNotification(
+            `property_detail_error_${property.supabaseListingId}`,
+            'Chargement de la fiche impossible',
+            error instanceof Error ? error.message : 'Le detail du bien est indisponible.',
+            '#biens',
+          );
+        })
+        .finally(() => {
+          setDetailLoadingIds((current) => {
+            const next = { ...current };
+            delete next[property.supabaseListingId as string];
+            return next;
+          });
+        });
+    }
     setSelectedPropertyId(id);
     setPanelPhotoIndex(0);
     setNoteDraft('');
@@ -614,6 +648,12 @@ export function Biens({ store }: BiensProps) {
     setFullPropertyId(null);
     setNoteDraft('');
     setPanelPhotoIndex(0);
+  };
+
+  const openFullProperty = (property: Property | undefined) => {
+    if (!property) return;
+    selectProperty(property.id);
+    setFullPropertyId(property.id);
   };
 
   const savePanelNote = () => {
@@ -1291,7 +1331,7 @@ export function Biens({ store }: BiensProps) {
           onToggleFavorite={handleFav(selectedProperty.id)}
           onToggleIgnored={handleIgnored(selectedProperty.id)}
           isFavorite={propertyMarks.isFavorite(getMarkId(selectedProperty))}
-          onOpenFull={() => setFullPropertyId(selectedProperty.id)}
+          onOpenFull={() => openFullProperty(selectedProperty)}
         />
       )}
       {fullProperty && (

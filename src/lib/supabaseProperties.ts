@@ -141,6 +141,7 @@ function mapListingToProperty(
   return {
     id: numericIdFromText(row.id),
     supabasePropertyId: row.properties?.id ?? row.property_id ?? undefined,
+    supabaseListingId: row.id,
     title: propertyTitle(row, row.properties),
     propertyType: typeLabel(row.properties),
     city: location,
@@ -199,17 +200,13 @@ export async function fetchSupabaseProperties(): Promise<Property[]> {
   return rows.map((row) => mapListingToProperty(row, { includeFullMedia: false, includeRawData: false }));
 }
 
-export async function fetchPropertyDetail(propertyId: string): Promise<PropertyDetail | null> {
+export async function fetchPropertyDetail(listingId: string): Promise<PropertyDetail | null> {
   if (!supabase) return null;
 
   const { data, error } = await supabase
     .from('listings')
     .select(LISTINGS_DETAIL_SELECT)
-    .eq('property_id', propertyId)
-    .eq('status', 'active')
-    .order('last_seen_at', { ascending: false })
-    .order('first_seen_at', { ascending: false })
-    .limit(1)
+    .eq('id', listingId)
     .returns<ListingWithProperty[]>()
     .maybeSingle();
 

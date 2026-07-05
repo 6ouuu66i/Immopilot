@@ -31,6 +31,7 @@ export type PropertyInternalStatus = 'disponible' | 'réservé' | 'archivé';
 export interface Property {
   id: number;
   supabasePropertyId?: ID;
+  supabaseListingId?: ID;
   title: string;
   propertyType?: string;
   city: string;
