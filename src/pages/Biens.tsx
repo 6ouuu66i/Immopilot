@@ -23,7 +23,12 @@ import { SellerTensionScoreZone } from '../components/biens/SellerTensionScoreZo
 import { ImageLightbox, NotesList } from '../components/ui';
 import type { store as appStore } from '../lib/store';
 import { isSupabaseConfigured } from '../lib/supabase';
-import { fetchSupabaseProperties, uniqueSupabaseProperties } from '../lib/supabaseProperties';
+import {
+  fetchPropertyDetail,
+  fetchSupabaseProperties,
+  type PropertyDetail,
+  uniqueSupabaseProperties,
+} from '../lib/supabaseProperties';
 import { useListingSignals } from '../lib/useListingSignals';
 import { useListingScores } from '../lib/useListingScores';
 import type { ListingSignal } from '../lib/services/listingSignalsService';
@@ -200,6 +205,8 @@ export function Biens({ store }: BiensProps) {
   const [liveProperties, setLiveProperties] = useState<Property[]>([]);
   const [liveLoading, setLiveLoading] = useState(isSupabaseConfigured);
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [propertyDetailsById, setPropertyDetailsById] = useState<Record<string, PropertyDetail>>({});
+  const [detailLoadingIds, setDetailLoadingIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const handler = () => forceUpdate((n) => n + 1);
@@ -368,8 +375,14 @@ export function Biens({ store }: BiensProps) {
     () => pageItems.map((property) => property.supabasePropertyId).filter((id): id is string => Boolean(id)),
     [pageItems],
   );
-  const selectedProperty = selectedPropertyId ? allProps.find((property) => property.id === selectedPropertyId) : undefined;
-  const fullProperty = fullPropertyId ? allProps.find((property) => property.id === fullPropertyId) : undefined;
+  const selectedPropertyBase = selectedPropertyId ? allProps.find((property) => property.id === selectedPropertyId) : undefined;
+  const fullPropertyBase = fullPropertyId ? allProps.find((property) => property.id === fullPropertyId) : undefined;
+  const selectedProperty = selectedPropertyBase?.supabasePropertyId
+    ? propertyDetailsById[selectedPropertyBase.supabasePropertyId] ?? selectedPropertyBase
+    : selectedPropertyBase;
+  const fullProperty = fullPropertyBase?.supabasePropertyId
+    ? propertyDetailsById[fullPropertyBase.supabasePropertyId] ?? fullPropertyBase
+    : fullPropertyBase;
   const scorePropertyIds = useMemo(() => {
     const extraIds = [selectedProperty?.supabasePropertyId, fullProperty?.supabasePropertyId]
       .filter((id): id is string => Boolean(id));
@@ -378,6 +391,53 @@ export function Biens({ store }: BiensProps) {
   const { signalsByProperty } = useListingSignals(scorePropertyIds);
   const { scoresByProperty } = useListingScores(scorePropertyIds);
   const panelOpen = Boolean(selectedProperty);
+
+  useEffect(() => {
+    let cancelled = false;
+    const targets = [selectedPropertyBase, fullPropertyBase]
+      .filter((property): property is Property => Boolean(property?.supabasePropertyId));
+
+    targets.forEach((property) => {
+      const propertyId = property.supabasePropertyId as string;
+      if (propertyDetailsById[propertyId] || detailLoadingIds[propertyId]) return;
+
+      setDetailLoadingIds((current) => ({ ...current, [propertyId]: true }));
+      fetchPropertyDetail(propertyId)
+        .then((detail) => {
+          if (cancelled || !detail) return;
+          setPropertyDetailsById((current) => ({
+            ...current,
+            [propertyId]: {
+              ...property,
+              ...detail,
+              id: property.id,
+              supabasePropertyId: property.supabasePropertyId,
+            },
+          }));
+        })
+        .catch((error: unknown) => {
+          if (cancelled) return;
+          store.addNotification(
+            `property_detail_error_${propertyId}`,
+            'Chargement de la fiche impossible',
+            error instanceof Error ? error.message : 'Le detail du bien est indisponible.',
+            '#biens',
+          );
+        })
+        .finally(() => {
+          if (cancelled) return;
+          setDetailLoadingIds((current) => {
+            const next = { ...current };
+            delete next[propertyId];
+            return next;
+          });
+        });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detailLoadingIds, fullPropertyBase, propertyDetailsById, selectedPropertyBase, store]);
   const openTasksByPropertyId = useMemo(() => {
     const map = new Map<string, ReturnType<typeof taskToView>[]>();
     allTasks.tasks.forEach((task) => {

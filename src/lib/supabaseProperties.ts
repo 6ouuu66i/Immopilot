@@ -1,10 +1,15 @@
 import type { Property } from '../types';
-import type { Tables } from './database.types';
+import type { Json, Tables } from './database.types';
 import { supabase } from './supabase';
 
 type ListingRow = Tables<'listings'>;
 type PropertyRow = Tables<'properties'>;
 type ListingWithProperty = ListingRow & { properties: PropertyRow | null };
+
+export interface PropertyDetail extends Property {
+  rawData: Json | null;
+  sourceUrl: string | null;
+}
 
 const SOURCE_LABELS: Record<string, string> = {
   immoweb: 'Immoweb',
@@ -26,6 +31,43 @@ const TYPE_LABELS: Record<string, string> = {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const LISTINGS_FETCH_PAGE_SIZE = 1000;
+
+export const LISTINGS_LIST_SELECT = `
+  id,
+  property_id,
+  source,
+  source_id,
+  url,
+  status,
+  price,
+  old_price,
+  title_fr,
+  title_nl,
+  photo_urls,
+  is_fsbo,
+  first_seen_at,
+  last_seen_at,
+  published_at,
+  ai_badges,
+  ai_summary,
+  ai_gross_yield,
+  properties (
+    id,
+    street,
+    house_number,
+    postal_code,
+    locality,
+    province,
+    property_type,
+    property_subtype,
+    bedroom_count,
+    bathroom_count,
+    living_area,
+    land_area
+  )
+`.replace(/\s+/g, ' ').trim();
+
+export const LISTINGS_DETAIL_SELECT = '*, properties(*)';
 
 function numericIdFromText(value: string): number {
   let hash = 0;
@@ -86,11 +128,15 @@ function priceHistory(listing: ListingRow): Property['priceHistory'] {
   return [{ date: currentDate, price: listing.price ?? 0 }];
 }
 
-function mapListingToProperty(row: ListingWithProperty): Property {
+function mapListingToProperty(
+  row: ListingWithProperty,
+  options: { includeFullMedia: boolean; includeRawData: boolean },
+): PropertyDetail {
   const publishedDays = daysSince(row.published_at ?? row.first_seen_at);
   const source = sourceLabel(row.source);
   const location = row.properties?.locality ?? row.properties?.province ?? 'Belgique';
   const livingArea = row.properties?.living_area ?? row.properties?.land_area ?? 0;
+  const photos = row.photo_urls ?? [];
 
   return {
     id: numericIdFromText(row.id),
@@ -99,7 +145,7 @@ function mapListingToProperty(row: ListingWithProperty): Property {
     propertyType: typeLabel(row.properties),
     city: location,
     price: row.price ?? 0,
-    photos: row.photo_urls ?? [],
+    photos: options.includeFullMedia ? photos : photos.slice(0, 1),
     tag: propertyTag(row, publishedDays),
     score: 0,
     peb: 'N/A',
@@ -114,9 +160,13 @@ function mapListingToProperty(row: ListingWithProperty): Property {
     floodZone: 'Sûre',
     notes: row.ai_summary ? [row.ai_summary] : [],
     yieldEstimate: row.ai_gross_yield ? `${Number(row.ai_gross_yield).toFixed(1)}%` : 'N/A',
-    description: row.description_fr ?? row.description_nl ?? row.ai_summary ?? '',
+    description: options.includeFullMedia
+      ? row.description_fr ?? row.description_nl ?? row.ai_summary ?? ''
+      : row.ai_summary ?? '',
     priceHistory: priceHistory(row),
     status: row.status === 'active' ? 'disponible' : 'archivé',
+    rawData: options.includeRawData ? row.raw_data ?? null : null,
+    sourceUrl: row.url ?? null,
   };
 }
 
@@ -129,7 +179,7 @@ export async function fetchSupabaseProperties(): Promise<Property[]> {
     const to = from + LISTINGS_FETCH_PAGE_SIZE - 1;
     const { data, error } = await supabase
       .from('listings')
-      .select('*, properties(*)')
+      .select(LISTINGS_LIST_SELECT)
       .eq('status', 'active')
       .order('last_seen_at', { ascending: false })
       .order('first_seen_at', { ascending: false })
@@ -146,7 +196,28 @@ export async function fetchSupabaseProperties(): Promise<Property[]> {
     if (pageRows.length < LISTINGS_FETCH_PAGE_SIZE) break;
   }
 
-  return rows.map(mapListingToProperty);
+  return rows.map((row) => mapListingToProperty(row, { includeFullMedia: false, includeRawData: false }));
+}
+
+export async function fetchPropertyDetail(propertyId: string): Promise<PropertyDetail | null> {
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('listings')
+    .select(LISTINGS_DETAIL_SELECT)
+    .eq('property_id', propertyId)
+    .eq('status', 'active')
+    .order('last_seen_at', { ascending: false })
+    .order('first_seen_at', { ascending: false })
+    .limit(1)
+    .returns<ListingWithProperty[]>()
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? mapListingToProperty(data, { includeFullMedia: true, includeRawData: true }) : null;
 }
 
 export function uniqueSupabaseProperties(properties: Property[]): Property[] {
