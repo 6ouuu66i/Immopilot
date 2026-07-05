@@ -23,7 +23,7 @@ import { ScoreRing } from '../components/biens/ScoreRing';
 import { ImageLightbox, NotesList } from '../components/ui';
 import type { store as appStore } from '../lib/store';
 import { isSupabaseConfigured } from '../lib/supabase';
-import { fetchSupabaseProperties } from '../lib/supabaseProperties';
+import { fetchSupabaseProperties, uniqueSupabaseProperties } from '../lib/supabaseProperties';
 import { useListingSignals } from '../lib/useListingSignals';
 import { usePropertyMarks } from '../lib/usePropertyMarks';
 import { useNotes } from '../lib/useNotes';
@@ -234,7 +234,7 @@ export function Biens({ store }: BiensProps) {
     fetchSupabaseProperties()
       .then((properties) => {
         if (ignore) return;
-        setLiveProperties(properties);
+        setLiveProperties(uniqueSupabaseProperties(properties));
       })
       .catch((error: unknown) => {
         if (ignore) return;

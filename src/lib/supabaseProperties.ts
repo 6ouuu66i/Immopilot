@@ -141,6 +141,8 @@ export async function fetchSupabaseProperties(): Promise<Property[]> {
     const { data, error } = await supabase
       .from('listings')
       .select('*, properties(*)')
+      .eq('status', 'active')
+      .order('last_seen_at', { ascending: false })
       .order('first_seen_at', { ascending: false })
       .range(from, to)
       .returns<ListingWithProperty[]>();
@@ -164,6 +166,9 @@ export function uniqueSupabaseProperties(properties: Property[]): Property[] {
   return properties.filter((property) => {
     if (!property.supabasePropertyId) return false;
     if (seen.has(property.supabasePropertyId)) return false;
+    // Keep the first active listing encountered for each canonical property_id.
+    // fetchSupabaseProperties() orders rows by last_seen_at desc, then first_seen_at desc,
+    // so the retained card is the freshest active listing for that property.
     seen.add(property.supabasePropertyId);
     return true;
   });
