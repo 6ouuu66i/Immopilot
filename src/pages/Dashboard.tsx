@@ -71,35 +71,6 @@ function formatDateTime(value: string | null): string {
   return date.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
 }
 
-function cleanText(value: string): string {
-  const replacements: Array<[RegExp, string]> = [
-    [/\u00c3\u00a9/g, 'e'],
-    [/\u00c3\u00a8/g, 'e'],
-    [/\u00c3\u00aa/g, 'e'],
-    [/\u00c3\u00a0/g, 'a'],
-    [/\u00c3\u00a2/g, 'a'],
-    [/\u00c3\u00a7/g, 'c'],
-    [/\u00c3\u00bb/g, 'u'],
-    [/\u00c3\u00ae/g, 'i'],
-    [/\u00c3\u00b4/g, 'o'],
-    [/\u00c3\u0089/g, 'E'],
-    [/\u00c5\u201c/g, 'oe'],
-    [/\u00c2\u00b7/g, ' - '],
-    [/\u00c2\u00b2/g, '2'],
-    [/\u00e2\u201a\u00ac/g, 'EUR'],
-    [/ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©/g, 'e'],
-    [/ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¨/g, 'e'],
-    [/ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âª/g, 'e'],
-    [/ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â /g, 'a'],
-    [/ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§/g, 'c'],
-    [/ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬/g, 'EUR'],
-    [/ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·/g, ' - '],
-    [/ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â²/g, '2'],
-  ];
-
-  return replacements.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), value);
-}
-
 function buildKpis({
   fsboCount,
   hotCount,
@@ -214,7 +185,7 @@ export function Dashboard({ store: _store }: DashboardProps) {
     todayTaskCount: visibleTodayTasks.length,
   });
 
-  const metaDate = cleanText(longDateFormatter.format(new Date()));
+  const metaDate = longDateFormatter.format(new Date());
   const lastSync = formatDateTime(snapshot?.lastSyncAt ?? null);
   const visibleSignals = snapshot?.signals ?? [];
   const opportunities = snapshot?.opportunities ?? [];
@@ -226,7 +197,7 @@ export function Dashboard({ store: _store }: DashboardProps) {
         <div>
           <div>
             <h1 className="lv-title">Tableau de bord</h1>
-            <p>Bonjour {cleanText(firstName)}, voici les opportunites et signaux a traiter aujourd'hui.</p>
+            <p>Bonjour {firstName}, voici les opportunites et signaux a traiter aujourd'hui.</p>
           </div>
         </div>
         <a className="lv-secondary-button" href="#biens">
@@ -447,10 +418,10 @@ function OpportunityRow({ opportunity }: { opportunity: DashboardOpportunity }) 
       {opportunity.photo ? <img src={opportunity.photo} alt="" /> : <span className="lv-property-thumb" aria-hidden="true" />}
       <span className="lv-row-title">
         <span className="lv-row-title-line">
-          <strong>{cleanText(opportunity.title)}</strong>
-          <Badge tone={tone}>{cleanText(opportunity.signal)}</Badge>
+          <strong>{opportunity.title}</strong>
+          <Badge tone={tone}>{opportunity.signal}</Badge>
         </span>
-        <small>{cleanText(opportunity.subtitle)}</small>
+        <small>{opportunity.subtitle}</small>
       </span>
       <span className="lv-row-price">
         <b>{formatCurrency(opportunity.price)}</b>
@@ -479,8 +450,8 @@ function TaskRow({ task, onToggle }: { task: TaskWithRelations; onToggle: () => 
         {task.is_completed ? <CheckCircle2 size={15} /> : <Circle size={15} />}
       </span>
       <span>
-        <b>{cleanText(task.title)}</b>
-        <small>{cleanText(meta)}</small>
+        <b>{task.title}</b>
+        <small>{meta}</small>
       </span>
     </button>
   );
@@ -490,10 +461,10 @@ function SignalRow({ signal }: { signal: DashboardSignalItem }) {
   return (
     <a className={`lv-signal-row tone-${signal.tone}`} href={`#biens?propertyId=${signal.propertyId}`}>
       <span>
-        <strong>{cleanText(signal.title)}</strong>
-        <small>{cleanText(`${signal.source} - ${signal.timeLabel}`)}</small>
+        <strong>{signal.title}</strong>
+        <small>{`${signal.source} - ${signal.timeLabel}`}</small>
       </span>
-      <b>{cleanText(signal.value)}</b>
+      <b>{signal.value}</b>
     </a>
   );
 }
