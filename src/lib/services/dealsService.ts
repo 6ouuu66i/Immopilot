@@ -56,6 +56,8 @@ export interface DealFull extends SupabaseDeal {
 
 type ListingByPropertyId = Map<string, ListingRow>;
 type MutationError = { message: string } | null;
+type ActivitiesByDeal = Record<string, ActivityRow[]>;
+type TasksByDeal = Record<string, TaskRow[]>;
 
 type InsertDealQuery = {
   insert(values: {
@@ -169,6 +171,32 @@ async function logActivity(deal: SupabaseDeal, type: string, payload: Json | nul
   if (error) throw new Error(error.message);
 }
 
+function uniqueDealIds(dealIds: string[]): string[] {
+  return Array.from(new Set(dealIds.filter(Boolean)));
+}
+
+function groupActivitiesByDeal(rows: ActivityRow[]): ActivitiesByDeal {
+  const grouped = rows.reduce<ActivitiesByDeal>((acc, row) => {
+    if (!row.deal_id) return acc;
+    const current = acc[row.deal_id] ?? [];
+    if (current.length < 20) current.push(row);
+    acc[row.deal_id] = current;
+    return acc;
+  }, {});
+
+  return grouped;
+}
+
+function groupTasksByDeal(rows: TaskRow[]): TasksByDeal {
+  return rows.reduce<TasksByDeal>((acc, row) => {
+    if (!row.deal_id) return acc;
+    const current = acc[row.deal_id] ?? [];
+    current.push(row);
+    acc[row.deal_id] = current;
+    return acc;
+  }, {});
+}
+
 async function hydrateDeals(deals: SupabaseDeal[]): Promise<DealFull[]> {
   if (deals.length === 0) return [];
 
@@ -195,28 +223,24 @@ async function hydrateDeals(deals: SupabaseDeal[]): Promise<DealFull[]> {
   const contacts = new Map(((contactsResult.data ?? []) as ContactRow[]).map((row) => [row.id, row]));
   const owners = new Map((ownersResult.data ?? []).map((row) => [row.id, row as ProfileRow]));
   const stages = new Map((stagesResult.data ?? []).map((row) => [row.id, row as PipelineStageRow]));
+  const dealIds = uniqueDealIds(deals.map((deal) => deal.id));
+  const [activitiesByDeal, tasksByDeal, notesByDeal] = await Promise.all([
+    dealsService.getActivitiesForDeals(dealIds),
+    dealsService.getOpenTasksForDeals(dealIds),
+    notesService.getNotesForDeals(dealIds),
+  ]);
 
-  const details = await Promise.all(deals.map(async (deal) => {
-    const [activities, tasks, notesList] = await Promise.all([
-      dealsService.getDealActivities(deal.id),
-      dealsService.getDealOpenTasks(deal.id),
-      notesService.getNotesForDeal(deal.id),
-    ]);
-
-    return {
-      ...deal,
-      property: properties.get(deal.property_id) ?? null,
-      currentListing: listings.get(deal.property_id) ?? null,
-      contact: deal.contact_id ? contacts.get(deal.contact_id) ?? null : null,
-      owner: owners.get(deal.owner_id) ?? null,
-      stage: stages.get(deal.stage_id) ?? null,
-      activities,
-      tasks,
-      notesList,
-    };
+  return deals.map((deal) => ({
+    ...deal,
+    property: properties.get(deal.property_id) ?? null,
+    currentListing: listings.get(deal.property_id) ?? null,
+    contact: deal.contact_id ? contacts.get(deal.contact_id) ?? null : null,
+    owner: owners.get(deal.owner_id) ?? null,
+    stage: stages.get(deal.stage_id) ?? null,
+    activities: activitiesByDeal[deal.id] ?? [],
+    tasks: tasksByDeal[deal.id] ?? [],
+    notesList: notesByDeal[deal.id] ?? [],
   }));
-
-  return details;
 }
 
 export async function getDealByReference(reference: string): Promise<DealByReferenceResult | null> {
@@ -402,6 +426,21 @@ export const dealsService = {
     return (data ?? []) as ActivityRow[];
   },
 
+  async getActivitiesForDeals(dealIds: string[]): Promise<ActivitiesByDeal> {
+    const ids = uniqueDealIds(dealIds);
+    if (ids.length === 0) return {};
+
+    const client = assertSupabase();
+    const { data, error } = await client
+      .from('activities')
+      .select('*')
+      .in('deal_id', ids)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return groupActivitiesByDeal((data ?? []) as ActivityRow[]);
+  },
+
   async getDealOpenTasks(dealId: string): Promise<TaskRow[]> {
     const client = assertSupabase();
     const { data, error } = await client
@@ -413,5 +452,21 @@ export const dealsService = {
 
     if (error) throw new Error(error.message);
     return (data ?? []) as TaskRow[];
+  },
+
+  async getOpenTasksForDeals(dealIds: string[]): Promise<TasksByDeal> {
+    const ids = uniqueDealIds(dealIds);
+    if (ids.length === 0) return {};
+
+    const client = assertSupabase();
+    const { data, error } = await client
+      .from('tasks')
+      .select('*')
+      .in('deal_id', ids)
+      .eq('is_completed', false)
+      .order('due_date', { ascending: true, nullsFirst: false });
+
+    if (error) throw new Error(error.message);
+    return groupTasksByDeal((data ?? []) as TaskRow[]);
   },
 };

@@ -41,6 +41,7 @@ type NoteUpdate = {
 };
 
 type MutationError = { message: string } | null;
+type NotesByDeal = Record<string, NoteWithAuthor[]>;
 
 type InsertNoteQuery = {
   insert(values: NoteInsert): {
@@ -138,6 +139,16 @@ async function getNotesByForeignKey(column: 'property_id' | 'deal_id' | 'contact
   return ((data ?? []) as unknown as RawNoteWithAuthor[]).map(normalizeNote);
 }
 
+function groupNotesByDeal(rows: RawNoteWithAuthor[]): NotesByDeal {
+  return rows.reduce<NotesByDeal>((acc, row) => {
+    if (!row.deal_id) return acc;
+    const current = acc[row.deal_id] ?? [];
+    current.push(normalizeNote(row));
+    acc[row.deal_id] = current;
+    return acc;
+  }, {});
+}
+
 export const notesService = {
   getNotesForProperty(propertyId: string): Promise<NoteWithAuthor[]> {
     return getNotesByForeignKey('property_id', propertyId);
@@ -145,6 +156,21 @@ export const notesService = {
 
   getNotesForDeal(dealId: string): Promise<NoteWithAuthor[]> {
     return getNotesByForeignKey('deal_id', dealId);
+  },
+
+  async getNotesForDeals(dealIds: string[]): Promise<NotesByDeal> {
+    const validDealIds = Array.from(new Set(dealIds.filter(isSupabaseUuid)));
+    if (validDealIds.length === 0) return {};
+
+    const client = assertSupabase();
+    const { data, error } = await client
+      .from('notes')
+      .select(NOTE_SELECT)
+      .in('deal_id', validDealIds)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return groupNotesByDeal((data ?? []) as unknown as RawNoteWithAuthor[]);
   },
 
   getNotesForContact(contactId: string): Promise<NoteWithAuthor[]> {
