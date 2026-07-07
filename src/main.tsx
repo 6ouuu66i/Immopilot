@@ -13,6 +13,7 @@ import '@fontsource/archivo/500.css';
 import '@fontsource/archivo/600.css';
 import '@fontsource/archivo/700.css';
 import './index.css';
+import './styles/la-cote-overrides.css';
 import { store } from './lib/store';
 import { renderInteractiveMap, hasValidKey } from './lib/maps';
 import { AppShell } from './components/AppShell';
