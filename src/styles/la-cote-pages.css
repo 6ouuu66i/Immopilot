@@ -163,3 +163,19 @@ button:active,
 [role="button"]:active {
   transform: translateY(0) !important;
 }
+
+.deal-card[style*="2px solid var"] {
+  outline: none !important;
+  background: #fff !important;
+  border-color: var(--color-brand) !important;
+  box-shadow: inset 3px 0 0 var(--color-brand) !important;
+}
+
+.deal-card[style*="2px solid var"]::before {
+  opacity: 1 !important;
+  transform: scaleY(1) !important;
+}
+
+.deal-card[style*="2px solid var"]:hover {
+  background: color-mix(in srgb, #fff 94%, var(--color-brand) 6%) !important;
+}
