@@ -57,3 +57,62 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
+
+.lv-biens .lv-primary-button,
+.lv-biens .lv-secondary-button,
+.lv-biens .lv-biens-sync,
+.lv-biens .lv-biens-tab,
+.lv-biens .lv-biens-search-input,
+.lv-biens .lv-biens-view-toggle,
+.lv-biens .lv-biens-menu,
+.lv-biens .lv-biens-filter-bar,
+.lv-biens .lv-filter-button,
+.lv-biens .lv-biens-pagination button,
+.lv-biens .lv-biens-empty > div,
+.lv-biens > aside[aria-label="Mini fiche bien"] button,
+.lv-biens > aside[aria-label="Mini fiche bien"] input,
+.lv-biens > aside[aria-label="Mini fiche bien"] span {
+  border-radius: 0 !important;
+}
+
+.lv-biens .lv-primary-button,
+.lv-biens .lv-secondary-button,
+.lv-biens .lv-biens-menu,
+.lv-biens > aside[aria-label="Mini fiche bien"],
+.lv-biens > aside[aria-label="Mini fiche bien"] button {
+  box-shadow: none !important;
+}
+
+.lv-biens .lv-biens-tab,
+.lv-biens .lv-primary-button,
+.lv-biens .lv-secondary-button,
+.lv-biens .lv-filter-button,
+.lv-biens .lv-icon-toggle,
+.lv-biens > aside[aria-label="Mini fiche bien"] button {
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease !important;
+}
+
+.lv-biens .lv-biens-tab:hover,
+.lv-biens .lv-property-card:hover {
+  transform: none !important;
+}
+
+.lv-biens > aside[aria-label="Mini fiche bien"] {
+  border-left: 1px solid var(--color-border-default) !important;
+}
+
+.lv-biens > aside[aria-label="Mini fiche bien"] p,
+.lv-biens > aside[aria-label="Mini fiche bien"] span,
+.lv-biens .lv-biens-pagination,
+.lv-biens .lv-biens-sync {
+  font-variant-numeric: tabular-nums;
+}
+
+.lv-biens > aside[aria-label="Mini fiche bien"] p:first-child,
+.lv-biens > aside[aria-label="Mini fiche bien"] strong,
+.lv-biens > aside[aria-label="Mini fiche bien"] [style*="font-weight: 800"],
+.lv-biens .lv-biens-pagination strong {
+  font-family: var(--font-mono, var(--notion-mono)) !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
