@@ -38,6 +38,7 @@ export function StatusBadge({
     <span
       title={title}
       className={`lv-badge lv-badge-${TONE_CLASS[tone]} ${size === 'md' ? 'lv-badge-md' : 'lv-badge-sm'}`}
+      style={{ borderRadius: 0 }}
     >
       {leadingDot && <span aria-hidden="true" className="lv-badge-dot" />}
       {children}
