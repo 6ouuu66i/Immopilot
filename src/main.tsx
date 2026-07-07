@@ -16,8 +16,10 @@ import './index.css';
 import { store } from './lib/store';
 import { renderInteractiveMap, hasValidKey } from './lib/maps';
 import { AppShell } from './components/AppShell';
+import { PostHogErrorBoundary } from './components/PostHogErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AuthProvider } from './lib/auth';
+import { initPostHog } from './lib/posthog';
 import { appQueryClient } from './lib/queryClient';
 
 type RouteKey =
@@ -205,12 +207,16 @@ if (!rootElement) {
   throw new Error('Missing #app root element.');
 }
 
+initPostHog();
+
 createRoot(rootElement).render(
   <React.StrictMode>
-    <QueryClientProvider client={appQueryClient}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </QueryClientProvider>
+    <PostHogErrorBoundary>
+      <QueryClientProvider client={appQueryClient}>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </QueryClientProvider>
+    </PostHogErrorBoundary>
   </React.StrictMode>,
 );

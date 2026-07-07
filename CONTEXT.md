@@ -20,6 +20,18 @@ Regles de session importantes :
 - Tester les changements SQL dans une transaction `BEGIN ... ROLLBACK` avant de pousser reellement.
 - Ne jamais committer de vraies cles `.env.local`.
 
+## Monitoring
+
+PostHog est integre cote frontend en mode restrictif pour la beta.
+
+- Variables : `VITE_POSTHOG_KEY` et `VITE_POSTHOG_HOST` dans `.env.local`; exemples sans secret dans `.env.example`.
+- Initialisation : `src/lib/posthog.ts`, appelee depuis `src/main.tsx`.
+- Objectif actif : pageviews et erreurs seulement.
+- Erreurs capturees : exceptions JS non gerees, promesses rejetees non gerees, et erreurs React via `PostHogErrorBoundary`.
+- Tags ajoutes sur les evenements : `environment` (`import.meta.env.MODE`) et `app_version` (`VITE_APP_VERSION`, fallback `dev`).
+- Desactive volontairement pour proteger les performances de pages denses comme Biens : `autocapture`, `capture_pageleave`, session recording, heatmaps, performance capture, dead clicks et rage clicks.
+- Dashboard : consulter le projet PostHog associe a `VITE_POSTHOG_KEY`.
+
 ## Etat produit
 
 - MVP CRM fonctionnel : auth multi-agence, deals/pipeline, contacts, taches, commissions, transferts, notifications temps reel.
