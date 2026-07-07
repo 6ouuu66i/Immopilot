@@ -105,3 +105,61 @@
 .pipeline-workarea .fiche-panel .step-icon {
   box-shadow: 0 0 0 3px #fff !important;
 }
+
+.lv-property-card,
+.deal-card,
+.list-row,
+.contacts-table tbody tr,
+.lv-dashboard .lv-priority-row,
+.lv-dashboard .lv-signal-row,
+.lv-agenda .agenda-task-row,
+.transfers-row,
+.commissions-row,
+.notifications-row {
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease !important;
+}
+
+.lv-property-card:hover,
+.deal-card:hover,
+.list-row:hover,
+.contacts-table tbody tr:hover,
+.lv-dashboard .lv-priority-row:hover,
+.lv-dashboard .lv-signal-row:hover,
+.lv-agenda .agenda-task-row:hover,
+.transfers-row:hover,
+.commissions-row:hover,
+.notifications-row:hover {
+  background: color-mix(in srgb, var(--color-bg-surface) 88%, var(--color-brand) 12%) !important;
+  border-color: var(--color-border-strong) !important;
+  transform: translateY(-1px) !important;
+}
+
+.lv-property-card.is-selected,
+.contacts-table tbody tr.selected {
+  background: #fff !important;
+  border-color: var(--color-brand) !important;
+  box-shadow: inset 3px 0 0 var(--color-brand) !important;
+}
+
+.lv-property-card.is-selected:hover,
+.contacts-table tbody tr.selected:hover {
+  background: color-mix(in srgb, #fff 94%, var(--color-brand) 6%) !important;
+}
+
+.filter-pill.active,
+.lv-tab.is-active,
+.lv-biens .lv-biens-tab.active,
+.transfers-tabs button.active,
+.commissions-scope button.active,
+.notifications-tabs button.active,
+.contacts-view-toggle button.active {
+  background: color-mix(in srgb, #fff 88%, var(--color-brand) 12%) !important;
+  border-color: var(--color-brand) !important;
+  color: var(--color-text-primary) !important;
+  box-shadow: inset 0 -2px 0 var(--color-brand) !important;
+}
+
+button:active,
+[role="button"]:active {
+  transform: translateY(0) !important;
+}
