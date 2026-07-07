@@ -1,5 +1,5 @@
 import type { Session, User } from '@supabase/supabase-js';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Tables } from './database.types';
 import { appQueryClient } from './queryClient';
 import { createPropertyIdsKey, queryKeys } from './queryKeys';
@@ -135,9 +135,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [profile, setProfile] = useState<AuthProfile | null>(null);
   const [agency, setAgency] = useState<AuthAgency | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const currentUserIdRef = useRef<string | null>(null);
+  const hasInitializedSessionRef = useRef(false);
 
   const applySession = useCallback(async (session: Session | null, options?: { prefetch?: boolean }) => {
     setUser(session?.user ?? null);
+    currentUserIdRef.current = session?.user?.id ?? null;
+    hasInitializedSessionRef.current = true;
 
     if (!session?.user) {
       setProfile(null);
@@ -160,13 +164,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     async function initializeSession() {
       if (!supabase) {
-        if (active) setIsLoading(false);
+        if (active) {
+          hasInitializedSessionRef.current = true;
+          setIsLoading(false);
+        }
         return;
       }
 
       const { data, error } = await supabase.auth.getSession();
       if (!active) return;
       if (error) {
+        currentUserIdRef.current = null;
+        hasInitializedSessionRef.current = true;
         setUser(null);
         setProfile(null);
         setAgency(null);
@@ -180,8 +189,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     void initializeSession();
 
     const subscription = supabase?.auth.onAuthStateChange((event, session) => {
-      setIsLoading(true);
-      void applySession(session, { prefetch: event === 'SIGNED_IN' }).catch(() => {
+      const previousUserId = currentUserIdRef.current;
+      const nextUserId = session?.user?.id ?? null;
+      const sameUserSession = Boolean(previousUserId && nextUserId && previousUserId === nextUserId);
+      const shouldShowLoader = !hasInitializedSessionRef.current
+        || event === 'SIGNED_OUT'
+        || (event === 'SIGNED_IN' && !sameUserSession);
+
+      if (event === 'INITIAL_SESSION') return;
+      if (shouldShowLoader) {
+        setIsLoading(true);
+      }
+
+      void applySession(session, { prefetch: event === 'SIGNED_IN' && !sameUserSession }).catch(() => {
+        currentUserIdRef.current = nextUserId;
+        hasInitializedSessionRef.current = true;
         setUser(session?.user ?? null);
         setProfile(null);
         setAgency(null);
@@ -196,7 +218,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [applySession]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    if (!supabase) throw new Error("Supabase n'est pas configuré.");
+    if (!supabase) throw new Error("Supabase n'est pas configure.");
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
@@ -210,7 +232,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string) => {
-    if (!supabase) throw new Error("Supabase n'est pas configuré.");
+    if (!supabase) throw new Error("Supabase n'est pas configure.");
 
     const { error } = await supabase.auth.signUp({ email, password });
     if (error) throw new Error(error.message);
@@ -247,3 +269,5 @@ export function useAuth() {
   if (!context) throw new Error('useAuth must be used inside AuthProvider');
   return context;
 }
+
+
