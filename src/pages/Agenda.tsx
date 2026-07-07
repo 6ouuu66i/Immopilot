@@ -8,6 +8,7 @@ import { taskLinkLabel, useTasks, type UseTasksResult } from '../lib/useTasks';
 import type { TaskPriority } from '../types';
 import type { TaskWithRelations } from '../lib/services/tasksService';
 import { StatusBadge } from '../components/ui';
+import { AgendaSkeleton } from '../components/agenda/AgendaSkeleton';
 
 type Store = typeof appStore;
 type AgendaFilter = 'overdue' | 'today' | 'this_week' | 'all' | 'completed';
@@ -280,7 +281,7 @@ export function Agenda({ store }: AgendaProps) {
 
             <div className="agenda-task-list">
               {taskState.isLoading ? (
-                <div className="agenda-empty"><Loader2 size={16} className="animate-spin" /> Chargement des tâches...</div>
+                <AgendaSkeleton />
               ) : visibleTasks.length === 0 ? (
                 <div className="agenda-empty">Aucune tâche dans cette vue.</div>
               ) : visibleTasks.map(task => (

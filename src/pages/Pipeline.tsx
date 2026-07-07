@@ -5,6 +5,7 @@ import type { store as appStore } from '../lib/store';
 import { KanbanBoard } from '../components/pipeline/KanbanBoard';
 import { PipelineListView } from '../components/pipeline/PipelineListView';
 import { DealFichePanel } from '../components/pipeline/DealFichePanel';
+import { PipelineSkeleton } from '../components/pipeline/PipelineSkeleton';
 import { useDeals } from '../lib/useDeals';
 import { useListingScores } from '../lib/useListingScores';
 import { usePipelineStages } from '../lib/usePipelineStages';
@@ -426,20 +427,18 @@ export function Pipeline({ store }: PipelineProps) {
         </div>
       )}
 
-      <div
-        className="pipeline-workarea"
-        style={{
-          padding: panelOpen ? '16px 462px 32px 32px' : '16px 0 32px 32px',
-          display: 'block',
-          transition: 'padding-right 180ms ease',
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          {isLoading ? (
-            <div style={{ border: '1px solid var(--color-border-default)', borderRadius: 10, background: 'var(--color-bg-surface)', padding: 18, color: 'var(--color-text-secondary)', fontSize: 13 }}>
-              Chargement du pipeline Supabase...
-            </div>
-          ) : viewMode === 'kanban' ? (
+<div
+          className="pipeline-workarea"
+          style={{
+            padding: panelOpen ? '16px 462px 32px 32px' : '16px 0 32px 32px',
+            display: 'block',
+            transition: 'padding-right 180ms ease',
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            {isLoading ? (
+              <PipelineSkeleton viewMode={viewMode} />
+            ) : viewMode === 'kanban' ? (
             <KanbanBoard
               deals={deals}
               stages={stages}

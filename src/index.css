@@ -61,6 +61,11 @@
   --notion-mono: var(--lv-font-mono);
 }
 
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.62; }
+  50% { opacity: 0.42; }
+}
+
 .lv-page {
   min-height: 100%;
   background: var(--lv-app-bg);

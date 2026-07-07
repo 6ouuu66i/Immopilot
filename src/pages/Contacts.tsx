@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import type { store as appStore } from '../lib/store';
 import type { Contact, ContactRelations, Deal, Property, Task, TaskPriority } from '../types';
-import { ActivityTimeline, NotesList, StatusBadge, TaskList } from '../components/ui';
+import { ActivityTimeline, NotesList, StatusBadge, TaskList, ContactsSkeleton } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { formatEuro } from '../lib/formatCurrency';
 import { fetchSupabaseProperties } from '../lib/supabaseProperties';
@@ -430,7 +430,7 @@ export function Contacts({ store }: ContactsProps) {
             {(error || selectedContactDetails.error || actionMessage) && (
               <div className="contact-action-message">{error ?? selectedContactDetails.error ?? actionMessage}</div>
             )}
-            {isLoading && <div className="contact-empty-line">Chargement des contacts...</div>}
+            {isLoading && <ContactsSkeleton />}
             <div className="table-scroll">
               <table className="contacts-table">
                 <thead>
