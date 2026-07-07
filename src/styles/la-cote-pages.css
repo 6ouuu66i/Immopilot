@@ -5,3 +5,10 @@
   border-radius: 0;
   box-shadow: none;
 }
+
+.lv-agenda .agenda-kpi,
+.lv-agenda .agenda-task-row,
+.lv-agenda .agenda-month-card {
+  border-radius: 0;
+  box-shadow: none;
+}
