@@ -21,3 +21,16 @@
   border-radius: 0;
   box-shadow: none;
 }
+
+.lv-dashboard .lv-kpi-value,
+.lv-dashboard .lv-row-price,
+.lv-dashboard .lv-dashboard-meta b,
+.lv-agenda .agenda-kpi strong,
+.lv-agenda .agenda-sidebar-panel strong,
+.lv-agenda .agenda-month-day-num,
+.contact-panel .panel-stat strong,
+.contact-panel .linked-meta strong {
+  font-family: var(--font-mono, var(--notion-mono));
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
