@@ -16,3 +16,4 @@ export { SectionPanel } from './SectionPanel';
 export { StatusBadge, type StatusBadgeTone } from './StatusBadge';
 export { TaskList } from './TaskList';
 export { ViewTabs, type ViewTabItem } from './ViewTabs';
+export { ContactsSkeleton } from '../contacts/ContactsSkeleton';
