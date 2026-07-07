@@ -12,3 +12,12 @@
   border-radius: 0;
   box-shadow: none;
 }
+
+.contact-panel,
+.contact-panel .panel-stat,
+.contact-panel .panel-section,
+.contact-panel .linked-card,
+.contact-modal {
+  border-radius: 0;
+  box-shadow: none;
+}
