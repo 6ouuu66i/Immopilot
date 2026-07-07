@@ -40,6 +40,11 @@
   box-shadow: none;
 }
 
+.settings-panel {
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .lv-dashboard .lv-kpi-value,
 .lv-dashboard .lv-row-price,
 .lv-dashboard .lv-dashboard-meta b,
