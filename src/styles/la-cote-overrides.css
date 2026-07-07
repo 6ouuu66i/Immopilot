@@ -255,3 +255,31 @@
 #app [data-kpi] {
   font-variant-numeric: tabular-nums;
 }
+
+.fiche-panel .mc,
+.fiche-panel .stepper-wrapper,
+.fiche-panel .deal-action-message,
+.fiche-panel .task-empty,
+.fiche-panel .deal-link-row select,
+.fiche-panel .deal-action-row input,
+.fiche-panel .notes-input {
+  background: var(--color-bg-surface) !important;
+  border-color: var(--color-border-default) !important;
+  box-shadow: none !important;
+}
+
+.fiche-panel .mc {
+  padding: 11px 12px !important;
+}
+
+.fiche-panel .mc-vendor-avatar,
+.fiche-panel .mc-bien-icon,
+.fiche-panel .note-avatar {
+  background: var(--color-bg-surface) !important;
+}
+
+.fiche-panel .mc-bien-link,
+.fiche-panel .commission-row,
+.fiche-panel .note-item {
+  border-color: var(--color-border-default) !important;
+}
