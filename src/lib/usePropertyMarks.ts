@@ -27,6 +27,15 @@ export function usePropertyMarks(): UsePropertyMarksResult {
   const queryClient = useQueryClient();
   const [mutationError, setMutationError] = useState<string | null>(null);
   const queryKey = queryKeys.propertyMarks(user?.id);
+  const invalidateRelatedQueries = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.supabaseProperties(user?.id) }),
+      queryClient.invalidateQueries({
+        predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === 'supabase-properties-page',
+      }),
+    ]);
+  }, [queryClient, queryKey, user?.id]);
 
   const marksQuery = useQuery({
     queryKey,
@@ -73,12 +82,13 @@ export function usePropertyMarks(): UsePropertyMarksResult {
 
       try {
         await favoriteMutation.mutateAsync(propertyId);
+        await invalidateRelatedQueries();
       } catch (toggleError) {
         queryClient.setQueryData<PropertyMarks>(queryKey, previousMarks);
         setMutationError(toggleError instanceof Error ? toggleError.message : 'Mise Ã  jour du favori impossible.');
       }
     },
-    [favoriteMutation, favoriteSet, marks, queryClient, queryKey],
+    [favoriteMutation, favoriteSet, invalidateRelatedQueries, marks, queryClient, queryKey],
   );
 
   const toggleIgnored = useCallback(
@@ -97,12 +107,13 @@ export function usePropertyMarks(): UsePropertyMarksResult {
 
       try {
         await ignoredMutation.mutateAsync(propertyId);
+        await invalidateRelatedQueries();
       } catch (toggleError) {
         queryClient.setQueryData<PropertyMarks>(queryKey, previousMarks);
         setMutationError(toggleError instanceof Error ? toggleError.message : 'Mise Ã  jour du statut ignorÃ© impossible.');
       }
     },
-    [ignoredMutation, ignoredSet, marks, queryClient, queryKey],
+    [ignoredMutation, ignoredSet, invalidateRelatedQueries, marks, queryClient, queryKey],
   );
 
   return {
