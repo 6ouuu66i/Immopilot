@@ -116,3 +116,54 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
+
+.lv-biens .lv-biens-advanced,
+.lv-biens .lv-biens-advanced button,
+.lv-biens .lv-biens-advanced input,
+.lv-biens .lv-biens-advanced select,
+.lv-biens .lv-biens-advanced textarea,
+.lv-biens [aria-label="Grande fiche bien"] section,
+.lv-biens [aria-label="Grande fiche bien"] button,
+.lv-biens [aria-label="Grande fiche bien"] span,
+.lv-biens [aria-label="Grande fiche bien"] input,
+.lv-biens [aria-label="Grande fiche bien"] textarea,
+.lv-biens [aria-label="Grande fiche bien"] [style*="border-radius"],
+.transfers-modal,
+.transfers-modal button,
+.transfers-modal textarea {
+  border-radius: 0 !important;
+}
+
+.lv-biens .lv-biens-advanced,
+.lv-biens .lv-biens-advanced button,
+.lv-biens [aria-label="Grande fiche bien"] section,
+.lv-biens [aria-label="Grande fiche bien"] button,
+.transfers-modal {
+  box-shadow: none !important;
+}
+
+.lv-biens [aria-label="Grande fiche bien"] p,
+.lv-biens [aria-label="Grande fiche bien"] span,
+.lv-biens [aria-label="Grande fiche bien"] strong,
+.lv-biens .lv-biens-advanced,
+.transfers-modal {
+  font-variant-numeric: tabular-nums;
+}
+
+.lv-biens [aria-label="Grande fiche bien"] strong,
+.lv-biens [aria-label="Grande fiche bien"] [style*="font-weight: 800"],
+.lv-biens [aria-label="Grande fiche bien"] [style*="font-weight: 750"],
+.lv-biens [aria-label="Grande fiche bien"] [style*="fontFamily: var(--notion-mono)"],
+.lv-biens .lv-biens-advanced strong,
+.lv-biens .lv-biens-advanced [style*="font-weight: 800"],
+.lv-biens .lv-biens-advanced [style*="font-weight: 750"] {
+  font-family: var(--font-mono, var(--notion-mono)) !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+.lv-biens [aria-label="Grande fiche bien"] button,
+.lv-biens .lv-biens-advanced button,
+.transfers-modal button {
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease !important;
+}
