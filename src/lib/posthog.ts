@@ -13,14 +13,23 @@ export function initPostHog() {
 
   posthog.init(POSTHOG_KEY, {
     api_host: POSTHOG_HOST,
+    request_batching: import.meta.env.PROD,
+    opt_out_useragent_filter: import.meta.env.DEV,
     autocapture: false,
     capture_pageview: true,
     capture_pageleave: false,
     disable_session_recording: true,
+    disable_surveys: true,
+    disable_surveys_automatic_display: true,
     enable_heatmaps: false,
     capture_performance: false,
     capture_dead_clicks: false,
     rageclick: false,
+    advanced_disable_flags: true,
+    advanced_disable_feature_flags: true,
+    advanced_disable_feature_flags_on_first_load: true,
+    advanced_disable_toolbar_metrics: true,
+    advanced_enable_surveys: false,
     capture_exceptions: {
       capture_unhandled_errors: true,
       capture_unhandled_rejections: true,
