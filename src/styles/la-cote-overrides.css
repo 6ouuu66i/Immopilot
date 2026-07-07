@@ -1,0 +1,6 @@
+.lv-pipeline-kpi span:nth-child(2),
+.lv-pipeline-kpi span:nth-child(3) {
+  font-family: var(--font-mono, var(--notion-mono)) !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
