@@ -45,6 +45,17 @@
   box-shadow: none;
 }
 
+.notifications-toolbar,
+.notifications-search,
+.notifications-tabs,
+.notifications-list-page,
+.notifications-row,
+.notifications-row-icon,
+.notifications-empty {
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .lv-dashboard .lv-kpi-value,
 .lv-dashboard .lv-row-price,
 .lv-dashboard .lv-dashboard-meta b,
@@ -57,7 +68,9 @@
 .transfers-row-copy em,
 .commissions-kpis strong,
 .commissions-row-main span,
-.commissions-row-main i {
+.commissions-row-main i,
+.notifications-tabs span,
+.notifications-row-copy em {
   font-family: var(--font-mono, var(--notion-mono));
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
