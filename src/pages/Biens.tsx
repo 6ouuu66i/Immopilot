@@ -41,6 +41,7 @@ import { useContacts } from '../lib/useContacts';
 import { useAuth } from '../lib/auth';
 import { useDeals } from '../lib/useDeals';
 import { useMyTransfers } from '../lib/useTransfers';
+import { capturePostHogEvent } from '../lib/posthog';
 import { contactsService } from '../lib/services/contactsService';
 import { dealsService } from '../lib/services/dealsService';
 import type { ListingScore } from '../lib/services/listingScoresService';
@@ -62,6 +63,8 @@ type ContactFilter = 'Tous' | 'Sans contact' | 'Avec contact';
 type PipelineFilter = 'Tous' | 'En pipeline' | 'Hors pipeline';
 type TaskFilter = 'Tous' | 'Avec tâche ouverte' | 'Sans tâche ouverte';
 type StatusFilter = 'Tous' | 'Disponible' | 'Réservé' | 'Archivé';
+type PropertyDetailSurface = 'mini' | 'full';
+type ScoreExplanationSurface = 'mini_fiche' | 'legacy_fiche' | 'full_dossier';
 
 const PAGE_SIZE = 16;
 const PRICE_MIN_OPTIONS = ['Min', '150000', '250000', '350000', '500000', '750000', '1000000'];
@@ -166,6 +169,28 @@ function getCardSignals(property: Property, store: Store): { primarySignal: stri
   return {
     primarySignal: uniqueLabels[0] ?? 'Nouveau',
     secondarySignalCount: Math.max(0, uniqueLabels.length - 1),
+  };
+}
+
+function scoreBandFromValue(score: number | null | undefined): 'forte' | 'a_surveiller' | 'faible_priorite' | 'unknown' {
+  if (score === null || score === undefined) return 'unknown';
+  if (score >= 75) return 'forte';
+  if (score >= 52) return 'a_surveiller';
+  return 'faible_priorite';
+}
+
+function propertyEventProperties(property: Property, score?: ListingScore) {
+  const numericScore = score?.score ?? property.score;
+
+  return {
+    property_id: property.supabasePropertyId,
+    listing_id: property.supabaseListingId,
+    property_type: property.propertyType ?? getPropertyType(property),
+    source: property.source,
+    seller_type: getSellerType(property),
+    score: numericScore,
+    score_band: scoreBandFromValue(numericScore),
+    status: property.status ?? (property.reserved ? 'reserve' : 'disponible'),
   };
 }
 
@@ -610,12 +635,35 @@ export function Biens({ store }: BiensProps) {
     clearFilterControls(true);
     setSavedView('tous');
     setPage(1);
+    capturePostHogEvent('biens_filter_applied', {
+      filter_name: 'reset',
+      filter_value: 'all',
+      saved_view: 'tous',
+      view_mode: viewMode,
+    });
+  };
+
+  const applyTrackedFilter = (filterName: string, value: string | boolean, applyValue: () => void) => {
+    applyValue();
+    setPage(1);
+    capturePostHogEvent('biens_filter_applied', {
+      filter_name: filterName,
+      filter_value: String(value),
+      saved_view: savedView,
+      view_mode: viewMode,
+    });
   };
 
   const applySavedView = (view: SavedViewKey) => {
     clearFilterControls(false);
     setSavedView(view);
     setPage(1);
+    capturePostHogEvent('biens_filter_applied', {
+      filter_name: 'saved_view',
+      filter_value: view,
+      saved_view: view,
+      view_mode: viewMode,
+    });
 
     if (view === 'nouveaux') setFilterSignal('Nouveau');
     if (view === 'baisses') setFilterSignal('Baisse de prix');
@@ -634,6 +682,12 @@ export function Biens({ store }: BiensProps) {
 
   const applyPreset = (preset: 'fsbo' | 'drops' | 'score70' | 'age60' | 'no_contact' | 'follow_up') => {
     setPage(1);
+    capturePostHogEvent('biens_filter_applied', {
+      filter_name: 'preset',
+      filter_value: preset,
+      saved_view: savedView,
+      view_mode: viewMode,
+    });
     if (preset === 'fsbo') {
       setFilterSignal('FSBO');
       setSellerFilter('Particulier');
@@ -656,8 +710,20 @@ export function Biens({ store }: BiensProps) {
     }
   };
 
-  const selectProperty = (id: number) => {
+  const selectProperty = (id: number, surface: PropertyDetailSurface = 'mini') => {
     const property = allProps.find((item) => item.id === id);
+    if (property) {
+      capturePostHogEvent('property_detail_opened', {
+        ...propertyEventProperties(
+          property,
+          property.supabasePropertyId ? scoresByProperty[property.supabasePropertyId] : undefined,
+        ),
+        detail_surface: surface,
+        view_mode: viewMode,
+        saved_view: savedView,
+        was_selected: selectedPropertyId === id,
+      });
+    }
     if (property?.supabaseListingId && !propertyDetailsById[property.supabaseListingId] && !detailLoadingIds[property.supabaseListingId]) {
       setDetailLoadingIds((current) => ({ ...current, [property.supabaseListingId as string]: true }));
       fetchPropertyDetail(property.supabaseListingId)
@@ -709,8 +775,36 @@ export function Biens({ store }: BiensProps) {
 
   const openFullProperty = (property: Property | undefined) => {
     if (!property) return;
-    selectProperty(property.id);
+    selectProperty(property.id, 'full');
     setFullPropertyId(property.id);
+  };
+
+  const handleSignalBadgeClick = (property: Property, signal: ListingSignal) => {
+    capturePostHogEvent('signal_badge_clicked', {
+      ...propertyEventProperties(
+        property,
+        property.supabasePropertyId ? scoresByProperty[property.supabasePropertyId] : undefined,
+      ),
+      signal_id: signal.id,
+      signal_type: signal.signal_type,
+      signal_active: signal.is_active,
+      view_mode: viewMode,
+      saved_view: savedView,
+    });
+  };
+
+  const handlePrimarySignalBadgeClick = (property: Property, signalLabel: string) => {
+    capturePostHogEvent('signal_badge_clicked', {
+      ...propertyEventProperties(
+        property,
+        property.supabasePropertyId ? scoresByProperty[property.supabasePropertyId] : undefined,
+      ),
+      signal_type: signalLabel.toLowerCase().replaceAll(' ', '_'),
+      signal_active: true,
+      badge_kind: 'primary',
+      view_mode: viewMode,
+      saved_view: savedView,
+    });
   };
 
   const savePanelNote = () => {
@@ -1080,13 +1174,13 @@ export function Biens({ store }: BiensProps) {
             label={filterCommune === 'Toutes' ? 'Commune' : filterCommune}
             options={communes}
             value={filterCommune}
-            onChange={(v) => { setFilterCommune(v); setPage(1); }}
+            onChange={(v) => applyTrackedFilter('commune', v, () => setFilterCommune(v))}
           />
           <FilterChip
             label={filterType === 'Tous' ? 'Type' : filterType}
             options={propertyTypes}
             value={filterType}
-            onChange={(v) => { setFilterType(v); setPage(1); }}
+            onChange={(v) => applyTrackedFilter('property_type', v, () => setFilterType(v))}
           />
           <button
             className="lv-filter-button"
@@ -1115,24 +1209,24 @@ export function Biens({ store }: BiensProps) {
             label={filterSource === 'Toutes' ? 'Source' : filterSource}
             options={sources}
             value={filterSource}
-            onChange={(v) => { setFilterSource(v); setPage(1); }}
+            onChange={(v) => applyTrackedFilter('source', v, () => setFilterSource(v))}
           />
           <FilterChip
             label={filterSignal === 'Tous' ? 'Signal' : filterSignal}
             options={['Tous', 'FSBO', 'Baisse de prix', 'Republié', 'Nouveau', 'Archivé']}
             value={filterSignal}
-            onChange={(v) => { setFilterSignal(v); setPage(1); }}
+            onChange={(v) => applyTrackedFilter('signal', v, () => setFilterSignal(v))}
           />
           <FilterChip
             label={scoreMin === 'Tous' ? 'Score' : `Score ${scoreMin}+`}
             options={SCORE_OPTIONS}
             value={scoreMin}
-            onChange={(v) => { setScoreMin(v); setPage(1); }}
+            onChange={(v) => applyTrackedFilter('score_min', v, () => setScoreMin(v))}
           />
 
           <button
             className={`lv-filter-button ${favoritesOnly ? 'is-active' : ''}`}
-            onClick={() => { setFavoritesOnly((f) => !f); setPage(1); }}
+            onClick={() => applyTrackedFilter('favorites_only', !favoritesOnly, () => setFavoritesOnly((f) => !f))}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1247,6 +1341,8 @@ export function Biens({ store }: BiensProps) {
                   opportunityReason={getOpportunityReason(p, store)}
                   nextAction={getOpenPropertyTasks(p)[0]?.title ?? (store.getPropertyDeal(p.id) ? `Deal: ${store.getPropertyDeal(p.id)?.stage}` : 'Qualifier ce bien')}
                   contactName={store.getPropertyContact(p.id)?.name}
+                  onSignalBadgeClick={(signal) => handleSignalBadgeClick(p, signal)}
+                  onPrimarySignalBadgeClick={(label) => handlePrimarySignalBadgeClick(p, label)}
                 />
               );
             })}
@@ -1336,40 +1432,40 @@ export function Biens({ store }: BiensProps) {
           onReset={resetFilters}
           onPreset={applyPreset}
           priceMin={priceMin}
-          setPriceMin={(value) => { setPriceMin(value); setPage(1); }}
+          setPriceMin={(value) => applyTrackedFilter('price_min', value, () => setPriceMin(value))}
           priceMax={priceMax}
-          setPriceMax={(value) => { setPriceMax(value); setPage(1); }}
+          setPriceMax={(value) => applyTrackedFilter('price_max', value, () => setPriceMax(value))}
           bedroomsMin={bedroomsMin}
-          setBedroomsMin={(value) => { setBedroomsMin(value); setPage(1); }}
+          setBedroomsMin={(value) => applyTrackedFilter('bedrooms_min', value, () => setBedroomsMin(value))}
           surfaceMin={surfaceMin}
-          setSurfaceMin={(value) => { setSurfaceMin(value); setPage(1); }}
+          setSurfaceMin={(value) => applyTrackedFilter('surface_min', value, () => setSurfaceMin(value))}
           filterCommune={filterCommune}
-          setFilterCommune={(value) => { setFilterCommune(value); setPage(1); }}
+          setFilterCommune={(value) => applyTrackedFilter('commune', value, () => setFilterCommune(value))}
           communes={communes}
           filterType={filterType}
-          setFilterType={(value) => { setFilterType(value); setPage(1); }}
+          setFilterType={(value) => applyTrackedFilter('property_type', value, () => setFilterType(value))}
           propertyTypes={propertyTypes}
           filterSource={filterSource}
-          setFilterSource={(value) => { setFilterSource(value); setPage(1); }}
+          setFilterSource={(value) => applyTrackedFilter('source', value, () => setFilterSource(value))}
           sources={sources}
           sellerFilter={sellerFilter}
-          setSellerFilter={(value) => { setSellerFilter(value); setPage(1); }}
+          setSellerFilter={(value) => applyTrackedFilter('seller_type', value, () => setSellerFilter(value))}
           filterSignal={filterSignal}
-          setFilterSignal={(value) => { setFilterSignal(value); setPage(1); }}
+          setFilterSignal={(value) => applyTrackedFilter('signal', value, () => setFilterSignal(value))}
           scoreMin={scoreMin}
-          setScoreMin={(value) => { setScoreMin(value); setPage(1); }}
+          setScoreMin={(value) => applyTrackedFilter('score_min', value, () => setScoreMin(value))}
           ageFilter={ageFilter}
-          setAgeFilter={(value) => { setAgeFilter(value); setPage(1); }}
+          setAgeFilter={(value) => applyTrackedFilter('age_min', value, () => setAgeFilter(value))}
           favoritesOnly={favoritesOnly}
-          setFavoritesOnly={(value) => { setFavoritesOnly(value); setPage(1); }}
+          setFavoritesOnly={(value) => applyTrackedFilter('favorites_only', value, () => setFavoritesOnly(value))}
           contactFilter={contactFilter}
-          setContactFilter={(value) => { setContactFilter(value); setPage(1); }}
+          setContactFilter={(value) => applyTrackedFilter('contact', value, () => setContactFilter(value))}
           pipelineFilter={pipelineFilter}
-          setPipelineFilter={(value) => { setPipelineFilter(value); setPage(1); }}
+          setPipelineFilter={(value) => applyTrackedFilter('pipeline', value, () => setPipelineFilter(value))}
           taskFilter={taskFilter}
-          setTaskFilter={(value) => { setTaskFilter(value); setPage(1); }}
+          setTaskFilter={(value) => applyTrackedFilter('task', value, () => setTaskFilter(value))}
           statusFilter={statusFilter}
-          setStatusFilter={(value) => { setStatusFilter(value); setPage(1); }}
+          setStatusFilter={(value) => applyTrackedFilter('status', value, () => setStatusFilter(value))}
           visibleCount={filtered.length}
         />
       )}
@@ -1686,15 +1782,30 @@ function reasonBarWidth(contribution: number) {
 function WhyThisScorePanel({
   score,
   compact = false,
+  property,
+  surface,
 }: {
   score?: ListingScore;
   compact?: boolean;
+  property?: Property;
+  surface: ScoreExplanationSurface;
 }) {
   const [showExcluded, setShowExcluded] = useState(false);
   const reasons = score?.breakdown.reasons ?? [];
   const visibleReasons = reasons.slice(0, 3);
   const remainingReasons = Math.max(0, reasons.length - visibleReasons.length);
   const excluded = score?.breakdown.excluded ?? [];
+
+  useEffect(() => {
+    if (!property) return;
+
+    capturePostHogEvent('score_explanation_viewed', {
+      ...propertyEventProperties(property, score),
+      explanation_surface: surface,
+      reason_count: reasons.length,
+      excluded_count: excluded.length,
+    });
+  }, [excluded.length, property, reasons.length, score, surface]);
 
   return (
     <section style={compact ? miniSectionStyle : legacyModuleStyle}>
@@ -1745,7 +1856,19 @@ function WhyThisScorePanel({
         <div style={{ marginTop: compact ? 10 : 12 }}>
           <button
             type="button"
-            onClick={() => setShowExcluded((current) => !current)}
+            onClick={() => {
+              const next = !showExcluded;
+              setShowExcluded(next);
+              if (next && property) {
+                capturePostHogEvent('score_explanation_expanded', {
+                  ...propertyEventProperties(property, score),
+                  explanation_surface: surface,
+                  reason_count: reasons.length,
+                  excluded_count: excluded.length,
+                  expanded_section: 'excluded_signals',
+                });
+              }
+            }}
             style={{
               border: 0,
               background: 'transparent',
@@ -1986,7 +2109,7 @@ function MiniFicheBien({
             </div>
           </section>
 
-          <WhyThisScorePanel score={score} compact />
+          <WhyThisScorePanel score={score} compact property={property} surface="mini_fiche" />
 
           <section style={miniSectionStyle}>
             <MiniSectionTitle title="Résumé" />
@@ -2560,7 +2683,7 @@ function LegacyMiniFicheBien({
             </div>
           </section>
 
-          <WhyThisScorePanel score={score} />
+          <WhyThisScorePanel score={score} property={property} surface="legacy_fiche" />
 
           <section style={legacyModuleStyle}>
             <div style={legacyLabelStyle}>CARACTÉRISTIQUES</div>
@@ -3080,7 +3203,7 @@ function GrandeFicheBien({
             </DossierCard>
 
             <DossierCard title="Pourquoi cet indice" icon={<FileText size={14} />} style={{ gridColumn: 'span 5', order: 5 }}>
-              <WhyThisScorePanel score={score} />
+              <WhyThisScorePanel score={score} property={property} surface="full_dossier" />
             </DossierCard>
 
             <DossierCard title="Contact / Pipeline" avatar={vendorName.slice(0, 2).toUpperCase()} style={{ gridColumn: 'span 4', order: 6 }}>

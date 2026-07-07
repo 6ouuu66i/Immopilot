@@ -25,6 +25,8 @@ interface PropertyCardProps {
   contactName?: string;
   signals?: ListingSignal[];
   scoreContent?: React.ReactNode;
+  onSignalBadgeClick?: (signal: ListingSignal) => void;
+  onPrimarySignalBadgeClick?: (label: string) => void;
 }
 
 function cssVar(name: string) {
@@ -151,6 +153,8 @@ export function PropertyCard({
   contactName,
   signals = [],
   scoreContent,
+  onSignalBadgeClick,
+  onPrimarySignalBadgeClick,
 }: PropertyCardProps) {
   const photos = property.photos.length > 0 ? property.photos : propertyImageFallbacks(property.id);
   const currentPhoto = photos[carouselIndex % photos.length];
@@ -227,7 +231,14 @@ export function PropertyCard({
 
         {signalLabel && (
           <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', alignItems: 'center', gap: 6, maxWidth: 'calc(100% - 62px)' }}>
-            <span style={{
+            <button
+              type="button"
+              onClick={(event) => {
+                if (!onPrimarySignalBadgeClick) return;
+                event.stopPropagation();
+                onPrimarySignalBadgeClick(signalLabel);
+              }}
+              style={{
               minWidth: 0,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -240,9 +251,10 @@ export function PropertyCard({
               fontFamily: 'var(--lv-font-mono, var(--notion-mono))',
               padding: '3px 8px',
               borderRadius: 0,
+              cursor: onPrimarySignalBadgeClick ? 'pointer' : 'default',
             }}>
               {signalLabel}
-            </span>
+            </button>
             {secondarySignalCount > 0 && (
               <span style={{
                 color: cssVar('--color-text-secondary'),
@@ -357,7 +369,7 @@ export function PropertyCard({
           <span style={{ fontSize: 12, fontFamily: 'var(--font-sans, var(--notion-sans))' }}>{property.city}</span>
         </div>
 
-        <SignalBadges signals={signals} />
+        <SignalBadges signals={signals} onSignalClick={onSignalBadgeClick} />
 
         {scoreContent}
 

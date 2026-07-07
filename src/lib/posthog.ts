@@ -1,5 +1,7 @@
 import posthog from 'posthog-js';
 
+type PostHogProperties = Record<string, string | number | boolean | null | undefined>;
+
 const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
 const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST;
 
@@ -41,6 +43,16 @@ export function captureReactError(error: unknown, componentStack?: string | null
     app_version: posthogRelease,
     component_stack: componentStack ?? undefined,
     source: 'react_error_boundary',
+  });
+}
+
+export function capturePostHogEvent(eventName: string, properties: PostHogProperties = {}) {
+  if (!POSTHOG_KEY) return;
+
+  posthog.capture(eventName, {
+    ...properties,
+    environment: posthogEnvironment,
+    app_version: posthogRelease,
   });
 }
 

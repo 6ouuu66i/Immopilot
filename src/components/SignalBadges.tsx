@@ -4,6 +4,7 @@ import type { ListingSignal, ListingSignalType } from '../lib/services/listingSi
 
 interface SignalBadgesProps {
   signals: ListingSignal[];
+  onSignalClick?: (signal: ListingSignal) => void;
 }
 
 type SignalTone = 'price' | 'belowMarket' | 'overpriced' | 'context' | 'behavior' | 'alert' | 'neutral';
@@ -216,7 +217,7 @@ function tooltipFor(signal: ListingSignal) {
   return fallbackMetadata(metadata);
 }
 
-export function SignalBadges({ signals }: SignalBadgesProps) {
+export function SignalBadges({ signals, onSignalClick }: SignalBadgesProps) {
   if (signals.length === 0) return null;
 
   const visibleSignals = signals.slice(0, MAX_VISIBLE_SIGNALS);
@@ -232,9 +233,15 @@ export function SignalBadges({ signals }: SignalBadgesProps) {
         const tone = TONE_STYLES[definition.tone];
 
         return (
-          <span
+          <button
             key={signal.id}
+            type="button"
             title={tooltipFor(signal)}
+            onClick={(event) => {
+              if (!onSignalClick) return;
+              event.stopPropagation();
+              onSignalClick(signal);
+            }}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -250,10 +257,11 @@ export function SignalBadges({ signals }: SignalBadgesProps) {
               fontFamily: 'var(--lv-font-mono, var(--notion-mono))',
               lineHeight: 1.15,
               whiteSpace: 'nowrap',
+              cursor: onSignalClick ? 'pointer' : 'default',
             }}
           >
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{definition.label}</span>
-          </span>
+          </button>
         );
       })}
       {hiddenSignals.length > 0 ? (
