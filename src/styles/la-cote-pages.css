@@ -1,3 +1,7 @@
-.lv-dashboard {
-  letter-spacing: 0;
+.lv-dashboard .lv-kpi-card,
+.lv-dashboard .lv-priority-panel,
+.lv-dashboard .lv-mini-panel,
+.lv-dashboard .lv-tip-card {
+  border-radius: 0;
+  box-shadow: none;
 }
