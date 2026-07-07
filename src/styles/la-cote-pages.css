@@ -75,3 +75,33 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
+
+.pipeline-workarea .fiche-panel .body-col .mc,
+.pipeline-workarea .fiche-panel .task-empty,
+.pipeline-workarea .fiche-panel .notes-list,
+.pipeline-workarea .fiche-panel .activity-list,
+.pipeline-workarea .fiche-panel .deal-link-row select,
+.pipeline-workarea .fiche-panel .deal-action-row input,
+.pipeline-workarea .fiche-panel .notes-input {
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+.pipeline-workarea .fiche-panel .mc-vendor-avatar,
+.pipeline-workarea .fiche-panel .mc-bien-icon,
+.pipeline-workarea .fiche-panel .note-avatar {
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+.pipeline-workarea .fiche-panel .stepper-wrapper {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  padding: 4px 0 !important;
+  margin: 10px 16px 12px !important;
+}
+
+.pipeline-workarea .fiche-panel .step-icon {
+  box-shadow: 0 0 0 3px #fff !important;
+}
