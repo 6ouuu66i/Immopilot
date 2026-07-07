@@ -4,3 +4,56 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
+
+.kanban-board::-webkit-scrollbar-track,
+.kanban-board::-webkit-scrollbar-thumb,
+.column,
+.column-drag-over .column-body,
+.column-head,
+.column-empty,
+.column-add,
+.deal-card,
+.dc-img,
+.dc-ai,
+.dc-task-count,
+.dc-task-due,
+.dc-next-task,
+.dc-avatar,
+.list-group-count,
+.list-group.drag-over,
+.list-row,
+.lr-thumb,
+.lr-followup {
+  border-radius: 0 !important;
+}
+
+.column-head,
+.deal-card,
+.deal-card:hover,
+.dc-ai,
+.dc-avatar,
+.list-row,
+.list-row:hover {
+  box-shadow: none !important;
+}
+
+.column-total,
+.column-total strong,
+.column-count,
+.dc-price,
+.dc-commission,
+.dc-task-count,
+.dc-task-due,
+.dc-next-task-status,
+.dc-next-task-more,
+.list-group-count,
+.list-group-total,
+.list-group-total strong,
+.lr-price,
+.lr-commission,
+.lr-followup-count,
+.lr-followup-status {
+  font-family: var(--font-mono, var(--notion-mono)) !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
