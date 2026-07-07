@@ -22,6 +22,24 @@
   box-shadow: none;
 }
 
+.transfers-toolbar,
+.transfers-search,
+.transfers-tabs,
+.transfers-list,
+.transfers-row,
+.transfers-row-icon,
+.transfers-modal,
+.commissions-scope,
+.commissions-kpis article,
+.commissions-toolbar,
+.commissions-search,
+.commissions-table,
+.commissions-row,
+.commissions-modal {
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .lv-dashboard .lv-kpi-value,
 .lv-dashboard .lv-row-price,
 .lv-dashboard .lv-dashboard-meta b,
@@ -29,7 +47,12 @@
 .lv-agenda .agenda-sidebar-panel strong,
 .lv-agenda .agenda-month-day-num,
 .contact-panel .panel-stat strong,
-.contact-panel .linked-meta strong {
+.contact-panel .linked-meta strong,
+.transfers-tabs span,
+.transfers-row-copy em,
+.commissions-kpis strong,
+.commissions-row-main span,
+.commissions-row-main i {
   font-family: var(--font-mono, var(--notion-mono));
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
