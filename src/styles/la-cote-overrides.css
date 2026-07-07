@@ -167,3 +167,89 @@
 .transfers-modal button {
   transition: background 140ms ease, border-color 140ms ease, color 140ms ease !important;
 }
+
+#app button,
+#app input,
+#app select,
+#app textarea,
+#app [role="button"],
+#app [class*="card"],
+#app [class*="Card"],
+#app [class*="panel"],
+#app [class*="Panel"],
+#app [class*="modal"],
+#app [class*="Modal"],
+#app [class*="menu"],
+#app [class*="Menu"],
+#app [class*="dropdown"],
+#app [class*="Dropdown"],
+#app [class*="popover"],
+#app [class*="Popover"],
+#app [class*="toolbar"],
+#app [class*="Toolbar"],
+#app [class*="filter"],
+#app [class*="Filter"],
+#app [class*="badge"],
+#app [class*="Badge"],
+#app [class*="chip"],
+#app [class*="Chip"] {
+  border-radius: 0 !important;
+}
+
+#app [class*="card"],
+#app [class*="Card"],
+#app [class*="panel"],
+#app [class*="Panel"],
+#app [class*="modal"],
+#app [class*="Modal"],
+#app [class*="menu"],
+#app [class*="Menu"],
+#app [class*="dropdown"],
+#app [class*="Dropdown"],
+#app [style*="box-shadow"] {
+  box-shadow: none !important;
+}
+
+#app button,
+#app input,
+#app select,
+#app textarea,
+#app [role="button"] {
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease !important;
+}
+
+#app [class*="kpi"],
+#app [class*="Kpi"],
+#app [class*="metric"],
+#app [class*="Metric"],
+#app [class*="price"],
+#app [class*="Price"],
+#app [class*="amount"],
+#app [class*="Amount"],
+#app [class*="score"],
+#app [class*="Score"],
+#app [class*="count"],
+#app [class*="Count"],
+#app [class*="total"],
+#app [class*="Total"],
+#app [class*="value"],
+#app [class*="Value"],
+#app [class*="number"],
+#app [class*="Number"],
+#app [class*="date"],
+#app [class*="Date"],
+#app [class*="time"],
+#app [class*="Time"] {
+  font-family: var(--font-mono, var(--notion-mono)) !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+#app strong,
+#app output,
+#app time,
+#app [data-number],
+#app [data-metric],
+#app [data-kpi] {
+  font-variant-numeric: tabular-nums;
+}
