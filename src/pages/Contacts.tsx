@@ -26,7 +26,7 @@ import type { Contact, ContactRelations, Deal, Property, Task, TaskPriority } fr
 import { ActivityTimeline, NotesList, StatusBadge, TaskList, ContactsSkeleton } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { formatEuro } from '../lib/formatCurrency';
-import { fetchSupabaseProperties } from '../lib/supabaseProperties';
+import { searchPropertiesForLink } from '../lib/supabaseProperties';
 import { useContact, useContacts } from '../lib/useContacts';
 import { useNotes } from '../lib/useNotes';
 import { taskToView, useTasks, useTasksFor } from '../lib/useTasks';
@@ -817,18 +817,29 @@ function LinkPropertyModal({ contactId, onClose, onLinked }: LinkPropertyModalPr
   const [search, setSearch] = useState('');
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [relationship, setRelationship] = useState<RelationshipOption>('interested');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const query = search.trim();
+    if (query.length < 2) {
+      setProperties([]);
+      setSelectedPropertyId('');
+      setIsLoading(false);
+      return;
+    }
+
     let active = true;
+    setIsLoading(true);
+    setError('');
 
     async function loadProperties() {
       try {
-        const nextProperties = await fetchSupabaseProperties();
+        const nextProperties = await searchPropertiesForLink(query);
         if (!active) return;
-        setProperties(nextProperties.filter((property) => property.supabasePropertyId));
-        setSelectedPropertyId(nextProperties.find((property) => property.supabasePropertyId)?.supabasePropertyId ?? '');
+        const linkableProperties = nextProperties.filter((property) => property.supabasePropertyId);
+        setProperties(linkableProperties);
+        setSelectedPropertyId(linkableProperties[0]?.supabasePropertyId ?? '');
       } catch (loadError) {
         if (active) setError(loadError instanceof Error ? loadError.message : 'Chargement des biens impossible.');
       } finally {
@@ -836,17 +847,14 @@ function LinkPropertyModal({ contactId, onClose, onLinked }: LinkPropertyModalPr
       }
     }
 
-    void loadProperties();
+    const timeout = window.setTimeout(() => { void loadProperties(); }, 300);
     return () => {
       active = false;
+      window.clearTimeout(timeout);
     };
-  }, []);
+  }, [search]);
 
-  const filteredProperties = properties.filter((property) => {
-    const query = search.trim().toLowerCase();
-    if (!query) return true;
-    return `${property.title} ${property.city}`.toLowerCase().includes(query);
-  });
+  const filteredProperties = properties;
 
   const handleLink = async () => {
     if (!selectedPropertyId) {

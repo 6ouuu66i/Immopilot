@@ -109,7 +109,6 @@ const PROPERTY_TYPE_FILTERS = Object.entries(TYPE_LABELS).reduce<Record<string, 
   return acc;
 }, {});
 
-const LISTINGS_FETCH_PAGE_SIZE = 1000;
 const ACTIVE_PROPERTIES_CANONICAL_VIEW = 'active_properties_canonical';
 
 export const ACTIVE_PROPERTIES_CANONICAL_SELECT = `
@@ -300,6 +299,10 @@ function escapeForIn(values: string[]): string {
   return `(${values.map((value) => `\"${value}\"`).join(',')})`;
 }
 
+function escapePostgrestOrValue(value: string): string {
+  return value.trim().replace(/[\\,()]/g, (match) => `\\${match}`);
+}
+
 function buildPropertyTypeFilter(label: string): string | null {
   const rawTypes = PROPERTY_TYPE_FILTERS[label];
   if (!rawTypes || rawTypes.length === 0) return null;
@@ -321,6 +324,17 @@ function applyListFilters(query: any, filters: SupabasePropertyListFilters = {})
   if (filters.minScore !== null && filters.minScore !== undefined) next = next.gte('seller_score', filters.minScore);
   if (filters.ageMinDays !== null && filters.ageMinDays !== undefined) next = next.gte('days_online', filters.ageMinDays);
   if (filters.fsboOnly) next = next.eq('is_fsbo', true);
+
+  if (filters.searchText?.trim()) {
+    const term = escapePostgrestOrValue(filters.searchText);
+    const pattern = `*${term}*`;
+    next = next.or([
+      `title_fr.ilike.${pattern}`,
+      `locality.ilike.${pattern}`,
+      `postal_code.ilike.${pattern}`,
+      `street.ilike.${pattern}`,
+    ].join(','));
+  }
 
   if (filters.propertyTypeLabel) {
     const propertyTypeFilter = buildPropertyTypeFilter(filters.propertyTypeLabel);
@@ -384,29 +398,25 @@ export async function fetchSupabasePropertiesPage(
   };
 }
 
-export async function fetchSupabaseProperties(): Promise<Property[]> {
+export async function searchPropertiesForLink(term: string, limit = 20): Promise<Property[]> {
   if (!supabase) return [];
+  const searchText = term.trim();
+  if (searchText.length < 2) return [];
 
-  const rows: ActivePropertyCanonicalRow[] = [];
+  let query = supabase
+    .from(ACTIVE_PROPERTIES_CANONICAL_VIEW)
+    .select(ACTIVE_PROPERTIES_CANONICAL_SELECT);
 
-  for (let from = 0; ; from += LISTINGS_FETCH_PAGE_SIZE) {
-    const to = from + LISTINGS_FETCH_PAGE_SIZE - 1;
-    const { data, error } = await supabase
-      .from(ACTIVE_PROPERTIES_CANONICAL_VIEW)
-      .select(ACTIVE_PROPERTIES_CANONICAL_SELECT)
-      .order('last_seen_at', { ascending: false })
-      .order('first_seen_at', { ascending: false })
-      .range(from, to)
-      .returns<ActivePropertyCanonicalRow[]>();
+  query = applyListFilters(query, { searchText });
 
-    if (error) throw new Error(error.message);
+  const { data, error } = await query
+    .order('last_seen_at', { ascending: false })
+    .order('first_seen_at', { ascending: false })
+    .limit(Math.max(1, Math.min(limit, 50)))
+    .returns<ActivePropertyCanonicalRow[]>();
 
-    const pageRows = data ?? [];
-    rows.push(...pageRows);
-    if (pageRows.length < LISTINGS_FETCH_PAGE_SIZE) break;
-  }
-
-  return rows.map(mapCanonicalPropertyRow);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(mapCanonicalPropertyRow);
 }
 
 export async function fetchPropertyDetail(listingId: string): Promise<PropertyDetail | null> {
@@ -432,14 +442,6 @@ export function uniqueSupabaseProperties(properties: Property[]): Property[] {
     if (seen.has(property.supabasePropertyId)) return false;
     seen.add(property.supabasePropertyId);
     return true;
-  });
-}
-
-export function useSupabasePropertiesQuery(options: UseSupabasePropertiesQueryOptions = {}) {
-  return useQuery({
-    queryKey: queryKeys.supabaseProperties(options.userId),
-    queryFn: fetchSupabaseProperties,
-    enabled: options.enabled ?? true,
   });
 }
 

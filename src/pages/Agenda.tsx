@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarClock, Check, Clock, ExternalLink, Loader2, Plus, Search, X } from 'lucide-react';
 import type { store as appStore } from '../lib/store';
-import { fetchSupabaseProperties } from '../lib/supabaseProperties';
+import { searchPropertiesForLink } from '../lib/supabaseProperties';
 import { useContacts } from '../lib/useContacts';
 import { useDeals } from '../lib/useDeals';
 import { taskLinkLabel, useTasks, type UseTasksResult } from '../lib/useTasks';
@@ -461,22 +461,33 @@ function TaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (inpu
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (linkKind !== 'property') return;
+    const query = search.trim();
+    if (query.length < 2) {
+      setProperties([]);
+      return;
+    }
+
     let active = true;
-    fetchSupabaseProperties()
-      .then((items) => {
-        if (!active) return;
-        setProperties(items.filter((property) => property.supabasePropertyId).map((property) => ({
-          id: property.supabasePropertyId as string,
-          label: `${property.title} - ${property.city}`,
-        })));
-      })
-      .catch(() => {
-        if (active) setProperties([]);
-      });
+    const timeout = window.setTimeout(() => {
+      searchPropertiesForLink(query)
+        .then((items) => {
+          if (!active) return;
+          setProperties(items.filter((property) => property.supabasePropertyId).map((property) => ({
+            id: property.supabasePropertyId as string,
+            label: `${property.title} - ${property.city}`,
+          })));
+        })
+        .catch(() => {
+          if (active) setProperties([]);
+        });
+    }, 300);
+
     return () => {
       active = false;
+      window.clearTimeout(timeout);
     };
-  }, []);
+  }, [linkKind, search]);
 
   const linkOptions = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -488,7 +499,7 @@ function TaskModal({ onClose, onCreate }: { onClose: () => void; onCreate: (inpu
           : linkKind === 'property'
             ? properties
             : [];
-    return q ? options.filter((option) => option.label.toLowerCase().includes(q)) : options;
+    return q && linkKind !== 'property' ? options.filter((option) => option.label.toLowerCase().includes(q)) : options;
   }, [contactsState.contacts, dealsState.deals, linkKind, properties, search]);
 
   useEffect(() => {

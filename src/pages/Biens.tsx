@@ -29,7 +29,6 @@ import {
   type PropertyDetail,
   type SupabasePropertyListFilters,
   useSupabasePropertiesPageQuery,
-  useSupabasePropertiesQuery,
 } from '../lib/supabaseProperties';
 import { useListingSignals } from '../lib/useListingSignals';
 import { useListingScores } from '../lib/useListingScores';
@@ -194,20 +193,10 @@ function propertyEventProperties(property: Property, score?: ListingScore) {
   };
 }
 
-function supportsServerPagination(params: {
-  contactFilter: ContactFilter;
-  search: string;
+function supportsServerPagination(_params: {
   statusFilter: StatusFilter;
-  pipelineFilter: PipelineFilter;
-  taskFilter: TaskFilter;
 }) {
-  return (
-    !params.search.trim() &&
-    params.contactFilter === 'Tous' &&
-    params.pipelineFilter === 'Tous' &&
-    params.taskFilter === 'Tous' &&
-    (params.statusFilter === 'Tous' || params.statusFilter === 'Disponible')
-  );
+  return true;
 }
 
 export function Biens({ store }: BiensProps) {
@@ -215,6 +204,7 @@ export function Biens({ store }: BiensProps) {
   const { user } = useAuth();
   const propertyMarks = usePropertyMarks();
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sort, setSort] = useState<SortKey>('recent');
   const [filterCommune, setFilterCommune] = useState('Toutes');
@@ -278,18 +268,21 @@ export function Biens({ store }: BiensProps) {
   const ageFloor = minValue(ageFilter.replace(' jours', ''));
   const useServerPagination = useMemo(
     () => supportsServerPagination({
-      search,
-      contactFilter,
-      pipelineFilter,
-      taskFilter,
       statusFilter,
     }),
-    [contactFilter, pipelineFilter, search, statusFilter, taskFilter],
+    [statusFilter],
   );
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
   const serverFilters = useMemo<SupabasePropertyListFilters>(() => ({
     city: filterCommune !== 'Toutes' ? filterCommune : null,
     source: filterSource !== 'Toutes' ? filterSource : null,
     propertyTypeLabel: filterType !== 'Tous' ? filterType : null,
+    searchText: debouncedSearch || null,
     minPrice,
     maxPrice,
     signalFilter: filterSignal !== 'Tous' ? filterSignal : null,
@@ -304,6 +297,7 @@ export function Biens({ store }: BiensProps) {
   }), [
     ageFloor,
     bedroomFloor,
+    debouncedSearch,
     favoritesOnly,
     filterCommune,
     filterSignal,
@@ -326,17 +320,9 @@ export function Biens({ store }: BiensProps) {
     sort,
     userId: user?.id,
   });
-  const allPropertiesQuery = useSupabasePropertiesQuery({
-    enabled: isSupabaseConfigured && !useServerPagination && Boolean(user),
-    userId: user?.id,
-  });
-  const activePropertiesQuery = useServerPagination ? pagedPropertiesQuery : allPropertiesQuery;
-  const liveProperties = useServerPagination
-    ? (pagedPropertiesQuery.data?.properties ?? [])
-    : (allPropertiesQuery.data ?? []);
-  const liveTotalCount = useServerPagination
-    ? (pagedPropertiesQuery.data?.totalCount ?? 0)
-    : liveProperties.length;
+  const activePropertiesQuery = pagedPropertiesQuery;
+  const liveProperties = pagedPropertiesQuery.data?.properties ?? [];
+  const liveTotalCount = pagedPropertiesQuery.data?.totalCount ?? 0;
   const liveLoading = activePropertiesQuery.isLoading;
   const liveError = activePropertiesQuery.error instanceof Error
     ? activePropertiesQuery.error.message
@@ -400,15 +386,6 @@ export function Biens({ store }: BiensProps) {
       if (sellerFilter !== 'Tous') list = list.filter((p) => getSellerType(p) === sellerFilter);
       if (scoreFloor !== null) list = list.filter((p) => p.score >= scoreFloor);
       if (ageFloor !== null) list = list.filter((p) => p.publishedDays >= ageFloor);
-      if (contactFilter === 'Sans contact') list = list.filter((p) => !store.getPropertyContact(p.id));
-      if (contactFilter === 'Avec contact') list = list.filter((p) => Boolean(store.getPropertyContact(p.id)));
-      if (pipelineFilter === 'En pipeline') list = list.filter((p) => Boolean(store.getPropertyDeal(p.id)));
-      if (pipelineFilter === 'Hors pipeline') list = list.filter((p) => !store.getPropertyDeal(p.id));
-      if (taskFilter === 'Avec tâche ouverte') list = list.filter((p) => getOpenPropertyTasks(p).length > 0);
-      if (taskFilter === 'Sans tâche ouverte') list = list.filter((p) => getOpenPropertyTasks(p).length === 0);
-      if (statusFilter === 'Disponible') list = list.filter((p) => !p.reserved && p.status !== 'archivé');
-      if (statusFilter === 'Réservé') list = list.filter((p) => p.reserved || p.status === 'réservé');
-      if (statusFilter === 'Archivé') list = list.filter((p) => p.status === 'archivé');
       list = list.filter((p) => !propertyMarks.isIgnored(getMarkId(p)));
       if (favoritesOnly) list = list.filter((p) => propertyMarks.isFavorite(getMarkId(p)));
 
@@ -419,6 +396,16 @@ export function Biens({ store }: BiensProps) {
         default: list = [...list].sort((a, b) => a.publishedDays - b.publishedDays); break;
       }
     }
+
+    if (contactFilter === 'Sans contact') list = list.filter((p) => !store.getPropertyContact(p.id));
+    if (contactFilter === 'Avec contact') list = list.filter((p) => Boolean(store.getPropertyContact(p.id)));
+    if (pipelineFilter === 'En pipeline') list = list.filter((p) => Boolean(store.getPropertyDeal(p.id)));
+    if (pipelineFilter === 'Hors pipeline') list = list.filter((p) => !store.getPropertyDeal(p.id));
+    if (taskFilter === 'Avec tâche ouverte') list = list.filter((p) => getOpenPropertyTasks(p).length > 0);
+    if (taskFilter === 'Sans tâche ouverte') list = list.filter((p) => getOpenPropertyTasks(p).length === 0);
+    if (statusFilter === 'Disponible') list = list.filter((p) => !p.reserved && p.status !== 'archivé');
+    if (statusFilter === 'Réservé') list = list.filter((p) => p.reserved || p.status === 'réservé');
+    if (statusFilter === 'Archivé') list = list.filter((p) => p.status === 'archivé');
 
     return list;
   }, [

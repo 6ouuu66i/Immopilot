@@ -33,9 +33,6 @@ export const queryKeys = {
   propertyMarks(userId: string | null | undefined) {
     return ['property-marks', userId ?? 'anonymous'] as const;
   },
-  supabaseProperties(userId: string | null | undefined) {
-    return ['supabase-properties', userId ?? 'anonymous'] as const;
-  },
   supabasePropertiesPage(
     userId: string | null | undefined,
     page: number,

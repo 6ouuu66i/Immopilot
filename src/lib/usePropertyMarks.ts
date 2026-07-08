@@ -30,7 +30,6 @@ export function usePropertyMarks(): UsePropertyMarksResult {
   const invalidateRelatedQueries = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.supabaseProperties(user?.id) }),
       queryClient.invalidateQueries({
         predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === 'supabase-properties-page',
       }),
