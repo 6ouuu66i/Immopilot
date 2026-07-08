@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { CircleDollarSign, Clock3, TrendingDown, UserRound } from 'lucide-react';
 import type { Json } from '../lib/database.types';
 import type { ListingSignal, ListingSignalType } from '../lib/services/listingSignalsService';
 
@@ -29,6 +30,14 @@ const SIGNAL_DEFINITIONS: Partial<Record<ListingSignalType, SignalDefinition>> =
   failed_launch: { label: 'Lancement sans traction', tone: 'behavior' },
   back_to_market: { label: 'Retour sur le marché', tone: 'alert' },
 };
+
+function SignalIcon({ tone }: { tone: SignalTone }) {
+  const size = 11;
+  if (tone === 'price' || tone === 'belowMarket') return <TrendingDown size={size} strokeWidth={2.2} />;
+  if (tone === 'overpriced') return <CircleDollarSign size={size} strokeWidth={2.2} />;
+  if (tone === 'behavior' || tone === 'alert') return <Clock3 size={size} strokeWidth={2.2} />;
+  return <UserRound size={size} strokeWidth={2.2} />;
+}
 
 const TONE_STYLES: Record<SignalTone, { bg: string; text: string; border: string; dot: string }> = {
   price: {
@@ -260,6 +269,7 @@ export function SignalBadges({ signals, onSignalClick }: SignalBadgesProps) {
               cursor: onSignalClick ? 'pointer' : 'default',
             }}
           >
+            <SignalIcon tone={definition.tone} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{definition.label}</span>
           </button>
         );

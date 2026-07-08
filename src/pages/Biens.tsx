@@ -22,6 +22,7 @@ import { PropertyCard } from '../components/biens/PropertyCard';
 import { SellerTensionScoreZone } from '../components/biens/SellerTensionScoreZone';
 import { ImageLightbox, NotesList } from '../components/ui';
 import { DeferredImage } from '../components/ui/DeferredImage';
+import { SkeletonBox, SkeletonText } from '../components/ui/Skeleton';
 import type { store as appStore } from '../lib/store';
 import { isSupabaseConfigured } from '../lib/supabase';
 import {
@@ -64,6 +65,7 @@ type TaskFilter = 'Tous' | 'Avec tâche ouverte' | 'Sans tâche ouverte';
 type StatusFilter = 'Tous' | 'Disponible' | 'Réservé' | 'Archivé';
 type PropertyDetailSurface = 'mini' | 'full';
 type ScoreExplanationSurface = 'mini_fiche' | 'legacy_fiche' | 'full_dossier';
+type PriorityTone = 'high' | 'watch' | 'low';
 
 const PAGE_SIZE = 16;
 const PRICE_MIN_OPTIONS = ['Min', '150000', '250000', '350000', '500000', '750000', '1000000'];
@@ -176,6 +178,21 @@ function scoreBandFromValue(score: number | null | undefined): 'forte' | 'a_surv
   if (score >= 75) return 'forte';
   if (score >= 52) return 'a_surveiller';
   return 'faible_priorite';
+}
+
+function priorityToneFromScore(score: ListingScore | undefined, fallbackScore: number): PriorityTone {
+  if (score?.band === 'forte') return 'high';
+  if (score?.band === 'surveiller') return 'watch';
+  const band = scoreBandFromValue(score?.score ?? fallbackScore);
+  if (band === 'forte') return 'high';
+  if (band === 'a_surveiller') return 'watch';
+  return 'low';
+}
+
+function priorityAccentColor(tone: PriorityTone) {
+  if (tone === 'high') return '#1E5A3A';
+  if (tone === 'watch') return '#8A6D1F';
+  return '#D6DAD6';
 }
 
 function propertyEventProperties(property: Property, score?: ListingScore) {
@@ -1300,13 +1317,11 @@ export function Biens({ store }: BiensProps) {
       {/* ── Table / Gallery ───────────────────────── */}
       <div className="lv-biens-results" style={{ padding: selectedProperty ? '14px 4px 32px 32px' : '14px 32px 32px' }}>
         {isInitialLiveLoading ? (
-          <div className="lv-biens-empty" style={{ margin: '0 auto', maxWidth: 560, textAlign: 'center', padding: '56px 0', color: 'var(--color-text-secondary)', fontSize: 14 }}>
-            <div style={{ width: 46, height: 46, borderRadius: 14, border: '1px solid var(--color-border-default)', background: 'var(--color-bg-surface)', display: 'grid', placeItems: 'center', margin: '0 auto 12px', color: 'var(--color-brand)' }}>
-              <Loader2 size={18} className="animate-spin" />
-            </div>
-            <strong style={{ display: 'block', color: 'var(--color-text-primary)', fontSize: 15, marginBottom: 5 }}>Chargement des biens Supabase</strong>
-            <span style={{ display: 'block', lineHeight: 1.5 }}>Connexion aux annonces importees. Les anciennes annonces de demo ne sont plus affichees.</span>
-          </div>
+          viewMode === 'grid' ? (
+            <BiensGridSkeleton compact={Boolean(selectedProperty)} />
+          ) : (
+            <BiensTableSkeleton />
+          )
         ) : viewMode === 'grid' ? (
           <div
             className="lv-biens-grid"
@@ -1318,6 +1333,7 @@ export function Biens({ store }: BiensProps) {
           >
             {pageItems.map((p, index) => {
               const cardSignals = getCardSignals(p, store);
+              const propertyScore = p.supabasePropertyId ? scoresByProperty[p.supabasePropertyId] : undefined;
               return (
                 <PropertyCard
                   key={p.id}
@@ -1330,12 +1346,13 @@ export function Biens({ store }: BiensProps) {
                   onSelect={() => selectProperty(p.id)}
                   isFavorite={propertyMarks.isFavorite(getMarkId(p))}
                   selected={selectedPropertyId === p.id}
+                  priorityTone={priorityToneFromScore(propertyScore, p.score)}
                   primarySignal={cardSignals.primarySignal}
                   secondarySignalCount={cardSignals.secondarySignalCount}
                   signals={p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] ?? [] : []}
                   scoreContent={(
                     <SellerTensionScoreZone
-                      score={p.supabasePropertyId ? scoresByProperty[p.supabasePropertyId] : undefined}
+                      score={propertyScore}
                       fallbackScore={p.score}
                       signals={p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] ?? [] : []}
                       isInactive={p.reserved || p.status?.startsWith('archiv')}
@@ -1812,7 +1829,14 @@ function WhyThisScorePanel({
 
   return (
     <section style={compact ? miniSectionStyle : legacyModuleStyle}>
-      <div style={compact ? undefined : legacyLabelStyle}>Pourquoi cet indice</div>
+      <div style={compact ? undefined : { ...legacyLabelStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <span>Pourquoi cet indice</span>
+        {!compact && score && (
+          <span style={{ color: 'var(--color-text-tertiary)', fontFamily: 'var(--notion-mono)', fontSize: 10.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+            {Math.round(score.score)} / 100
+          </span>
+        )}
+      </div>
       {compact && <MiniSectionTitle title="Pourquoi cet indice" />}
 
       {visibleReasons.length > 0 ? (
@@ -1825,6 +1849,8 @@ function WhyThisScorePanel({
                 gridTemplateColumns: compact ? '84px minmax(0, 1fr) 42px' : '108px minmax(0, 1fr) 48px',
                 gap: 10,
                 alignItems: 'start',
+                padding: compact ? '0 0 9px' : '8px 0',
+                borderBottom: index < visibleReasons.length - 1 ? '1px solid var(--color-border-subtle)' : 'none',
               }}
             >
               <span style={{ color: 'var(--color-text-secondary)', fontSize: compact ? 10.5 : 11, fontFamily: 'var(--notion-mono)', lineHeight: 1.35 }}>
@@ -1834,8 +1860,8 @@ function WhyThisScorePanel({
                 <div style={{ color: 'var(--color-text-primary)', fontSize: compact ? 11.5 : 12.5, fontWeight: 650, lineHeight: 1.35 }}>
                   {reason.reason_fr}
                 </div>
-                <div style={{ marginTop: 6, height: 6, background: 'var(--color-bg-muted)', overflow: 'hidden' }}>
-                  <div style={{ width: reasonBarWidth(reason.contribution), height: '100%', background: '#1E5A3A' }} />
+                <div style={{ marginTop: 6, height: 5, background: 'var(--color-bg-muted)', overflow: 'hidden', borderRadius: 999 }}>
+                  <div style={{ width: reasonBarWidth(reason.contribution), height: '100%', background: reason.contribution >= 10 ? '#1E5A3A' : '#8A6D1F', borderRadius: 999 }} />
                 </div>
               </div>
               <span style={{ color: 'var(--color-text-primary)', fontSize: compact ? 11 : 12, fontWeight: 700, textAlign: 'right', fontFamily: 'var(--notion-mono)' }}>
@@ -1932,6 +1958,8 @@ function MiniFicheBien({
     ? priceHistory[priceHistory.length - 2].price - priceHistory[priceHistory.length - 1].price
     : 0;
   const propertyNotes = useNotes({ propertyId: property.supabasePropertyId });
+  const headerScore = score?.score ?? property.score;
+  const headerTone = priorityToneFromScore(score, property.score);
 
   useEffect(() => {
     if (!propertyNotes.error) return;
@@ -1985,25 +2013,47 @@ function MiniFicheBien({
             {property.title}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            border: '1px solid var(--color-border-default)',
-            background: 'var(--color-bg-surface)',
-            color: 'var(--color-text-secondary)',
-            display: 'grid',
-            placeItems: 'center',
-            cursor: 'pointer',
-            flexShrink: 0,
-          }}
-          aria-label="Fermer la mini fiche"
-        >
-          <X size={15} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <span
+            title="Indice de tension vendeur"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              height: 28,
+              padding: '0 9px',
+              borderRadius: 6,
+              border: `1px solid ${priorityAccentColor(headerTone)}`,
+              background: 'var(--color-bg-surface)',
+              color: 'var(--color-text-primary)',
+              fontFamily: 'var(--notion-mono)',
+              fontVariantNumeric: 'tabular-nums',
+              fontSize: 11.5,
+              fontWeight: 750,
+            }}
+          >
+            {Math.round(headerScore)}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: '1px solid var(--color-border-default)',
+              background: 'var(--color-bg-surface)',
+              color: 'var(--color-text-secondary)',
+              display: 'grid',
+              placeItems: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+            aria-label="Fermer la mini fiche"
+          >
+            <X size={15} />
+          </button>
+        </div>
       </div>
 
       <div style={{ overflowY: 'auto', minHeight: 0, flex: 1 }}>
@@ -2365,6 +2415,8 @@ function LegacyMiniFicheBien({
   const opportunityReason = getOpportunityReason(property, store);
   const visibleThumbs = photos.length > 6 ? photos.slice(0, 6) : photos;
   const hiddenPhotoCount = Math.max(0, photos.length - 5);
+  const headerScore = score?.score ?? property.score;
+  const headerTone = priorityToneFromScore(score, property.score);
 
   useEffect(() => {
     if (!propertyNotes.error) return;
@@ -2557,10 +2609,77 @@ function LegacyMiniFicheBien({
         }}
         aria-label="Mini fiche bien"
       >
+        <div
+          style={{
+            minHeight: 74,
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--color-border-default)',
+            background: 'color-mix(in srgb, var(--color-bg-surface) 96%, transparent)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexShrink: 0,
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h2 style={{ margin: 0, color: 'var(--color-text-primary)', fontSize: 17, fontWeight: 780, lineHeight: 1.18, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+              {property.title}
+            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, minWidth: 0 }}>
+              <span style={{ color: 'var(--color-text-secondary)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {property.city} · {property.source}
+              </span>
+              <span style={legacyStatusStyle(property.reserved)}>
+                <span style={{ width: 6, height: 6, borderRadius: 99, background: property.reserved ? 'var(--color-warning-dot)' : 'var(--color-brand)' }} />
+                {property.reserved ? 'Réservé' : 'Disponible'}
+              </span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexShrink: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <span style={{ color: 'var(--color-text-primary)', fontSize: 17, fontWeight: 780, whiteSpace: 'nowrap', fontFamily: 'var(--notion-mono)', fontVariantNumeric: 'tabular-nums' }}>{price}</span>
+              <span
+                title="Indice de tension vendeur"
+                style={{
+                  height: 21,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0 7px',
+                  borderRadius: 5,
+                  border: `1px solid ${priorityAccentColor(headerTone)}`,
+                  color: 'var(--color-text-primary)',
+                  background: 'var(--color-bg-surface)',
+                  fontFamily: 'var(--notion-mono)',
+                  fontVariantNumeric: 'tabular-nums',
+                  fontSize: 10.5,
+                  fontWeight: 800,
+                }}
+              >
+                {Math.round(headerScore)}
+              </span>
+            </div>
+            <button type="button" onClick={onClose} style={legacyCloseButtonStyle} aria-label="Fermer la mini fiche">
+              <X size={18} strokeWidth={2.4} />
+            </button>
+          </div>
+        </div>
 
       <div style={{ overflowY: 'auto', minHeight: 0, flex: 1, background: 'var(--color-bg-surface)' }}>
-        <div style={{ paddingTop: 12 }}>
-          <div style={{ padding: '2px 16px 12px', borderBottom: 'none' }}>
+        <div>
+          <div
+            style={{
+              display: 'none',
+              position: 'sticky',
+              top: 0,
+              zIndex: 4,
+              padding: '12px 16px 12px',
+              borderBottom: '1px solid var(--color-border-subtle)',
+              background: 'color-mix(in srgb, var(--color-bg-surface) 94%, transparent)',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 7 }}>
           <h2 style={{ margin: 0, color: 'var(--color-text-primary)', fontSize: 18, fontWeight: 750, lineHeight: 1.18, flex: 1, minWidth: 0 }}>
             {property.title}
@@ -2568,12 +2687,33 @@ function LegacyMiniFicheBien({
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexShrink: 0 }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, paddingTop: 1 }}>
               <span style={{ color: 'var(--color-text-primary)', fontSize: 18, fontWeight: 750, whiteSpace: 'nowrap' }}>{price}</span>
-              <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' }}>
-                <strong style={{ color: deltaPercent < 0 ? 'var(--color-brand)' : 'var(--color-danger-text)' }}>
-                  {deltaPercent >= 0 ? '+' : ''}{deltaPercent}%
-                </strong>{' '}
-                vs moyenne locale
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span
+                  title="Indice de tension vendeur"
+                  style={{
+                    height: 20,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0 6px',
+                    borderRadius: 5,
+                    border: `1px solid ${priorityAccentColor(headerTone)}`,
+                    color: 'var(--color-text-primary)',
+                    background: 'var(--color-bg-surface)',
+                    fontFamily: 'var(--notion-mono)',
+                    fontVariantNumeric: 'tabular-nums',
+                    fontSize: 10.5,
+                    fontWeight: 800,
+                  }}
+                >
+                  {Math.round(headerScore)}
+                </span>
+                <span style={{ color: 'var(--color-text-secondary)', fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                  <strong style={{ color: deltaPercent < 0 ? 'var(--color-brand)' : 'var(--color-danger-text)' }}>
+                    {deltaPercent >= 0 ? '+' : ''}{deltaPercent}%
+                  </strong>{' '}
+                  vs moyenne locale
+                </span>
+              </div>
             </div>
             <button type="button" onClick={onClose} style={legacyCloseButtonStyle} aria-label="Fermer la mini fiche">
               <X size={18} strokeWidth={2.4} />
@@ -2950,6 +3090,8 @@ function GrandeFicheBien({
   const activities = store.getPropertyActivities(property.id).slice(0, 5);
   const price = formatEuro(property.price);
   const displaySeed = propertyDisplaySeed(property.id);
+  const headerScore = score?.score ?? property.score;
+  const headerTone = priorityToneFromScore(score, property.score);
   const propType = property.title.toLowerCase().includes('appartement')
     ? 'Appartement'
     : property.title.toLowerCase().includes('loft')
@@ -3029,6 +3171,53 @@ function GrandeFicheBien({
         </button>
 
         <div style={{ overflowY: 'auto', minHeight: 0, flex: 1, padding: 14, background: 'var(--color-bg-surface)' }}>
+          <div
+            style={{
+              position: 'sticky',
+              top: -14,
+              zIndex: 3,
+              margin: '-14px -14px 14px',
+              padding: '10px 54px 10px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              background: 'color-mix(in srgb, var(--color-bg-surface) 94%, transparent)',
+              borderBottom: '1px solid var(--color-border-default)',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div style={{ color: 'var(--color-text-tertiary)', fontSize: 10.5, fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' }}>
+                Fiche bien
+              </div>
+              <div style={{ color: 'var(--color-text-primary)', fontSize: 13.5, fontWeight: 750, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {property.title}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <span style={{ color: 'var(--color-text-secondary)', fontSize: 12, fontFamily: 'var(--notion-mono)', fontVariantNumeric: 'tabular-nums' }}>{price}</span>
+              <span
+                title="Indice de tension vendeur"
+                style={{
+                  height: 28,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0 9px',
+                  borderRadius: 6,
+                  border: `1px solid ${priorityAccentColor(headerTone)}`,
+                  color: 'var(--color-text-primary)',
+                  background: 'var(--color-bg-surface)',
+                  fontSize: 11.5,
+                  fontWeight: 800,
+                  fontFamily: 'var(--notion-mono)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {Math.round(headerScore)}
+              </span>
+            </div>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '570px minmax(0, 1fr)', gap: 24, padding: '2px 2px 16px' }}>
             <div>
               <div style={{ position: 'relative', height: 326, borderRadius: 7, background: 'var(--color-border-default)', overflow: 'hidden', border: '1px solid var(--color-border-default)' }}>
@@ -4210,6 +4399,107 @@ function BiensTable({
   );
 }
 
+function BiensGridSkeleton({ compact }: { compact: boolean }) {
+  return (
+    <div
+      aria-label="Chargement des biens"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: compact ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)',
+        gap: 14,
+      }}
+    >
+      {Array.from({ length: compact ? 9 : 12 }).map((_, index) => (
+        <div
+          key={index}
+          style={{
+            position: 'relative',
+            overflow: 'hidden',
+            background: 'var(--color-bg-surface)',
+            border: '1px solid var(--color-border-default)',
+            borderRadius: 'var(--radius)',
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: '0 auto 0 0',
+              width: 3,
+              background: index % 5 === 0 ? '#1E5A3A' : index % 3 === 0 ? '#8A6D1F' : '#D6DAD6',
+              opacity: 0.45,
+              zIndex: 1,
+            }}
+          />
+          <SkeletonBox width="100%" height={168} />
+          <div style={{ padding: '12px 14px 14px', display: 'grid', gap: 9 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <SkeletonText width="112px" lineHeight="17px" />
+              <SkeletonBox width="72px" height="19px" />
+            </div>
+            <SkeletonText width="86%" lineHeight="14px" />
+            <SkeletonText width="48%" lineHeight="12px" />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <SkeletonBox width="82px" height="20px" />
+              <SkeletonBox width="72px" height="20px" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr)', gap: 8, alignItems: 'center' }}>
+              <SkeletonBox width="34px" height="34px" style={{ borderRadius: '999px' }} />
+              <div style={{ display: 'grid', gap: 6 }}>
+                <SkeletonText width="80%" lineHeight="11px" />
+                <SkeletonText width="54%" lineHeight="10px" />
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BiensTableSkeleton() {
+  return (
+    <div
+      aria-label="Chargement du tableau des biens"
+      style={{
+        border: '1px solid var(--color-border-default)',
+        borderRadius: 10,
+        overflow: 'hidden',
+        background: 'var(--color-bg-surface)',
+      }}
+    >
+      <div style={{ minWidth: 1080 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: TABLE_COLUMNS, gap: 12, alignItems: 'center', height: 38, padding: '0 16px', background: 'var(--color-bg-hover)', borderBottom: '1px solid var(--color-border-default)' }}>
+          {Array.from({ length: 11 }).map((_, index) => (
+            <SkeletonText key={index} width={index === 1 ? '80px' : '54px'} lineHeight="11px" />
+          ))}
+        </div>
+        {Array.from({ length: 10 }).map((_, index) => (
+          <div key={index} style={{ display: 'grid', gridTemplateColumns: TABLE_COLUMNS, gap: 12, alignItems: 'center', minHeight: 72, padding: '0 16px', borderBottom: '1px solid var(--color-border-subtle)' }}>
+            <SkeletonBox width="15px" height="15px" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              <SkeletonBox width="44px" height="34px" style={{ borderRadius: 6 }} />
+              <SkeletonText width="150px" lineHeight="13px" />
+            </div>
+            <SkeletonText width="82px" lineHeight="13px" />
+            <SkeletonText width="70px" lineHeight="13px" />
+            <SkeletonText width="88px" lineHeight="13px" style={{ marginLeft: 'auto' }} />
+            <SkeletonBox width="74px" height="20px" style={{ marginLeft: 'auto' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <SkeletonBox width="34px" height="34px" style={{ borderRadius: '999px' }} />
+              <SkeletonText width="92px" lineHeight="11px" />
+            </div>
+            <SkeletonText width="62px" lineHeight="13px" />
+            <SkeletonText width="62px" lineHeight="13px" />
+            <SkeletonBox width="74px" height="21px" />
+            <SkeletonText width="42px" lineHeight="12px" style={{ marginLeft: 'auto' }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface BiensTableRowProps {
   property: Property;
   score?: ListingScore;
@@ -4235,6 +4525,9 @@ function BiensTableRow({
   const drop = deriveDrop(p);
   const status = statusMeta(p);
   const mono = 'var(--notion-mono)';
+  const priorityTone = priorityToneFromScore(score, p.score);
+  const accentColor = priorityAccentColor(priorityTone);
+  const rowShadow = `${selected ? 'inset 3px 0 0 var(--color-brand),' : ''} inset 0 0 0 9999px transparent`;
 
   return (
     <div
@@ -4253,13 +4546,24 @@ function BiensTableRow({
         borderBottom: '1px solid var(--color-border-subtle)',
         cursor: 'pointer',
         background: selected ? 'var(--color-bg-hover)' : 'var(--color-bg-surface)',
-        boxShadow: selected ? 'inset 3px 0 0 var(--color-brand)' : 'none',
+        boxShadow: rowShadow,
         transition: 'background 0.1s',
         outline: 'none',
+        position: 'relative',
       }}
       onMouseEnter={(e) => { if (!selected) (e.currentTarget as HTMLElement).style.background = 'var(--color-bg-hover)'; }}
       onMouseLeave={(e) => { if (!selected) (e.currentTarget as HTMLElement).style.background = 'var(--color-bg-surface)'; }}
     >
+      <span
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: '0 auto 0 0',
+          width: 3,
+          background: selected ? 'var(--color-brand)' : accentColor,
+          opacity: selected ? 1 : priorityTone === 'low' ? 0.45 : 0.82,
+        }}
+      />
       {/* Favorite */}
       <button
         onClick={onToggleFavorite}
@@ -4291,12 +4595,12 @@ function BiensTableRow({
       <span style={{ fontSize: 12.5, color: 'var(--color-text-secondary)' }}>{deriveType(p)}</span>
 
       {/* Prix actuel */}
-      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', fontFamily: mono, textAlign: 'right', whiteSpace: 'nowrap' }}>{price}</span>
+      <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: mono, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }}>{price}</span>
 
       {/* Baisse */}
       <span style={{ textAlign: 'right' }}>
         {drop > 0 ? (
-          <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 6, background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', fontSize: 11.5, fontWeight: 600, fontFamily: mono, whiteSpace: 'nowrap' }}>
+          <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 6, background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', fontSize: 11.5, fontWeight: 650, fontFamily: mono, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             −{formatEuro(drop)}
           </span>
         ) : (
@@ -4329,7 +4633,7 @@ function BiensTableRow({
       </span>
 
       {/* Dernier vu */}
-      <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: mono, textAlign: 'right', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)', fontFamily: mono, fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }}>
         {p.publishedDays === 0 ? "auj." : `${p.publishedDays} j`}
       </span>
     </div>

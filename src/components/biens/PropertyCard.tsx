@@ -7,6 +7,7 @@ import { formatEuro } from '../../lib/formatCurrency';
 import { DeferredImage } from '../ui/DeferredImage';
 
 type SignalFamily = 'price' | 'behavior' | 'context' | 'alert';
+type PriorityTone = 'high' | 'watch' | 'low';
 
 interface PropertyCardProps {
   property: Property;
@@ -25,6 +26,7 @@ interface PropertyCardProps {
   contactName?: string;
   signals?: ListingSignal[];
   scoreContent?: React.ReactNode;
+  priorityTone?: PriorityTone;
   onSignalBadgeClick?: (signal: ListingSignal) => void;
   onPrimarySignalBadgeClick?: (label: string) => void;
 }
@@ -119,6 +121,12 @@ function daysOnlineLabel(days: number): string {
   return `${days} jours`;
 }
 
+function priorityAccent(tone: PriorityTone | undefined) {
+  if (tone === 'high') return '#1E5A3A';
+  if (tone === 'watch') return '#8A6D1F';
+  return '#D6DAD6';
+}
+
 const photoNavStyle: React.CSSProperties = {
   position: 'absolute',
   top: '50%',
@@ -153,6 +161,7 @@ export function PropertyCard({
   contactName,
   signals = [],
   scoreContent,
+  priorityTone,
   onSignalBadgeClick,
   onPrimarySignalBadgeClick,
 }: PropertyCardProps) {
@@ -175,6 +184,7 @@ export function PropertyCard({
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
+        position: 'relative',
         transition: 'box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease',
         cursor: 'pointer',
         boxShadow: selected ? selectedShadow : defaultShadow,
@@ -193,6 +203,17 @@ export function PropertyCard({
         event.currentTarget.querySelectorAll<HTMLElement>('[data-photo-nav]').forEach((button) => { button.style.opacity = '0'; });
       }}
     >
+      <span
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: '0 auto 0 0',
+          width: 3,
+          background: priorityAccent(priorityTone),
+          opacity: priorityTone === 'low' ? 0.55 : 0.9,
+          zIndex: 1,
+        }}
+      />
       <div style={{ position: 'relative', height: 168, overflow: 'hidden', background: cssVar('--color-bg-muted'), flexShrink: 0 }}>
         <DeferredImage
           src={currentPhoto}
