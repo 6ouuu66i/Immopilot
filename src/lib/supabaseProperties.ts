@@ -109,7 +109,7 @@ const PROPERTY_TYPE_FILTERS = Object.entries(TYPE_LABELS).reduce<Record<string, 
   return acc;
 }, {});
 
-const ACTIVE_PROPERTIES_CANONICAL_VIEW = 'active_properties_canonical';
+const ACTIVE_PROPERTIES_CANONICAL_VIEW = 'active_properties_canonical_mat';
 
 export const ACTIVE_PROPERTIES_CANONICAL_SELECT = `
   listing_id,
@@ -381,7 +381,7 @@ export async function fetchSupabasePropertiesPage(
 
   let query = supabase
     .from(ACTIVE_PROPERTIES_CANONICAL_VIEW)
-    .select(ACTIVE_PROPERTIES_CANONICAL_SELECT, { count: 'exact' });
+    .select(ACTIVE_PROPERTIES_CANONICAL_SELECT, { count: 'estimated' });
 
   query = applyListFilters(query, options.filters);
   query = applySort(query, options.sort);
