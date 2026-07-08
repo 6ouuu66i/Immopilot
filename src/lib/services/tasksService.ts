@@ -51,6 +51,15 @@ export interface CreateTaskInput {
 export type UpdateTaskInput = Pick<TaskUpdate, 'title' | 'description' | 'due_date' | 'priority' | 'is_completed'>;
 
 type MutationError = { message: string } | null;
+type QueryResult<Row> = { data: Row[] | null; error: MutationError };
+
+type TaskListQuery = PromiseLike<QueryResult<TaskRow>> & {
+  eq(column: string, value: string | boolean): TaskListQuery;
+  gte(column: string, value: string): TaskListQuery;
+  lt(column: string, value: string): TaskListQuery;
+  not(column: string, operator: string, value: string | null): TaskListQuery;
+  order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): TaskListQuery;
+};
 
 type InsertTaskQuery = {
   insert(values: {
@@ -147,7 +156,7 @@ function splitByCompletion(tasks: TaskWithRelations[]): TasksByCompletion {
   };
 }
 
-function applyScope(query: ReturnType<NonNullable<typeof supabase>['from']> extends infer Q ? Q : never, scope: TaskScope | undefined) {
+function applyScope(query: TaskListQuery, scope: TaskScope | undefined) {
   const { start, end } = localDayBounds();
   if (scope === 'completed') return query.eq('is_completed', true).order('completed_at', { ascending: false, nullsFirst: false });
   const openQuery = scope && scope !== 'all' ? query.eq('is_completed', false) : query;
@@ -225,7 +234,7 @@ export const tasksService = {
   async listMyTasks({ scope = 'all' }: ListMyTasksInput = {}): Promise<TaskWithRelations[]> {
     const client = assertSupabase();
     const profile = await getCurrentProfile();
-    const query = client.from('tasks').select('*').eq('owner_id', profile.id);
+    const query = client.from('tasks').select('*').eq('owner_id', profile.id) as unknown as TaskListQuery;
     const { data, error } = await applyScope(query, scope);
     if (error) throw new Error(error.message);
     return hydrateTasks((data ?? []) as TaskRow[]);
@@ -236,7 +245,7 @@ export const tasksService = {
     const profile = await getCurrentProfile();
     if (profile.role !== 'admin') throw new Error('Reserve aux administrateurs.');
 
-    let query = client.from('tasks').select('*').eq('agency_id', profile.agency_id as string);
+    let query = client.from('tasks').select('*').eq('agency_id', profile.agency_id as string) as unknown as TaskListQuery;
     if (owner_id) query = query.eq('owner_id', owner_id);
     const { data, error } = await applyScope(query, scope);
     if (error) throw new Error(error.message);

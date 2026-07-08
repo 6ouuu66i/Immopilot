@@ -1,10 +1,6 @@
-import type { Json, Tables } from '../database.types';
-import { fetchSupabaseProperties, uniqueSupabaseProperties } from '../supabaseProperties';
+import type { Json } from '../database.types';
 import { supabase } from '../supabase';
-import { listingScoresService, type ListingScore } from './listingScoresService';
-
-type ListingRow = Tables<'listings'>;
-type PropertyRow = Tables<'properties'>;
+import type { ListingScore } from './listingScoresService';
 
 interface DashboardSignalRow {
   detected_at: string;
@@ -16,15 +12,8 @@ interface DashboardSignalRow {
   signal_type: string;
 }
 
-interface PriceHistoryRow {
-  change_amount: number | null;
-  change_type: string | null;
-  detected_at: string;
-  id: string;
-  listing_id: string | null;
-  new_price: number | null;
-  old_price: number | null;
-  property_id: string | null;
+interface DashboardRpcSignalRow extends DashboardSignalRow {
+  source: string;
 }
 
 export interface DashboardOpportunity {
@@ -78,6 +67,44 @@ function assertSupabase() {
   return supabase;
 }
 
+function asRecord(value: Json | undefined): Record<string, Json> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, Json> : {};
+}
+
+function asArray(value: Json | undefined): Json[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function numberValue(value: Json | undefined): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function stringValue(value: Json | undefined): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function nullableStringValue(value: Json | undefined): string | null {
+  const parsed = stringValue(value);
+  return parsed || null;
+}
+
+function nullableNumberValue(value: Json | undefined): number | null {
+  return value === null || value === undefined ? null : numberValue(value);
+}
+
+function scoreBand(value: Json | undefined): DashboardOpportunity['band'] {
+  return value === 'forte' || value === 'surveiller' || value === 'faible' ? value : 'faible';
+}
+
+function scoreConfidence(value: Json | undefined): DashboardOpportunity['confidence'] {
+  return value === 'haute' || value === 'moyenne' || value === 'faible' ? value : 'faible';
+}
+
 function signalTone(signalType: string): DashboardSignalItem['tone'] {
   if (signalType === 'price_drop' || signalType === 'below_market') return 'risk';
   if (signalType === 'fsbo' || signalType === 'republished' || signalType === 'agency_mandate_aging' || signalType === 'back_to_market') return 'watch';
@@ -121,146 +148,85 @@ function signalValue(signal: DashboardSignalRow): string {
   return signalLabel(signal.signal_type);
 }
 
-function opportunitySignal(score: ListingScore | undefined, signal: DashboardSignalRow | undefined): string {
-  if (score?.breakdown.reasons[0]?.reason_fr) return score.breakdown.reasons[0].reason_fr;
-  if (signal) return signalLabel(signal.signal_type);
-  return 'Aucun signal score';
-}
-
 function timeLabel(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
 }
 
-function subtitleFor(property: { city: string; propertyType?: string; source: string }) {
-  return [property.city, property.propertyType ?? 'Bien', property.source].filter(Boolean).join(' - ');
+function mapOpportunity(value: Json): DashboardOpportunity {
+  const row = asRecord(value);
+  const propertyId = nullableStringValue(row.propertyId);
+
+  return {
+    addedAt: stringValue(row.addedAt),
+    band: scoreBand(row.band),
+    confidence: scoreConfidence(row.confidence),
+    id: stringValue(row.id) || propertyId || '',
+    photo: nullableStringValue(row.photo),
+    price: nullableNumberValue(row.price),
+    propertyId,
+    score: numberValue(row.score),
+    signal: stringValue(row.signal) || 'Aucun signal score',
+    source: stringValue(row.source),
+    subtitle: stringValue(row.subtitle),
+    surface: nullableNumberValue(row.surface),
+    title: stringValue(row.title) || 'Bien sans titre',
+  };
 }
 
-function scoreDistribution(scores: ListingScore[]) {
-  return scores.reduce(
-    (acc, score) => {
-      acc[score.band] += 1;
-      return acc;
-    },
-    { forte: 0, surveiller: 0, faible: 0 },
-  );
+function mapSignalRow(value: Json): DashboardRpcSignalRow {
+  const row = asRecord(value);
+
+  return {
+    detected_at: stringValue(row.detected_at),
+    id: stringValue(row.id),
+    is_active: row.is_active === true,
+    listing_id: stringValue(row.listing_id),
+    metadata: row.metadata ?? {},
+    property_id: stringValue(row.property_id),
+    signal_type: stringValue(row.signal_type),
+    source: stringValue(row.source),
+  };
+}
+
+function mapSignalItem(signal: DashboardRpcSignalRow): DashboardSignalItem {
+  return {
+    id: signal.id,
+    propertyId: signal.property_id,
+    source: signal.source,
+    timeLabel: timeLabel(signal.detected_at),
+    title: signalLabel(signal.signal_type),
+    tone: signalTone(signal.signal_type),
+    value: signalValue(signal),
+  };
 }
 
 export async function getDashboardSnapshot(limit = 8): Promise<DashboardSnapshot> {
   const client = assertSupabase();
-  const activeListings = await fetchSupabaseProperties();
-  const activeProperties = uniqueSupabaseProperties(activeListings);
-  const propertyIds = activeProperties
-    .map((property) => property.supabasePropertyId)
-    .filter((propertyId): propertyId is string => Boolean(propertyId));
+  const { data, error } = await client.rpc('get_dashboard_snapshot', { p_opportunities_limit: limit });
+  if (error) throw new Error(error.message);
 
-  const sevenDaysAgo = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000)).toISOString();
-
-  const [scoresByProperty, activeSignalsCountResult, signalsResult, priceDropsResult] = await Promise.all([
-    listingScoresService.listByPropertyIds(propertyIds),
-    client
-      .from('listing_signals')
-      .select('id', { count: 'exact', head: true })
-      .eq('is_active', true),
-    client
-      .from('listing_signals')
-      .select('id, property_id, listing_id, signal_type, metadata, detected_at, is_active')
-      .eq('is_active', true)
-      .order('detected_at', { ascending: false })
-      .limit(64)
-      .returns<DashboardSignalRow[]>(),
-    client
-      .from('price_history')
-      .select('id, property_id, listing_id, old_price, new_price, change_amount, change_type, detected_at')
-      .gte('detected_at', sevenDaysAgo)
-      .in('change_type', ['decrease', 'price_drop'])
-      .order('detected_at', { ascending: false })
-      .returns<PriceHistoryRow[]>(),
-  ]);
-
-  if (activeSignalsCountResult.error) throw new Error(activeSignalsCountResult.error.message);
-  if (signalsResult.error) throw new Error(signalsResult.error.message);
-  if (priceDropsResult.error) throw new Error(priceDropsResult.error.message);
-
-  const scores = Object.values(scoresByProperty) as ListingScore[];
-  const signals = signalsResult.data ?? [];
-  const recentPriceDrops = priceDropsResult.data ?? [];
-  const propertiesById = new Map(activeProperties.map((property) => [property.supabasePropertyId as string, property]));
-  const latestSignalByProperty = new Map<string, DashboardSignalRow>();
-
-  for (const signal of signals) {
-    if (!latestSignalByProperty.has(signal.property_id)) {
-      latestSignalByProperty.set(signal.property_id, signal);
-    }
-  }
-
-  const opportunities = activeProperties
-    .map((property) => {
-      const propertyId = property.supabasePropertyId as string;
-      const score = scoresByProperty[propertyId];
-      const signal = latestSignalByProperty.get(propertyId);
-      return {
-        addedAt: score?.computed_at ?? null,
-        band: score?.band ?? 'faible',
-        confidence: score?.confidence ?? 'faible',
-        id: propertyId,
-        photo: property.photos[0] ?? null,
-        price: property.price,
-        propertyId,
-        score: score?.score ?? 0,
-        signal: opportunitySignal(score, signal),
-        source: property.source,
-        subtitle: subtitleFor(property),
-        surface: property.surface,
-        title: property.title,
-      };
-    })
-    .sort((a, b) => {
-      const scoreDelta = b.score - a.score;
-      if (scoreDelta !== 0) return scoreDelta;
-      return a.title.localeCompare(b.title);
-    })
-    .slice(0, limit);
-
-  const signalItems = signals
-    .map((signal) => {
-      const property = propertiesById.get(signal.property_id);
-      if (!property) return null;
-      return {
-        id: signal.id,
-        propertyId: signal.property_id,
-        source: property.source,
-        timeLabel: timeLabel(signal.detected_at),
-        title: signalLabel(signal.signal_type),
-        tone: signalTone(signal.signal_type),
-        value: signalValue(signal),
-      } satisfies DashboardSignalItem;
-    })
-    .filter((item): item is DashboardSignalItem => Boolean(item))
-    .slice(0, 4);
-
-  const distribution = scoreDistribution(scores);
-  const scoreAverage = scores.length > 0
-    ? Number((scores.reduce((sum, score) => sum + score.score, 0) / scores.length).toFixed(1))
-    : 0;
-  const lastSyncAt = scores
-    .map((score) => score.computed_at)
-    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
+  const snapshot = asRecord(data ?? {});
+  const distribution = asRecord(snapshot.score_distribution);
 
   return {
-    activeListingsCount: activeListings.length,
-    activePropertiesCount: activeProperties.length,
-    activeSignalsCount: activeSignalsCountResult.count ?? 0,
-    fsboCount: activeProperties.filter((property) => property.fsbo).length,
-    hotOpportunitiesCount: distribution.forte,
-    lastSyncAt,
-    opportunities,
-    priceDropCount: recentPriceDrops.length,
-    priceDropTotal: recentPriceDrops.reduce((sum, row) => sum + Math.abs(row.change_amount ?? 0), 0),
-    scoreAverage,
-    scoreDistribution: distribution,
-    scoredPropertiesCount: scores.length,
-    signals: signalItems,
+    activeListingsCount: numberValue(snapshot.active_listings_count),
+    activePropertiesCount: numberValue(snapshot.active_properties_count),
+    activeSignalsCount: numberValue(snapshot.active_signals_count),
+    fsboCount: numberValue(snapshot.fsbo_count),
+    hotOpportunitiesCount: numberValue(snapshot.hot_opportunities_count),
+    lastSyncAt: nullableStringValue(snapshot.last_sync_at),
+    opportunities: asArray(snapshot.opportunities).map(mapOpportunity),
+    priceDropCount: numberValue(snapshot.price_drop_count),
+    priceDropTotal: numberValue(snapshot.price_drop_total),
+    scoreAverage: numberValue(snapshot.score_average),
+    scoreDistribution: {
+      faible: numberValue(distribution.faible),
+      forte: numberValue(distribution.forte),
+      surveiller: numberValue(distribution.surveiller),
+    },
+    scoredPropertiesCount: numberValue(snapshot.scored_properties_count),
+    signals: asArray(snapshot.signals).map(mapSignalRow).map(mapSignalItem),
   };
 }

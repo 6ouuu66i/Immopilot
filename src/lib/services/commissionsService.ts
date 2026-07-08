@@ -46,6 +46,14 @@ export interface CommissionWithRelations extends CommissionRow {
 }
 
 type MutationError = { message: string } | null;
+type ListQueryResult<Row> = { data: Row[] | null; error: MutationError };
+
+type CommissionListQuery = PromiseLike<ListQueryResult<unknown>> & {
+  eq(column: string, value: string): CommissionListQuery;
+  gte(column: string, value: string): CommissionListQuery;
+  lt(column: string, value: string): CommissionListQuery;
+  order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): CommissionListQuery;
+};
 
 type InsertCommissionQuery = {
   insert(values: CommissionInsert): {
@@ -139,8 +147,8 @@ function cleanText(value: string | null | undefined) {
   return trimmed ? trimmed : null;
 }
 
-function applyFilters<T extends { gte: (column: string, value: string) => T; lt: (column: string, value: string) => T; eq: (column: string, value: string) => T }>(
-  query: T,
+function applyFilters(
+  query: CommissionListQuery,
   filters: CommissionFilters,
 ) {
   let next = query;
@@ -211,7 +219,7 @@ export const commissionsService = {
       .from('commissions')
       .select(COMMISSION_SELECT)
       .eq('agent_id', profile.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }) as unknown as CommissionListQuery;
 
     query = applyFilters(query, filters);
     const { data, error } = await query;
@@ -228,7 +236,7 @@ export const commissionsService = {
       .from('commissions')
       .select(COMMISSION_SELECT)
       .eq('agency_id', profile.agency_id as string)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }) as unknown as CommissionListQuery;
 
     query = applyFilters(query, filters);
     if (agent_id) query = query.eq('agent_id', agent_id);

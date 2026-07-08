@@ -40,6 +40,10 @@ function numericIdFromText(value: string): number {
   return Math.abs(hash) + 100000;
 }
 
+function normalizeAgentRole(role: string | null | undefined): Agent['role'] {
+  return role === 'admin' || role === 'agent' ? role : 'agent';
+}
+
 function mapStage(stage: PipelineStageRow): PipelineStage {
   return {
     id: stage.id,
@@ -102,7 +106,7 @@ function mapAgent(deal: DealFull): Agent {
   return {
     id: deal.owner_id,
     name: owner?.full_name ?? owner?.email ?? 'Agent',
-    role: owner?.role ?? 'agent',
+    role: normalizeAgentRole(owner?.role),
     avatar: owner?.avatar_url ?? '',
     status: 'active',
   };
