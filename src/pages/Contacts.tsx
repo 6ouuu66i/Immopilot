@@ -118,14 +118,6 @@ function openContactHash(contactId: string) {
   window.location.hash = `#contacts?contact=${encodeURIComponent(contactId)}`;
 }
 
-function numericIdFromText(value: string): number {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = Math.imul(31, hash) + value.charCodeAt(index);
-  }
-  return Math.abs(hash) + 100000;
-}
-
 function contactToView(contact: SupabaseContact): Contact {
   return {
     id: contact.id,
@@ -146,7 +138,7 @@ function propertyLinkToProperty(link: ContactPropertyLink): Property {
   const title = listing?.title_fr ?? listing?.title_nl ?? link.address;
 
   return {
-    id: numericIdFromText(link.property_id),
+    id: link.property_id,
     supabasePropertyId: link.property_id,
     title,
     propertyType: property?.property_subtype ?? property?.property_type ?? 'Bien',
@@ -177,7 +169,7 @@ function dealToView(deal: SupabaseDeal): Deal {
   return {
     id: deal.id,
     reference: deal.reference ?? 'DEAL-...',
-    propertyId: numericIdFromText(deal.property_id),
+    propertyId: deal.property_id,
     contactId: deal.contact_id ?? '',
     ownerId: deal.owner_id,
     stage: deal.is_lost ? 'Perdu' : deal.is_won ? 'Bien vendu' : 'Nouveau',
@@ -709,7 +701,7 @@ function PropertyLink({ property }: { property: Property }) {
   const relationship = property.tag ? cleanText(String(property.tag)) : 'interested';
 
   return (
-    <button className="linked-card linked-card-button" type="button" onClick={() => { window.location.hash = `#biens?propertyId=${property.id}`; }}>
+    <button className="linked-card linked-card-button" type="button" onClick={() => { window.location.hash = `#biens?propertyId=${encodeURIComponent(String(property.id))}`; }}>
       <div className="thumb">{property.photos[0] && <img src={property.photos[0]} alt="" />}</div>
       <div>
         <div className="linked-title">Bien lie - {relationship}</div>

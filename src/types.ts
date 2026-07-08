@@ -1,4 +1,5 @@
 export type ID = string;
+export type PropertyKey = ID | number;
 export type ISODate = string;
 export type ISODateTime = string;
 
@@ -29,7 +30,7 @@ export type FloodZone = 'Sûre' | 'Faible' | 'Moyenne' | 'Élevée';
 export type PropertyInternalStatus = 'disponible' | 'réservé' | 'archivé';
 
 export interface Property {
-  id: number;
+  id: PropertyKey;
   supabasePropertyId?: ID;
   supabaseListingId?: ID;
   title: string;
@@ -62,7 +63,7 @@ export type SignalStatus = 'nouveau' | 'traité' | 'ignoré';
 export interface PropertySignal {
   id: ID;
   type: SignalType;
-  propertyId: number;
+  propertyId: PropertyKey;
   heading: string;
   info: string;
   date: ISODate;
@@ -114,7 +115,7 @@ export type CommissionStatus = 'brouillon' | 'prévue' | 'payable' | 'payée';
 export interface Deal {
   id: ID;
   reference: string;
-  propertyId: number;
+  propertyId: PropertyKey;
   contactId: ID;
   ownerId: ID;
   stage: DealStage;
@@ -139,7 +140,7 @@ export interface Contact {
   roles: ContactRole[];
   notes: string[];
   assignedDeals: ID[];
-  assignedProperties: number[];
+  assignedProperties: PropertyKey[];
 }
 
 export type TaskPriority = 'haute' | 'moyenne' | 'basse';
@@ -152,7 +153,7 @@ export interface Task {
   priority: TaskPriority;
   done: boolean;
   agentId: ID;
-  propertyId?: number | null;
+  propertyId?: PropertyKey | null;
   dealId?: ID | null;
   contactId?: ID | null;
   place?: string;
@@ -162,7 +163,7 @@ export type TransferStatus = 'en_attente' | 'accepté' | 'refusé';
 
 export interface TransferRequest {
   id: ID;
-  propertyId: number;
+  propertyId: PropertyKey;
   dealId: ID;
   fromAgentId: ID;
   toAgentId: ID;
@@ -203,7 +204,7 @@ export interface Commission {
 }
 
 export interface UserPropertyMark {
-  propertyId: number;
+  propertyId: PropertyKey;
   agentId: ID;
   favorite: boolean;
   ignored: boolean;

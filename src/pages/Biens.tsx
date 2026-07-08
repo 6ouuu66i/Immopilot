@@ -46,7 +46,7 @@ import { dealsService } from '../lib/services/dealsService';
 import type { ListingScore } from '../lib/services/listingScoresService';
 import { propertyImageFallbacks } from '../lib/propertyImageFallbacks';
 import { formatEuro } from '../lib/formatCurrency';
-import type { Property, PropertyInternalStatus } from '../types';
+import type { Property, PropertyInternalStatus, PropertyKey } from '../types';
 
 type Store = typeof appStore;
 
@@ -193,6 +193,22 @@ function propertyEventProperties(property: Property, score?: ListingScore) {
   };
 }
 
+function propertyKeyFromHashParam(value: string | null): PropertyKey | null {
+  if (!value) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && String(numeric) === value ? numeric : value;
+}
+
+
+function propertyDisplaySeed(value: PropertyKey): number {
+  if (typeof value === 'number') return value;
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(31, hash) + value.charCodeAt(index);
+  }
+  return Math.abs(hash) + 1;
+}
+
 function supportsServerPagination(_params: {
   statusFilter: StatusFilter;
 }) {
@@ -225,15 +241,14 @@ export function Biens({ store }: BiensProps) {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [savedView, setSavedView] = useState<SavedViewKey>('tous');
   const [page, setPage] = useState(1);
-  const [carouselMap, setCarouselMap] = useState<Record<number, number>>({});
+  const [carouselMap, setCarouselMap] = useState<Record<string, number>>({});
   const [sortOpen, setSortOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(() => {
+  const [selectedPropertyId, setSelectedPropertyId] = useState<PropertyKey | null>(() => {
     const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
-    const propertyId = Number(params.get('propertyId'));
-    return Number.isFinite(propertyId) && propertyId > 0 ? propertyId : null;
+    return propertyKeyFromHashParam(params.get('propertyId'));
   });
-  const [fullPropertyId, setFullPropertyId] = useState<number | null>(null);
+  const [fullPropertyId, setFullPropertyId] = useState<PropertyKey | null>(null);
   const [panelPhotoIndex, setPanelPhotoIndex] = useState(0);
   const [noteDraft, setNoteDraft] = useState('');
   const [propertyDetailsById, setPropertyDetailsById] = useState<Record<string, PropertyDetail>>({});
@@ -243,8 +258,8 @@ export function Biens({ store }: BiensProps) {
     const handler = () => forceUpdate((n) => n + 1);
     const syncSelectedProperty = () => {
       const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
-      const propertyId = Number(params.get('propertyId'));
-      if (Number.isFinite(propertyId) && propertyId > 0) {
+      const propertyId = propertyKeyFromHashParam(params.get('propertyId'));
+      if (propertyId !== null) {
         setSelectedPropertyId(propertyId);
         setPanelPhotoIndex(0);
         setNoteDraft('');
@@ -573,24 +588,25 @@ export function Biens({ store }: BiensProps) {
     };
   }, [fullProperty]);
 
-  const handleCarousel = (id: number, dir: 1 | -1) => (e: React.MouseEvent) => {
+  const handleCarousel = (id: PropertyKey, dir: 1 | -1) => (e: React.MouseEvent) => {
     e.stopPropagation();
     setCarouselMap((prev) => {
       const prop = allProps.find((p) => p.id === id);
       if (!prop) return prev;
       const len = prop.photos.length;
-      const cur = prev[id] ?? 0;
-      return { ...prev, [id]: ((cur + dir) % len + len) % len };
+      const key = String(id);
+      const cur = prev[key] ?? 0;
+      return { ...prev, [key]: ((cur + dir) % len + len) % len };
     });
   };
 
-  const handleFav = (id: number) => (e: React.MouseEvent) => {
+  const handleFav = (id: PropertyKey) => (e: React.MouseEvent) => {
     e.stopPropagation();
     const property = allProps.find((item) => item.id === id);
     void propertyMarks.toggleFavorite(getMarkId(property));
   };
 
-  const handleIgnored = (id: number) => (e?: React.MouseEvent) => {
+  const handleIgnored = (id: PropertyKey) => (e?: React.MouseEvent) => {
     e?.stopPropagation();
     const property = allProps.find((item) => item.id === id);
     void propertyMarks.toggleIgnored(getMarkId(property));
@@ -697,7 +713,7 @@ export function Biens({ store }: BiensProps) {
     }
   };
 
-  const selectProperty = (id: number, surface: PropertyDetailSurface = 'mini') => {
+  const selectProperty = (id: PropertyKey, surface: PropertyDetailSurface = 'mini') => {
     const property = allProps.find((item) => item.id === id);
     if (property) {
       capturePostHogEvent('property_detail_opened', {
@@ -1307,7 +1323,7 @@ export function Biens({ store }: BiensProps) {
                   key={p.id}
                   property={p}
                   priorityImage={index === 0}
-                  carouselIndex={carouselMap[p.id] ?? 0}
+                  carouselIndex={carouselMap[String(p.id)] ?? 0}
                   onCarouselPrev={handleCarousel(p.id, -1)}
                   onCarouselNext={handleCarousel(p.id, 1)}
                   onToggleFavorite={handleFav(p.id)}
@@ -2298,6 +2314,7 @@ function LegacyMiniFicheBien({
   const { contacts } = useContacts();
   const [selectedContactId, setSelectedContactId] = useState(relatedContact?.id ?? '');
   const propertyStatus: PropertyInternalStatus = property.status ?? (property.reserved ? 'réservé' : 'disponible');
+  const displaySeed = propertyDisplaySeed(property.id);
   const ownerAgent = property.ownerId ? store.getAgents().find((agent) => agent.id === property.ownerId) : undefined;
   const priceHistory = property.priceHistory?.slice(-3) ?? [];
   const propType = property.title.toLowerCase().includes('appartement')
@@ -2308,10 +2325,10 @@ function LegacyMiniFicheBien({
         ? 'Villa'
         : 'Maison';
   const terrain = propType === 'Villa' || propType === 'Maison'
-    ? `${(450 + (property.id * 83) % 1100).toLocaleString('fr-BE')} m²`
+    ? `${(450 + (displaySeed * 83) % 1100).toLocaleString('fr-BE')} m²`
     : 'Non applicable';
   const propPpm = Math.round(property.price / Math.max(property.surface, 1));
-  const cityAvg = Math.round(propPpm * (0.9 + ((property.id * 7) % 22) / 100));
+  const cityAvg = Math.round(propPpm * (0.9 + ((displaySeed * 7) % 22) / 100));
   const deltaPercent = Math.round(((propPpm - cityAvg) / cityAvg) * 100);
   const barPercent = Math.max(8, Math.min(92, 50 + deltaPercent * 2));
   const vendorName = property.fsbo
@@ -2679,11 +2696,11 @@ function LegacyMiniFicheBien({
             <LegacyCharRow icon={<Square size={13} />} label="Terrain" value={terrain} />
             <LegacyCharRow icon={<Bed size={13} />} label="Chambres" value={String(property.bedrooms)} />
             <LegacyCharRow icon={<Bath size={13} />} label="Salles de bain" value={String(property.bathrooms)} />
-            <LegacyCharRow icon={<FileText size={13} />} label="Garages" value={property.id % 3 === 0 ? '0' : property.id % 3 === 1 ? '1' : '2'} />
-            <LegacyCharRow icon={<Clock size={13} />} label="Année de construction" value={String(1970 + (property.id * 11) % 55)} />
-            <LegacyCharRow icon={<Star size={13} />} label="PEB" value={`${property.peb} (${45 + (property.id * 19) % 250} kWh/m².an)`} />
-            <LegacyCharRow icon={<FileText size={13} />} label="Chauffage" value={['Pompe à chaleur', 'Gaz condensation', 'Mazout basse temp.', 'Électrique'][property.id % 4]} />
-            <LegacyCharRow icon={<Clock size={13} />} label="Disponibilité" value={property.id % 2 === 0 ? "À l'acte" : 'Libre immédiatement'} />
+            <LegacyCharRow icon={<FileText size={13} />} label="Garages" value={displaySeed % 3 === 0 ? '0' : displaySeed % 3 === 1 ? '1' : '2'} />
+            <LegacyCharRow icon={<Clock size={13} />} label="Année de construction" value={String(1970 + (displaySeed * 11) % 55)} />
+            <LegacyCharRow icon={<Star size={13} />} label="PEB" value={`${property.peb} (${45 + (displaySeed * 19) % 250} kWh/m².an)`} />
+            <LegacyCharRow icon={<FileText size={13} />} label="Chauffage" value={['Pompe à chaleur', 'Gaz condensation', 'Mazout basse temp.', 'Électrique'][displaySeed % 4]} />
+            <LegacyCharRow icon={<Clock size={13} />} label="Disponibilité" value={displaySeed % 2 === 0 ? "À l'acte" : 'Libre immédiatement'} />
           </section>
 
           <section style={legacyModuleStyle}>
@@ -2737,7 +2754,7 @@ function LegacyMiniFicheBien({
                 {property.source}
               </span>
               <span style={{ fontFamily: 'var(--notion-mono)', fontSize: 10.5, color: 'var(--color-text-secondary)' }}>
-                {property.source.slice(0, 3).toUpperCase()}-{property.id * 83712}
+                {property.source.slice(0, 3).toUpperCase()}-{displaySeed * 83712}
               </span>
             </div>
           </section>
@@ -2932,6 +2949,7 @@ function GrandeFicheBien({
   const relatedTasks = propertyTasks.tasks.map(taskToView);
   const activities = store.getPropertyActivities(property.id).slice(0, 5);
   const price = formatEuro(property.price);
+  const displaySeed = propertyDisplaySeed(property.id);
   const propType = property.title.toLowerCase().includes('appartement')
     ? 'Appartement'
     : property.title.toLowerCase().includes('loft')
@@ -2940,7 +2958,7 @@ function GrandeFicheBien({
         ? 'Villa'
         : 'Maison';
   const propPpm = Math.round(property.price / Math.max(property.surface, 1));
-  const cityAvg = Math.round(propPpm * (0.9 + ((property.id * 7) % 22) / 100));
+  const cityAvg = Math.round(propPpm * (0.9 + ((displaySeed * 7) % 22) / 100));
   const deltaPercent = Math.round(((propPpm - cityAvg) / cityAvg) * 100);
   const ownerAgent = property.ownerId ? store.getAgents().find((agent) => agent.id === property.ownerId) : undefined;
   const vendorName = relatedContact?.name ?? ownerAgent?.name ?? (property.fsbo ? 'Propriétaire particulier' : currentAgentName);
@@ -3108,12 +3126,12 @@ function GrandeFicheBien({
                 <DossierInfo label="Terrain" value={`${Math.round(property.surface * 3.2)} m²`} />
                 <DossierInfo label="Sous-type" value={propType === 'Appartement' ? 'Appartement' : 'Villa'} />
                 <DossierInfo label="Façade" value={`${Math.max(2, property.bedrooms + 1)}`} />
-                <DossierInfo label="Année de construction" value={String(1980 + (property.id * 7) % 42)} />
+                <DossierInfo label="Année de construction" value={String(1980 + (displaySeed * 7) % 42)} />
                 <DossierInfo label="Orientation jardin" value="Sud-Ouest" />
                 <DossierInfo label="État général" value={property.score > 76 ? 'Excellent' : 'Bon'} />
                 <DossierInfo label="Chauffage" value={property.peb === 'A' ? 'Pompe à chaleur' : 'Gaz condensation'} />
                 <DossierInfo label="Disponibilité" value={property.reserved ? 'À confirmer' : 'À convenir'} />
-                <DossierInfo label="Revenu cadastral" value={`${(1500 + property.id * 83).toLocaleString('fr-BE')} €`} />
+                <DossierInfo label="Revenu cadastral" value={`${(1500 + displaySeed * 83).toLocaleString('fr-BE')} €`} />
               </div>
             </aside>
           </div>
@@ -3131,10 +3149,10 @@ function GrandeFicheBien({
               <DossierLine label="Surface habitable" value={`${property.surface} m²`} />
               <DossierLine label="Surface terrain" value={`${Math.round(property.surface * 3.2)} m²`} />
               <DossierLine label="Façades" value={String(Math.max(2, property.bedrooms + 1))} />
-              <DossierLine label="Étages" value={String(property.id % 3 + 1)} />
+              <DossierLine label="Étages" value={String(displaySeed % 3 + 1)} />
               <DossierLine label="Chambres" value={String(property.bedrooms)} />
               <DossierLine label="Salles de bain" value={String(property.bathrooms)} />
-              <DossierLine label="Garages" value={property.id % 2 ? '1' : '2'} />
+              <DossierLine label="Garages" value={displaySeed % 2 ? '1' : '2'} />
               <DossierLine label="PEB" value={property.peb} badge />
               <DossierLine label="Charges" value="--" />
             </DossierCard>
@@ -3147,7 +3165,7 @@ function GrandeFicheBien({
                   <div style={{ color: 'var(--color-text-tertiary)', fontSize: 11.5, marginTop: 2 }}>Annonce détectée en ligne</div>
                 </div>
               </div>
-              <DossierLine label="Référence" value={`${property.source.slice(0, 3).toUpperCase()}-${property.id * 83712}`} />
+              <DossierLine label="Référence" value={`${property.source.slice(0, 3).toUpperCase()}-${displaySeed * 83712}`} />
               <DossierLine label="Publication" value={`Il y a ${property.publishedDays} j`} />
               <DossierLine label="Type vendeur" value={property.fsbo ? 'Particulier' : 'Professionnel'} />
               <button type="button" style={dossierLinkButtonStyle}>Ouvrir l'annonce source</button>
@@ -3174,8 +3192,8 @@ function GrandeFicheBien({
               <div style={{ color: 'var(--color-text-secondary)', fontSize: 11.5, marginBottom: 10 }}>{property.city} · Quartier cible</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 7 }}>
                 <DossierMarketStat label="Prix médian" value={`${formatEuro(cityAvg)}/m²`} delta="+3%" />
-                <DossierMarketStat label="Délai médian" value={`${28 + property.id * 2} jours`} delta="+5 jours" />
-                <DossierMarketStat label="Demandes actives" value={String(88 + property.id * 6)} delta="+12%" />
+                <DossierMarketStat label="Délai médian" value={`${28 + displaySeed * 2} jours`} delta="+5 jours" />
+                <DossierMarketStat label="Demandes actives" value={String(88 + displaySeed * 6)} delta="+12%" />
               </div>
               <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'var(--color-bg-page)', border: '1px solid var(--color-border-default)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-secondary)', fontSize: 11.5, marginBottom: 8 }}>
@@ -4111,12 +4129,12 @@ function statusMeta(p: Property): { label: string; bg: string; color: string } {
 
 interface BiensTableProps {
   items: Property[];
-  selectedId: number | null;
+  selectedId: PropertyKey | null;
   scoresByProperty: Record<string, ListingScore>;
   signalsByProperty: Record<string, ListingSignal[]>;
-  isFavorite: (id: number) => boolean;
-  onToggleFavorite: (id: number) => (e: React.MouseEvent) => void;
-  onSelect: (id: number) => void;
+  isFavorite: (id: PropertyKey) => boolean;
+  onToggleFavorite: (id: PropertyKey) => (e: React.MouseEvent) => void;
+  onSelect: (id: PropertyKey) => void;
 }
 
 function BiensTable({

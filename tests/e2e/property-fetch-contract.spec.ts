@@ -6,7 +6,7 @@ const source = readFileSync(path.join(process.cwd(), 'src/lib/supabaseProperties
 
 test('Biens list fetch no longer selects every listing and property column', () => {
   expect(source.includes(".select('*, properties(*)')")).toBe(false);
-  expect(source).toContain("const ACTIVE_PROPERTIES_CANONICAL_VIEW = 'active_properties_canonical'");
+  expect(source).toContain("const ACTIVE_PROPERTIES_CANONICAL_VIEW = 'active_properties_canonical_mat'");
   expect(source).toContain('export async function fetchSupabasePropertiesPage');
   expect(source).toContain(".from(ACTIVE_PROPERTIES_CANONICAL_VIEW)");
   expect(source).toContain('.range(from, to)');

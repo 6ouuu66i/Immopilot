@@ -150,14 +150,6 @@ export const ACTIVE_PROPERTIES_CANONICAL_SELECT = `
 
 export const LISTINGS_DETAIL_SELECT = '*, properties(*)';
 
-function numericIdFromText(value: string): number {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = Math.imul(31, hash) + value.charCodeAt(index);
-  }
-  return Math.abs(hash) + 100000;
-}
-
 function sourceLabel(source: string): string {
   return SOURCE_LABELS[source.toLowerCase()] ?? source;
 }
@@ -216,9 +208,10 @@ function priceHistory(listing: ListingRow): Property['priceHistory'] {
 function mapCanonicalPropertyRow(row: ActivePropertyCanonicalRow): Property {
   const source = sourceLabel(row.source);
   const location = row.locality ?? row.province ?? 'Belgique';
+  const stablePropertyId = row.property_id ?? row.canonical_property_id ?? row.listing_id;
 
   return {
-    id: numericIdFromText(row.listing_id),
+    id: stablePropertyId,
     supabasePropertyId: row.property_id ?? row.canonical_property_id ?? undefined,
     supabaseListingId: row.listing_id,
     title: propertyTitle(row, row),
@@ -261,9 +254,10 @@ function mapListingToProperty(
   const location = row.properties?.locality ?? row.properties?.province ?? 'Belgique';
   const livingArea = row.properties?.living_area ?? row.properties?.land_area ?? 0;
   const photos = row.photo_urls ?? [];
+  const stablePropertyId = row.properties?.id ?? row.property_id ?? row.id;
 
   return {
-    id: numericIdFromText(row.id),
+    id: stablePropertyId,
     supabasePropertyId: row.properties?.id ?? row.property_id ?? undefined,
     supabaseListingId: row.id,
     title: propertyTitle(row, row.properties),

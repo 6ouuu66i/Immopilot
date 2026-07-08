@@ -2,7 +2,7 @@ import {
   Agent, Property, PropertySignal, Deal, Contact, Task,
   TransferRequest, Notification, Commission, AuditLog, UserPropertyMark, UserRole,
   Activity, CommissionStatus, DealRelations, DealStage, PipelineStage, PropertyRelations,
-  ContactRelations, TransferStatus, NotificationType, PropertyInternalStatus
+  ContactRelations, TransferStatus, NotificationType, PropertyInternalStatus, PropertyKey
 } from '../types';
 
 // Constants for Mock Generation
@@ -658,29 +658,29 @@ export class ImmoPilotStore {
     return this.properties;
   }
 
-  public getProperty(id: number): Property | undefined {
+  public getProperty(id: PropertyKey): Property | undefined {
     return this.properties.find(p => p.id === id);
   }
 
-  public getPropertySignals(propertyId: number): PropertySignal[] {
+  public getPropertySignals(propertyId: PropertyKey): PropertySignal[] {
     return this.signals.filter((signal) => signal.propertyId === propertyId);
   }
 
-  public getPropertyTasks(propertyId: number): Task[] {
+  public getPropertyTasks(propertyId: PropertyKey): Task[] {
     return this.tasks.filter((task) => task.propertyId === propertyId);
   }
 
-  public getPropertyDeal(propertyId: number): Deal | undefined {
+  public getPropertyDeal(propertyId: PropertyKey): Deal | undefined {
     return this.deals.find((deal) => deal.propertyId === propertyId);
   }
 
-  public getPropertyContact(propertyId: number): Contact | undefined {
+  public getPropertyContact(propertyId: PropertyKey): Contact | undefined {
     const deal = this.getPropertyDeal(propertyId);
     if (deal) return this.getContact(deal.contactId);
     return this.contacts.find((contact) => contact.assignedProperties.includes(propertyId));
   }
 
-  public getPropertyActivities(propertyId: number): Activity[] {
+  public getPropertyActivities(propertyId: PropertyKey): Activity[] {
     const dealActivities = this.deals
       .filter((deal) => deal.propertyId === propertyId)
       .flatMap((deal) => deal.activities);
@@ -699,7 +699,7 @@ export class ImmoPilotStore {
     return [...dealActivities, ...signalActivities].sort((a, b) => b.date.localeCompare(a.date));
   }
 
-  public getPropertyRelations(propertyId: number): PropertyRelations | undefined {
+  public getPropertyRelations(propertyId: PropertyKey): PropertyRelations | undefined {
     const property = this.getProperty(propertyId);
     if (!property) return undefined;
 
@@ -716,7 +716,7 @@ export class ImmoPilotStore {
     };
   }
 
-  public registerNoteToProperty(propertyId: number, noteText: string) {
+  public registerNoteToProperty(propertyId: PropertyKey, noteText: string) {
     const prop = this.properties.find(p => p.id === propertyId);
     if (prop) {
       if (!prop.notes) prop.notes = [];
@@ -726,7 +726,7 @@ export class ImmoPilotStore {
     }
   }
 
-  public updatePropertyStatus(propertyId: number, status: PropertyInternalStatus): Property | undefined {
+  public updatePropertyStatus(propertyId: PropertyKey, status: PropertyInternalStatus): Property | undefined {
     const prop = this.properties.find(p => p.id === propertyId);
     if (!prop) return undefined;
 
@@ -747,7 +747,7 @@ export class ImmoPilotStore {
     return prop;
   }
 
-  public linkPropertyToContact(propertyId: number, contactId: string): Contact | undefined {
+  public linkPropertyToContact(propertyId: PropertyKey, contactId: string): Contact | undefined {
     const prop = this.properties.find(p => p.id === propertyId);
     const contact = this.contacts.find(c => c.id === contactId);
     if (!prop || !contact) return undefined;
@@ -773,7 +773,7 @@ export class ImmoPilotStore {
     return contact;
   }
 
-  public createPropertyTask(propertyId: number, title: string, options: Partial<Omit<Task, 'id' | 'title' | 'done' | 'propertyId'>> = {}): Task {
+  public createPropertyTask(propertyId: PropertyKey, title: string, options: Partial<Omit<Task, 'id' | 'title' | 'done' | 'propertyId'>> = {}): Task {
     const prop = this.properties.find(p => p.id === propertyId);
     if (!prop) throw new Error('Property not found');
 
@@ -794,7 +794,7 @@ export class ImmoPilotStore {
     });
   }
 
-  public freeReservedProperty(propertyId: number) {
+  public freeReservedProperty(propertyId: PropertyKey) {
     const prop = this.properties.find(p => p.id === propertyId);
     if (prop) {
       const originalOwner = prop.ownerId;
@@ -819,13 +819,13 @@ export class ImmoPilotStore {
   }
 
   // USER MARKS (Favorites / Ignored)
-  public getMarks(propertyId: number): UserPropertyMark {
+  public getMarks(propertyId: PropertyKey): UserPropertyMark {
     const existing = this.userMarks.find(m => m.propertyId === propertyId && m.agentId === this.currentAgentId);
     if (existing) return existing;
     return { propertyId, agentId: this.currentAgentId, favorite: false, ignored: false };
   }
 
-  public togglePropertyFavorite(propertyId: number) {
+  public togglePropertyFavorite(propertyId: PropertyKey) {
     let index = this.userMarks.findIndex(m => m.propertyId === propertyId && m.agentId === this.currentAgentId);
     let favVal = true;
     if (index !== -1) {
@@ -845,7 +845,7 @@ export class ImmoPilotStore {
     window.dispatchEvent(new CustomEvent('ip-state-changed'));
   }
 
-  public togglePropertyIgnored(propertyId: number) {
+  public togglePropertyIgnored(propertyId: PropertyKey) {
     let index = this.userMarks.findIndex(m => m.propertyId === propertyId && m.agentId === this.currentAgentId);
     let ignoreVal = true;
     if (index !== -1) {
@@ -898,7 +898,7 @@ export class ImmoPilotStore {
     };
   }
 
-  public createDeal(propertyId: number, contactId: string, customStage: DealStage = 'Nouveau'): Deal {
+  public createDeal(propertyId: PropertyKey, contactId: string, customStage: DealStage = 'Nouveau'): Deal {
     const prop = this.properties.find(p => p.id === propertyId);
     if (!prop) throw new Error('Biens non existant / Property not found');
     
@@ -1133,7 +1133,7 @@ export class ImmoPilotStore {
     return contact;
   }
 
-  public linkDealToProperty(dealId: string, propertyId: number): Property | undefined {
+  public linkDealToProperty(dealId: string, propertyId: PropertyKey): Property | undefined {
     const deal = this.deals.find(d => d.id === dealId);
     const property = this.properties.find(p => p.id === propertyId);
     if (!deal || !property) return undefined;
@@ -1236,7 +1236,7 @@ export class ImmoPilotStore {
 
   public getContactProperties(contactId: string): Property[] {
     const contact = this.getContact(contactId);
-    const propertyIds = new Set<number>([
+    const propertyIds = new Set<PropertyKey>([
       ...(contact?.assignedProperties ?? []),
       ...this.getContactDeals(contactId).map((deal) => deal.propertyId),
     ]);
@@ -1346,7 +1346,7 @@ export class ImmoPilotStore {
     date: string;
     time: string;
     priority?: Task['priority'];
-    propertyId?: number | null;
+    propertyId?: PropertyKey | null;
     dealId?: string | null;
     contactId?: string | null;
     place?: string;
@@ -1439,7 +1439,7 @@ export class ImmoPilotStore {
     return this.transfers;
   }
 
-  public createTransferRequest(propertyId: number, dealId: string, toAgentId: string): TransferRequest {
+  public createTransferRequest(propertyId: PropertyKey, dealId: string, toAgentId: string): TransferRequest {
     // Current owner is the transferee
     const prop = this.properties.find(p => p.id === propertyId);
     const fromAgentId = prop?.ownerId || 'adam';

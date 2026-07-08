@@ -23,6 +23,15 @@ const PROPERTY_IMAGE_SETS = [
   ],
 ];
 
-export function propertyImageFallbacks(propertyId: number): string[] {
-  return PROPERTY_IMAGE_SETS[Math.abs(propertyId) % PROPERTY_IMAGE_SETS.length];
+function numericSeed(value: string | number): number {
+  if (typeof value === 'number') return value;
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(31, hash) + value.charCodeAt(index);
+  }
+  return Math.abs(hash);
+}
+
+export function propertyImageFallbacks(propertyId: string | number): string[] {
+  return PROPERTY_IMAGE_SETS[numericSeed(propertyId) % PROPERTY_IMAGE_SETS.length];
 }

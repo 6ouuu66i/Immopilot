@@ -8,7 +8,7 @@ import { ScoreRing } from '../biens/ScoreRing';
 import { useAgencyCommissions, useMyCommissions } from '../../lib/useCommissions';
 import { taskToView, useTasksFor } from '../../lib/useTasks';
 import { useMyTransfers } from '../../lib/useTransfers';
-import type { Deal, DealStage } from '../../types';
+import type { Deal, DealStage, PropertyKey } from '../../types';
 import { NotesList, StatusBadge } from '../ui';
 
 type Store = typeof appStore;
@@ -18,7 +18,7 @@ interface DealFichePanelProps {
   store: Store;
   onClose: () => void;
   onMoveDeal: (dealId: string, stageName: string) => void;
-  onUpdateDealLinks?: (dealId: string, links: { contactId?: string; propertyId?: number }) => void;
+  onUpdateDealLinks?: (dealId: string, links: { contactId?: string; propertyId?: PropertyKey }) => void;
   onCloseDeal?: (dealId: string, outcome: 'won' | 'lost') => void;
   onReopenDeal?: (dealId: string) => void;
 }
@@ -135,7 +135,10 @@ export function DealFichePanel({
   };
 
   const handleLinkProperty = () => {
-    const propertyId = Number(selectedPropertyId);
+    const numericPropertyId = Number(selectedPropertyId);
+    const propertyId: PropertyKey = Number.isFinite(numericPropertyId) && String(numericPropertyId) === selectedPropertyId
+      ? numericPropertyId
+      : selectedPropertyId;
     onUpdateDealLinks?.(deal.id, { propertyId });
     const linked = store.getProperty(propertyId);
     setActionMessage(linked ? `Bien lié : ${linked.title}` : 'Bien introuvable.');

@@ -32,14 +32,6 @@ function fmtComm(v: number) {
   return formatEuro(v);
 }
 
-function numericIdFromText(value: string): number {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = Math.imul(31, hash) + value.charCodeAt(index);
-  }
-  return Math.abs(hash) + 100000;
-}
-
 function normalizeAgentRole(role: string | null | undefined): Agent['role'] {
   return role === 'admin' || role === 'agent' ? role : 'agent';
 }
@@ -59,7 +51,7 @@ function mapProperty(deal: DealFull, scoresByProperty: ListingScoresByProperty):
   const listingScore = scoresByProperty[deal.property_id];
 
   return {
-    id: numericIdFromText(deal.property_id),
+    id: deal.property_id,
     supabasePropertyId: deal.property_id,
     title,
     propertyType: property?.property_subtype ?? property?.property_type ?? 'Bien',
@@ -97,7 +89,7 @@ function mapContact(deal: DealFull): Contact | undefined {
     roles: (deal.contact.roles.length > 0 ? deal.contact.roles : ['prospect']) as Contact['roles'],
     notes: deal.contact.notes ? [deal.contact.notes] : [],
     assignedDeals: [deal.id],
-    assignedProperties: [numericIdFromText(deal.property_id)],
+    assignedProperties: [deal.property_id],
   };
 }
 
@@ -122,7 +114,7 @@ function mapTask(task: DealFull['tasks'][number]): Task {
     priority: task.priority === 'high' || task.priority === 'haute' ? 'haute' : task.priority === 'low' || task.priority === 'basse' ? 'basse' : 'moyenne',
     done: task.is_completed,
     agentId: task.owner_id,
-    propertyId: task.property_id ? numericIdFromText(task.property_id) : null,
+    propertyId: task.property_id ?? null,
     dealId: task.deal_id,
     contactId: task.contact_id,
     place: undefined,
@@ -154,7 +146,7 @@ function mapDeal(deal: DealFull): Deal {
   return {
     id: deal.id,
     reference: deal.reference ?? 'DEAL-...',
-    propertyId: numericIdFromText(deal.property_id),
+    propertyId: deal.property_id,
     contactId: deal.contact_id ?? '',
     ownerId: deal.owner_id,
     stage: deal.stage?.name ?? 'Nouveau',
@@ -175,7 +167,7 @@ function createPipelineStoreFacade(
   scoresByProperty: ListingScoresByProperty,
 ): Store {
   const deals = dealsFull.map(mapDeal);
-  const properties = new Map(dealsFull.map((deal) => [numericIdFromText(deal.property_id), mapProperty(deal, scoresByProperty)]));
+  const properties = new Map<Property['id'], Property>(dealsFull.map((deal) => [deal.property_id, mapProperty(deal, scoresByProperty)]));
   const contacts = new Map(
     dealsFull
       .map(mapContact)
@@ -192,7 +184,7 @@ function createPipelineStoreFacade(
     getDeal: (id: string) => deals.find((deal) => deal.id === id),
     getDealByReference: (reference: string) => deals.find((deal) => deal.reference === reference),
     getPipelineStages: () => stages,
-    getProperty: (id: number) => properties.get(id),
+    getProperty: (id: Property['id']) => properties.get(id),
     getProperties: () => Array.from(properties.values()),
     getContact: (id: string) => contacts.get(id),
     getContacts: () => Array.from(contacts.values()),
@@ -295,7 +287,7 @@ export function Pipeline({ store }: PipelineProps) {
     void dealsState.updateDealStage(dealId, stage.id);
   };
 
-  const handleUpdateDealLinks = (dealId: string, links: { contactId?: string; propertyId?: number }) => {
+  const handleUpdateDealLinks = (dealId: string, links: { contactId?: string; propertyId?: Property['id'] }) => {
     const patch: { contact_id?: string | null; property_id?: string | null } = {};
 
     if (links.contactId !== undefined) {
@@ -303,9 +295,7 @@ export function Pipeline({ store }: PipelineProps) {
     }
 
     if (links.propertyId !== undefined) {
-      const matchingDeal = dealsState.deals.find((item) => (
-        item.property_id && numericIdFromText(item.property_id) === links.propertyId
-      ));
+      const matchingDeal = dealsState.deals.find((item) => item.property_id === links.propertyId);
       if (matchingDeal?.property_id) {
         patch.property_id = matchingDeal.property_id;
       }
