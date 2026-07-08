@@ -88,6 +88,13 @@ export type Database = {
             foreignKeyName: "activities_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "activities_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -370,6 +377,13 @@ export type Database = {
             foreignKeyName: "contact_properties_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "contact_properties_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -539,6 +553,13 @@ export type Database = {
             foreignKeyName: "deals_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "deals_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -594,6 +615,13 @@ export type Database = {
             foreignKeyName: "listing_outcomes_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "listing_outcomes_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -636,6 +664,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "active_properties_canonical"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "listing_score_history_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
             referencedColumns: ["canonical_property_id"]
           },
           {
@@ -709,6 +744,13 @@ export type Database = {
             foreignKeyName: "listing_scores_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: true
+            referencedRelation: "active_properties_canonical_mat"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "listing_scores_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -767,6 +809,13 @@ export type Database = {
             foreignKeyName: "listing_signals_listing_id_fkey"
             columns: ["listing_id"]
             isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
+            referencedColumns: ["listing_id"]
+          },
+          {
+            foreignKeyName: "listing_signals_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
             referencedRelation: "listings"
             referencedColumns: ["id"]
           },
@@ -775,6 +824,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "active_properties_canonical"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "listing_signals_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
             referencedColumns: ["canonical_property_id"]
           },
           {
@@ -976,6 +1032,13 @@ export type Database = {
             foreignKeyName: "listings_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "listings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -1049,6 +1112,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "active_properties_canonical"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "notes_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
             referencedColumns: ["canonical_property_id"]
           },
           {
@@ -1206,6 +1276,13 @@ export type Database = {
             foreignKeyName: "price_history_listing_id_fkey"
             columns: ["listing_id"]
             isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
+            referencedColumns: ["listing_id"]
+          },
+          {
+            foreignKeyName: "price_history_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
             referencedRelation: "listings"
             referencedColumns: ["id"]
           },
@@ -1214,6 +1291,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "active_properties_canonical"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "price_history_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
             referencedColumns: ["canonical_property_id"]
           },
           {
@@ -1599,6 +1683,13 @@ export type Database = {
             foreignKeyName: "tasks_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "tasks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -1716,6 +1807,13 @@ export type Database = {
             foreignKeyName: "user_property_marks_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "user_property_marks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -1779,6 +1877,74 @@ export type Database = {
             foreignKeyName: "listings_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "listings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      active_properties_canonical_mat: {
+        Row: {
+          ai_badges: string[] | null
+          ai_gross_yield: number | null
+          ai_summary: string | null
+          bathroom_count: number | null
+          bedroom_count: number | null
+          canonical_property_id: string | null
+          days_online: number | null
+          first_seen_at: string | null
+          has_price_drop: boolean | null
+          has_republished_signal: boolean | null
+          house_number: string | null
+          is_fsbo: boolean | null
+          land_area: number | null
+          last_seen_at: string | null
+          listing_id: string | null
+          living_area: number | null
+          locality: string | null
+          old_price: number | null
+          postal_code: string | null
+          price: number | null
+          primary_photo_url: string | null
+          property_id: string | null
+          property_subtype: string | null
+          property_type: string | null
+          province: string | null
+          published_at: string | null
+          seller_score: number | null
+          source: string | null
+          status: string | null
+          street: string | null
+          surface_value: number | null
+          title_fr: string | null
+          title_nl: string | null
+          url: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "active_properties_canonical"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "listings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "active_properties_canonical_mat"
+            referencedColumns: ["canonical_property_id"]
+          },
+          {
+            foreignKeyName: "listings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -1822,11 +1988,15 @@ export type Database = {
         Returns: Json
       }
       is_admin: { Args: never; Returns: boolean }
+      notify_scan_complete: { Args: never; Returns: undefined }
       purge_listing_score_history: {
         Args: { retention_days?: number }
         Returns: number
       }
+      refresh_active_properties_canonical: { Args: never; Returns: undefined }
       refresh_market_reference: { Args: never; Returns: undefined }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       sync_agency_mandate_aging_signal: { Args: never; Returns: undefined }
       sync_competition_shock_signal_batch: { Args: never; Returns: undefined }
       sync_daily_pipeline: { Args: never; Returns: undefined }
