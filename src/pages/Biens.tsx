@@ -3187,6 +3187,7 @@ function GrandeFicheBien({
       >
         <button
           type="button"
+          className="lv-biens-dossier-close"
           onClick={onClose}
           style={{ ...legacyCloseButtonStyle, position: 'absolute', top: 18, right: 18, zIndex: 2, background: 'var(--color-bg-surface)', border: '1px solid var(--color-border-default)' }}
           aria-label="Fermer la grande fiche"
@@ -3194,8 +3195,9 @@ function GrandeFicheBien({
           <X size={18} strokeWidth={2.4} />
         </button>
 
-        <div style={{ overflowY: 'auto', minHeight: 0, flex: 1, padding: 14, background: 'var(--color-bg-surface)' }}>
+        <div className="lv-biens-dossier-scroll" style={{ overflowY: 'auto', minHeight: 0, flex: 1, padding: 14, background: 'var(--color-bg-surface)' }}>
           <div
+            className="lv-biens-dossier-header"
             style={{
               position: 'sticky',
               top: -14,
@@ -3242,9 +3244,9 @@ function GrandeFicheBien({
               </span>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '570px minmax(0, 1fr)', gap: 24, padding: '2px 2px 16px' }}>
-            <div>
-              <div style={{ position: 'relative', height: 326, borderRadius: 7, background: 'var(--color-border-default)', overflow: 'hidden', border: '1px solid var(--color-border-default)' }}>
+          <div className="lv-biens-dossier-hero" style={{ display: 'grid', gridTemplateColumns: '570px minmax(0, 1fr)', gap: 24, padding: '2px 2px 16px' }}>
+            <div className="lv-biens-dossier-gallery-column">
+              <div className="lv-biens-dossier-gallery" style={{ position: 'relative', height: 326, borderRadius: 7, background: 'var(--color-border-default)', overflow: 'hidden', border: '1px solid var(--color-border-default)' }}>
                 <img
                   src={currentPhoto}
                   alt={property.title}
@@ -3266,7 +3268,7 @@ function GrandeFicheBien({
                 </span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginTop: 8 }}>
+              <div className="lv-biens-dossier-thumbs" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginTop: 8 }}>
                 {photos.slice(0, 6).map((url, index) => (
                   <button key={`${url}-${index}`} type="button" onClick={() => setPhotoIndex(index)} style={dossierThumbStyle(index === photoIndex % photos.length)}>
                     <img
@@ -3285,7 +3287,7 @@ function GrandeFicheBien({
                 ))}
               </div>
 
-              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <div className="lv-biens-dossier-media-actions" style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                 <DossierActionButton icon={<Search size={13} />}>Voir sur carte</DossierActionButton>
                 <DossierActionButton icon={<LayoutGrid size={13} />} onClick={onClose}>Ouvrir mini fiche</DossierActionButton>
                 <DossierActionButton icon={<Plus size={13} />}>Partager</DossierActionButton>
@@ -3294,8 +3296,8 @@ function GrandeFicheBien({
               </div>
             </div>
 
-            <aside style={{ padding: '10px 14px 0 8px' }}>
-              <h2 style={{ margin: '4px 34px 8px 0', color: 'var(--color-text-primary)', fontFamily: 'var(--font-serif, var(--notion-serif))', fontSize: 34, lineHeight: 1.05, fontWeight: 400, letterSpacing: '-0.02em' }}>
+            <aside className="lv-biens-dossier-summary" style={{ padding: '10px 14px 0 8px' }}>
+              <h2 className="lv-biens-dossier-title" style={{ margin: '4px 34px 8px 0', color: 'var(--color-text-primary)', fontFamily: 'var(--font-serif, var(--notion-serif))', fontSize: 34, lineHeight: 1.05, fontWeight: 400, letterSpacing: '-0.02em' }}>
                 {property.title}
               </h2>
               <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -3312,7 +3314,7 @@ function GrandeFicheBien({
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr repeat(4, 1fr)', borderTop: '1px solid var(--color-border-subtle)', borderBottom: '1px solid var(--color-border-subtle)', marginTop: 18, padding: '13px 0' }}>
+              <div className="lv-biens-dossier-metrics" style={{ display: 'grid', gridTemplateColumns: '1.2fr repeat(4, 1fr)', borderTop: '1px solid var(--color-border-subtle)', borderBottom: '1px solid var(--color-border-subtle)', marginTop: 18, padding: '13px 0' }}>
                 <DossierTopMetric label="Prix demandé" value={price} strong />
                 <DossierTopMetric label="Surface" value={`${property.surface} m²`} />
                 <DossierTopMetric label="Chambres" value={String(property.bedrooms)} />
@@ -3330,7 +3332,7 @@ function GrandeFicheBien({
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 28px', marginTop: 15, paddingRight: 8 }}>
+              <div className="lv-biens-dossier-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 28px', marginTop: 15, paddingRight: 8 }}>
                 <DossierInfo label="Type de bien" value={propType} />
                 <DossierInfo label="Terrain" value={`${Math.round(property.surface * 3.2)} m²`} />
                 <DossierInfo label="Sous-type" value={propType === 'Appartement' ? 'Appartement' : 'Villa'} />
@@ -3346,6 +3348,7 @@ function GrandeFicheBien({
           </div>
 
           <div
+            className="lv-biens-dossier-modules"
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
@@ -3439,7 +3442,7 @@ function GrandeFicheBien({
               </div>
             </DossierCard>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridColumn: '1 / -1', gap: 12, order: 7 }}>
+            <div className="lv-biens-dossier-pair" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridColumn: '1 / -1', gap: 12, order: 7 }}>
               <DossierCard title="Signaux liés" icon={<Clock size={14} />}>
                 {relatedSignals.length > 0 ? relatedSignals.slice(0, 3).map((signal) => (
                   <DossierSignal key={signal.id} title={signal.heading} meta={signal.info || signal.time} tone={signal.type === 'drop' ? 'orange' : 'green'} />
@@ -3467,7 +3470,7 @@ function GrandeFicheBien({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+          <div className="lv-biens-dossier-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
             <DossierCard title="Activité récente" action="Voir toute l'activité">
               {activities.length > 0 ? activities.slice(0, 3).map((activity) => (
                 <div key={activity.id} style={{ display: 'grid', gridTemplateColumns: '70px minmax(0, 1fr)', gap: 10, padding: '6px 0', color: 'var(--color-text-secondary)', fontSize: 11.5 }}>

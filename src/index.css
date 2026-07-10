@@ -69,6 +69,178 @@
   --notion-mono: var(--lv-font-mono);
 }
 
+/* Grande fiche bien — dossier responsive et composition La Cote. */
+.lv-biens-dossier-backdrop {
+  padding: 12px !important;
+}
+
+.lv-biens-dossier {
+  width: min(1280px, 100%) !important;
+  border-radius: 0 !important;
+  box-shadow: 0 18px 48px rgba(16, 22, 19, 0.18) !important;
+}
+
+.lv-biens-dossier-scroll {
+  overflow-x: hidden !important;
+}
+
+.lv-biens-dossier-close {
+  width: 40px !important;
+  height: 40px !important;
+  top: 10px !important;
+  right: 10px !important;
+  border-radius: 0 !important;
+}
+
+.lv-biens-dossier-gallery,
+.lv-biens-dossier-thumbs button,
+.lv-biens-dossier-summary span,
+.lv-biens-dossier-summary button {
+  border-radius: 0 !important;
+}
+
+.lv-biens-dossier-title {
+  font-family: var(--lv-font-title, var(--font-title)) !important;
+  font-size: clamp(25px, 2.3vw, 32px) !important;
+  font-weight: 600 !important;
+  line-height: 1.08 !important;
+  text-wrap: balance;
+}
+
+.lv-biens-dossier-media-actions {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.lv-biens-dossier-media-actions::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .lv-biens-dossier-backdrop {
+    left: 76px !important;
+    padding: 8px !important;
+  }
+
+  .lv-biens-dossier {
+    width: 100% !important;
+  }
+
+  .lv-biens-dossier-hero {
+    grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr) !important;
+    gap: 18px !important;
+  }
+}
+
+@media (max-width: 980px) {
+  .lv-biens-dossier-backdrop {
+    left: 0 !important;
+  }
+
+  .lv-biens-dossier-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .lv-biens-dossier-summary {
+    padding: 8px 0 0 !important;
+  }
+
+  .lv-biens-dossier-gallery {
+    height: clamp(260px, 52vw, 430px) !important;
+  }
+
+  .lv-biens-dossier-modules > * {
+    grid-column: span 6 !important;
+  }
+
+  .lv-biens-dossier-pair {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .lv-biens-dossier-backdrop {
+    inset: 0 !important;
+    padding: 0 !important;
+  }
+
+  .lv-biens-dossier {
+    width: 100vw !important;
+    height: 100dvh !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .lv-biens-dossier-scroll {
+    padding: 0 16px 24px !important;
+  }
+
+  .lv-biens-dossier-header {
+    top: 0 !important;
+    margin: 0 -16px 14px !important;
+    min-height: 58px;
+    padding: 10px 58px 10px 16px !important;
+  }
+
+  .lv-biens-dossier-close {
+    width: 44px !important;
+    height: 44px !important;
+    top: 7px !important;
+    right: 7px !important;
+  }
+
+  .lv-biens-dossier-gallery {
+    height: 248px !important;
+  }
+
+  .lv-biens-dossier-thumbs {
+    display: flex !important;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scroll-snap-type: x proximity;
+  }
+
+  .lv-biens-dossier-thumbs > button {
+    min-width: 76px;
+    scroll-snap-align: start;
+  }
+
+  .lv-biens-dossier-media-actions > button {
+    min-height: 44px !important;
+  }
+
+  .lv-biens-dossier-title {
+    margin-right: 0 !important;
+    font-size: 25px !important;
+  }
+
+  .lv-biens-dossier-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0 !important;
+  }
+
+  .lv-biens-dossier-metrics > div {
+    min-height: 74px;
+    padding: 12px 8px !important;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .lv-biens-dossier-detail-grid,
+  .lv-biens-dossier-pair,
+  .lv-biens-dossier-bottom-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .lv-biens-dossier-modules {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .lv-biens-dossier-modules > * {
+    grid-column: 1 / -1 !important;
+  }
+}
+
 @keyframes skeleton-pulse {
   0%, 100% { opacity: 0.62; }
   50% { opacity: 0.42; }
