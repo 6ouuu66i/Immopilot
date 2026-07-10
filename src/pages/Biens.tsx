@@ -235,12 +235,12 @@ function propertyKeyFromHashParam(value: string | null): PropertyKey | null {
 
 
 function propertyDisplaySeed(value: PropertyKey): number {
-  if (typeof value === 'number') return value;
+  if (typeof value === 'number') return (Math.abs(Math.trunc(value)) % 97) + 1;
   let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
     hash = Math.imul(31, hash) + value.charCodeAt(index);
   }
-  return Math.abs(hash) + 1;
+  return (Math.abs(hash) % 97) + 1;
 }
 
 function supportsServerPagination(_params: {
