@@ -92,6 +92,15 @@
   border-radius: 0 !important;
 }
 
+.lv-biens-dossier button,
+.lv-biens-dossier input {
+  min-height: 40px !important;
+}
+
+.lv-biens-dossier button {
+  min-width: 40px;
+}
+
 .lv-biens-dossier-gallery,
 .lv-biens-dossier-thumbs button,
 .lv-biens-dossier-summary span,
@@ -239,6 +248,15 @@
     height: 44px !important;
     top: 7px !important;
     right: 7px !important;
+  }
+
+  .lv-biens-dossier button,
+  .lv-biens-dossier input {
+    min-height: 44px !important;
+  }
+
+  .lv-biens-dossier button {
+    min-width: 44px;
   }
 
   .lv-biens-dossier-gallery {
