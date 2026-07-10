@@ -3320,12 +3320,11 @@ function GrandeFicheBien({
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(12, minmax(0, 1fr))',
-              gap: 12,
-              alignItems: 'stretch',
-              gridAutoFlow: 'dense',
+              gap: 16,
+              alignItems: 'start',
             }}
           >
-            <DossierCard title="Caractéristiques" icon={<Square size={14} />} style={{ gridColumn: 'span 3', order: 4 }}>
+            <DossierCard title="Caractéristiques" icon={<Square size={14} />} style={{ gridColumn: 'span 4', order: 2 }}>
               <DossierLine label="Surface habitable" value={`${property.surface} m²`} />
               <DossierLine label="Surface terrain" value={`${Math.round(property.surface * 3.2)} m²`} />
               <DossierLine label="Façades" value={String(Math.max(2, property.bedrooms + 1))} />
@@ -3337,38 +3336,26 @@ function GrandeFicheBien({
               <DossierLine label="Charges" value="--" />
             </DossierCard>
 
-            <DossierCard title="Source" icon={<FileText size={14} />} style={{ gridColumn: 'span 3', order: 2 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0 12px', borderBottom: '1px solid var(--color-border-subtle)' }}>
-                <span style={{ width: 9, height: 9, borderRadius: 99, background: property.source === 'Immoweb' ? 'var(--color-source-border)' : property.source === 'Biddit' ? 'var(--color-source-border)' : 'var(--color-brand)', flexShrink: 0 }} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ color: 'var(--color-text-primary)', fontSize: 14, fontWeight: 800 }}>{property.source}</div>
-                  <div style={{ color: 'var(--color-text-tertiary)', fontSize: 11.5, marginTop: 2 }}>Annonce détectée en ligne</div>
-                </div>
-              </div>
-              <DossierLine label="Référence" value={`${property.source.slice(0, 3).toUpperCase()}-${displaySeed * 83712}`} />
-              <DossierLine label="Publication" value={`Il y a ${property.publishedDays} j`} />
-              <DossierLine label="Type vendeur" value={property.fsbo ? 'Particulier' : 'Professionnel'} />
-              <button type="button" style={dossierLinkButtonStyle}>Ouvrir l'annonce source</button>
-            </DossierCard>
+            {property.priceHistory && property.priceHistory.length > 1 && (
+              <DossierCard title="Historique de prix" icon={<Clock size={14} />} style={{ gridColumn: '1 / -1', order: 4 }}>
+                {property.priceHistory.slice(-4).reverse().map((entry) => (
+                  <DossierLine key={`${entry.date}-${entry.price}`} label={entry.date} value={formatEuro(entry.price)} />
+                ))}
+              </DossierCard>
+            )}
 
-            <DossierCard title="Historique de prix" icon={<Clock size={14} />} style={{ gridColumn: 'span 4', order: 3 }}>
-              <div style={{ minHeight: 132, display: 'grid', placeItems: 'center', textAlign: 'center', border: '1px dashed var(--color-border-strong)', borderRadius: 8, background: 'var(--color-bg-surface)', padding: 14 }}>
-                <div>
-                  <div style={{ color: 'var(--color-text-primary)', fontSize: 12.5, fontWeight: 800 }}>Aucun historique disponible</div>
-                  <p style={{ margin: '5px auto 0', maxWidth: 190, color: 'var(--color-text-tertiary)', fontSize: 11.5, lineHeight: 1.45 }}>
-                    Les variations de prix apparaîtront ici dès qu’ImmoPilot détecte un changement.
-                  </p>
-                </div>
-              </div>
-            </DossierCard>
-
-            <DossierCard title="Description de l'annonce" icon={<FileText size={14} />} style={{ gridColumn: 'span 5', order: 1 }}>
+            <DossierCard title="Description de l'annonce" icon={<FileText size={14} />} style={{ gridColumn: 'span 8', order: 1 }}>
               <p style={{ margin: 0, color: 'var(--color-text-primary)', fontSize: 12.5, lineHeight: 1.58, maxHeight: 128, overflowY: 'auto', paddingRight: 4 }}>
                 {property.description || `Annonce publiée sur ${property.source}. La description source sera affichée ici dès qu'elle est disponible.`}
               </p>
+              <div className="lv-biens-dossier-source-line">
+                <span><strong>{property.source}</strong> · Il y a {property.publishedDays} j</span>
+                <span>{property.source.slice(0, 3).toUpperCase()}-{displaySeed * 83712}</span>
+                <button type="button" style={dossierLinkButtonStyle}>Ouvrir l'annonce source</button>
+              </div>
             </DossierCard>
 
-            <DossierCard title="Marché local" icon={<FileText size={14} />} action="Voir le rapport" style={{ gridColumn: 'span 5', order: 5 }}>
+            <DossierCard title="Marché local" icon={<FileText size={14} />} action="Voir le rapport" style={{ gridColumn: 'span 8', order: 2 }}>
               <div style={{ color: 'var(--color-text-secondary)', fontSize: 11.5, marginBottom: 10 }}>{property.city} · Quartier cible</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 7 }}>
                 <DossierMarketStat label="Prix médian" value={`${formatEuro(cityAvg)}/m²`} delta="+3%" />
@@ -3387,11 +3374,11 @@ function GrandeFicheBien({
               </div>
             </DossierCard>
 
-            <DossierCard title="Pourquoi cet indice" icon={<FileText size={14} />} style={{ gridColumn: 'span 5', order: 5 }}>
+            <DossierCard title="Pourquoi cet indice" icon={<FileText size={14} />} style={{ gridColumn: '1 / -1', order: 3 }}>
               <WhyThisScorePanel score={score} property={property} surface="full_dossier" />
             </DossierCard>
 
-            <DossierCard title="Contact / Pipeline" avatar={vendorName.slice(0, 2).toUpperCase()} style={{ gridColumn: 'span 4', order: 6 }}>
+            <DossierCard title="Contact / Pipeline" avatar={vendorName.slice(0, 2).toUpperCase()} style={{ gridColumn: 'span 4', order: 1 }}>
               <div style={{ color: 'var(--color-text-primary)', fontSize: 14, fontWeight: 750 }}>{vendorName}</div>
               <div style={{ color: 'var(--color-text-secondary)', fontSize: 11.5, marginBottom: 8 }}>{relatedContact ? 'Propriétaire' : vendorMeta}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 9 }}>
@@ -3410,7 +3397,7 @@ function GrandeFicheBien({
               </div>
             </DossierCard>
 
-            <div className="lv-biens-dossier-pair" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridColumn: '1 / -1', gap: 12, order: 7 }}>
+            <div className="lv-biens-dossier-pair" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridColumn: '1 / -1', gap: 16, order: 5 }}>
               <DossierCard title="Signaux liés" icon={<Clock size={14} />}>
                 {relatedSignals.length > 0 ? relatedSignals.slice(0, 3).map((signal) => (
                   <DossierSignal key={signal.id} title={signal.heading} meta={signal.info || signal.time} tone={signal.type === 'drop' ? 'orange' : 'green'} />
@@ -3634,9 +3621,9 @@ function dossierThumbStyle(active: boolean): React.CSSProperties {
 const dossierCardStyle: React.CSSProperties = {
   background: 'var(--color-bg-surface)',
   border: '1px solid var(--color-border-default)',
-  borderRadius: 8,
-  padding: 12,
-  boxShadow: '0 8px 22px rgba(29,31,30,0.035)',
+  borderRadius: 0,
+  padding: 16,
+  boxShadow: 'none',
   minHeight: 0,
 };
 
