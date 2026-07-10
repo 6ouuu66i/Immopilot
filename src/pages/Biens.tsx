@@ -3112,8 +3112,6 @@ function GrandeFicheBien({
   const activities = store.getPropertyActivities(property.id).slice(0, 5);
   const price = formatEuro(property.price);
   const displaySeed = propertyDisplaySeed(property.id);
-  const headerScore = score?.score ?? property.score;
-  const headerTone = priorityToneFromScore(score, property.score);
   const propType = property.title.toLowerCase().includes('appartement')
     ? 'Appartement'
     : property.title.toLowerCase().includes('loft')
@@ -3215,33 +3213,11 @@ function GrandeFicheBien({
           >
             <div style={{ minWidth: 0 }}>
               <div style={{ color: 'var(--color-text-tertiary)', fontSize: 10.5, fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' }}>
-                Fiche bien
+                Dossier bien
               </div>
               <div style={{ color: 'var(--color-text-primary)', fontSize: 13.5, fontWeight: 750, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {property.title}
+                {property.city} · {property.source}
               </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-              <span style={{ color: 'var(--color-text-secondary)', fontSize: 12, fontFamily: 'var(--notion-mono)', fontVariantNumeric: 'tabular-nums' }}>{price}</span>
-              <span
-                title="Indice de tension vendeur"
-                style={{
-                  height: 28,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: '0 9px',
-                  borderRadius: 6,
-                  border: `1px solid ${priorityAccentColor(headerTone)}`,
-                  color: 'var(--color-text-primary)',
-                  background: 'var(--color-bg-surface)',
-                  fontSize: 11.5,
-                  fontWeight: 800,
-                  fontFamily: 'var(--notion-mono)',
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {Math.round(headerScore)}
-              </span>
             </div>
           </div>
           <div className="lv-biens-dossier-hero" style={{ display: 'grid', gridTemplateColumns: '570px minmax(0, 1fr)', gap: 24, padding: '2px 2px 16px' }}>
@@ -3289,10 +3265,8 @@ function GrandeFicheBien({
 
               <div className="lv-biens-dossier-media-actions" style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                 <DossierActionButton icon={<Search size={13} />}>Voir sur carte</DossierActionButton>
-                <DossierActionButton icon={<LayoutGrid size={13} />} onClick={onClose}>Ouvrir mini fiche</DossierActionButton>
                 <DossierActionButton icon={<Plus size={13} />}>Partager</DossierActionButton>
                 <DossierActionButton onClick={onToggleIgnored}>Ignorer</DossierActionButton>
-                <DossierActionButton>...</DossierActionButton>
               </div>
             </div>
 
@@ -3314,6 +3288,12 @@ function GrandeFicheBien({
                 </button>
               </div>
 
+              <div className="lv-biens-dossier-next-action">
+                <span>À faire maintenant</span>
+                <strong>{nextTask?.title ?? (relatedContact ? 'Planifier la prochaine action' : 'Identifier le contact vendeur')}</strong>
+                <small>{nextTask ? `${nextTask.date} · ${nextTask.time}` : 'Aucune action planifiée'}</small>
+              </div>
+
               <div className="lv-biens-dossier-metrics" style={{ display: 'grid', gridTemplateColumns: '1.2fr repeat(4, 1fr)', borderTop: '1px solid var(--color-border-subtle)', borderBottom: '1px solid var(--color-border-subtle)', marginTop: 18, padding: '13px 0' }}>
                 <DossierTopMetric label="Prix demandé" value={price} strong />
                 <DossierTopMetric label="Surface" value={`${property.surface} m²`} />
@@ -3332,18 +3312,6 @@ function GrandeFicheBien({
                 />
               </div>
 
-              <div className="lv-biens-dossier-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 28px', marginTop: 15, paddingRight: 8 }}>
-                <DossierInfo label="Type de bien" value={propType} />
-                <DossierInfo label="Terrain" value={`${Math.round(property.surface * 3.2)} m²`} />
-                <DossierInfo label="Sous-type" value={propType === 'Appartement' ? 'Appartement' : 'Villa'} />
-                <DossierInfo label="Façade" value={`${Math.max(2, property.bedrooms + 1)}`} />
-                <DossierInfo label="Année de construction" value={String(1980 + (displaySeed * 7) % 42)} />
-                <DossierInfo label="Orientation jardin" value="Sud-Ouest" />
-                <DossierInfo label="État général" value={property.score > 76 ? 'Excellent' : 'Bon'} />
-                <DossierInfo label="Chauffage" value={property.peb === 'A' ? 'Pompe à chaleur' : 'Gaz condensation'} />
-                <DossierInfo label="Disponibilité" value={property.reserved ? 'À confirmer' : 'À convenir'} />
-                <DossierInfo label="Revenu cadastral" value={`${(1500 + displaySeed * 83).toLocaleString('fr-BE')} €`} />
-              </div>
             </aside>
           </div>
 
