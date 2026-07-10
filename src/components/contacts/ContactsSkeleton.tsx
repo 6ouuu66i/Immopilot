@@ -1,6 +1,12 @@
 import { SkeletonBox, SkeletonAvatar } from '../ui/Skeleton';
 
-export function ContactsSkeleton() {
+interface ContactsSkeletonProps {
+  rowCount?: number;
+}
+
+export function ContactsSkeleton({ rowCount = 3 }: ContactsSkeletonProps) {
+  const safeRowCount = Math.max(1, Math.min(rowCount, 6));
+
   return (
     <main className="lv-contacts lv-page contacts-page" style={{ minHeight: 'calc(100vh - 58px)', background: 'var(--lv-app-bg)' }}>
       {/* Header */}
@@ -72,7 +78,7 @@ export function ContactsSkeleton() {
                 </thead>
                 <tbody>
                   {/* Table rows */}
-                  {Array.from({ length: 8 }).map((_, rowIndex) => (
+                  {Array.from({ length: safeRowCount }).map((_, rowIndex) => (
                     <ContactRowSkeleton key={rowIndex} />
                   ))}
                 </tbody>

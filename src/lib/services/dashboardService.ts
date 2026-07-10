@@ -115,15 +115,15 @@ function signalTone(signalType: string): DashboardSignalItem['tone'] {
 function signalLabel(signalType: string): string {
   switch (signalType) {
     case 'price_drop': return 'Baisse de prix';
-    case 'republished': return 'Annonce republiee';
-    case 'below_market': return 'Sous le marche';
+    case 'republished': return 'Annonce republiée';
+    case 'below_market': return 'Sous le marché';
     case 'multi_source': return 'Multi-source';
     case 'agency_mandate_aging': return 'Mandat agence ancien';
-    case 'overpriced': return 'Surcote';
-    case 'stale_dom_relative': return 'Temps en ligne eleve';
+    case 'overpriced': return 'Surcoté';
+    case 'stale_dom_relative': return 'Temps en ligne élevé';
     case 'failed_launch': return 'Lancement faible';
     case 'competition_shock': return 'Concurrence en hausse';
-    case 'back_to_market': return 'Retour marche';
+    case 'back_to_market': return 'Retour marché';
     case 'fsbo': return 'FSBO';
     default: return signalType.replaceAll('_', ' ');
   }
@@ -139,10 +139,12 @@ function signalValue(signal: DashboardSignalRow): string {
   if (typeof percentage === 'string' && percentage.trim()) return percentage;
 
   const amount = metadata.change_amount ?? metadata.delta_amount;
-  if (typeof amount === 'number') return `${amount > 0 ? '+' : ''}${Math.round(amount)} EUR`;
+  if (typeof amount === 'number') return `${amount > 0 ? '+' : ''}${Math.round(amount)} €`;
   if (typeof amount === 'string' && amount.trim()) return amount;
 
-  const label = metadata.label ?? metadata.reason_fr ?? metadata.detected_via;
+  // Jamais de valeur technique (detected_via, slugs de batch) face à l'agent :
+  // à défaut d'une donnée chiffrée lisible, on retombe sur le libellé du signal.
+  const label = metadata.label ?? metadata.reason_fr;
   if (typeof label === 'string' && label.trim()) return label;
 
   return signalLabel(signal.signal_type);

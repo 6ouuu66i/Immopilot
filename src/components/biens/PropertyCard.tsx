@@ -2,7 +2,7 @@ import { Bath, Bed, ChevronLeft, ChevronRight, Globe, Heart, MapPin, Square, Sta
 import type { Property } from '../../types';
 import { SignalBadges } from '../SignalBadges';
 import type { ListingSignal } from '../../lib/services/listingSignalsService';
-import { propertyImageFallbacks } from '../../lib/propertyImageFallbacks';
+import { resolvePropertyImages } from '../../lib/propertyImageFallbacks';
 import { formatEuro } from '../../lib/formatCurrency';
 import { DeferredImage } from '../ui/DeferredImage';
 
@@ -29,13 +29,17 @@ interface PropertyCardProps {
   priorityTone?: PriorityTone;
   onSignalBadgeClick?: (signal: ListingSignal) => void;
   onPrimarySignalBadgeClick?: (label: string) => void;
+  /** Nom de view-transition posé sur la photo quand cette carte est la source du morphing vers la fiche. */
+  photoTransitionName?: string;
 }
 
 function cssVar(name: string) {
   return `var(${name})`;
 }
 
-function statusBadge(property: Property): { label: string; bg: string; text: string; border: string } {
+// L'état par défaut ne se labellise pas : « Disponible » n'affiche rien,
+// seuls les états d'exception (Sous option, Réservé, Archivé) méritent un badge.
+function statusBadge(property: Property): { label: string; bg: string; text: string; border: string } | null {
   const status = property.status ?? (property.reserved ? 'réservé' : 'disponible');
   if (status === 'archivé') {
     return {
@@ -53,12 +57,15 @@ function statusBadge(property: Property): { label: string; bg: string; text: str
       border: cssVar('--color-warning-border'),
     };
   }
-  return {
-    label: 'Disponible',
-    bg: cssVar('--color-bg-muted'),
-    text: cssVar('--color-text-secondary'),
-    border: cssVar('--color-border-default'),
-  };
+  if (property.underOption) {
+    return {
+      label: 'Sous option',
+      bg: cssVar('--color-warning-bg'),
+      text: cssVar('--color-warning-text'),
+      border: cssVar('--color-warning-border'),
+    };
+  }
+  return null;
 }
 
 function signalFamily(label: string): SignalFamily {
@@ -116,34 +123,23 @@ function sellerLabel(property: Property): string {
 }
 
 function daysOnlineLabel(days: number): string {
-  if (days <= 0) return 'Aujourd hui';
+  if (days <= 0) return "Aujourd'hui";
   if (days === 1) return '1 jour';
   return `${days} jours`;
 }
 
-function priorityAccent(tone: PriorityTone | undefined) {
+// Le rail de couleur ne s'affiche que lorsqu'il a quelque chose à dire :
+// vert (score fort) ou ambre (à surveiller). Un score faible/absent n'a pas
+// de rail — le gris « par défaut » salissait la carte sans informer.
+function priorityAccent(tone: PriorityTone | undefined): string | null {
   if (tone === 'high') return '#1E5A3A';
   if (tone === 'watch') return '#8A6D1F';
-  return '#D6DAD6';
+  return null;
 }
 
-const photoNavStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  width: 24,
-  height: 24,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: 0,
-  borderRadius: 'var(--radius)',
-  background: 'color-mix(in srgb, var(--color-text-primary) 48%, transparent)',
-  opacity: 0,
-  cursor: 'pointer',
-  padding: 0,
-  transition: 'opacity 0.14s ease',
-};
+// Les flèches du carrousel vivent dans .lv-photo-nav (index.css) : zone de
+// clic large (40×56) pour qu'un clic imprécis ne retombe jamais sur la carte
+// (qui ouvrirait la fiche), visuel compact centré, pression au :active.
 
 export function PropertyCard({
   property,
@@ -164,14 +160,16 @@ export function PropertyCard({
   priorityTone,
   onSignalBadgeClick,
   onPrimarySignalBadgeClick,
+  photoTransitionName,
 }: PropertyCardProps) {
-  const photos = property.photos.length > 0 ? property.photos : propertyImageFallbacks(property.id);
+  const photos = resolvePropertyImages(property.id, property.photos);
   const currentPhoto = photos[carouselIndex % photos.length];
   const status = statusBadge(property);
   const signalLabel = primarySignal ?? property.tag;
   const signal = signalBadge(signalLabel);
   const price = formatEuro(property.price);
-  const selectedShadow = 'none';
+  const hoverShadow = '0 14px 34px -28px rgba(16, 22, 19, 0.58), 0 0 0 1px rgba(30, 90, 58, 0.1)';
+  const selectedShadow = 'inset 3px 0 0 var(--color-brand), 0 16px 34px -30px rgba(16, 22, 19, 0.62), 0 0 0 1px rgba(30, 90, 58, 0.16)';
   const defaultShadow = 'none';
 
   return (
@@ -185,67 +183,82 @@ export function PropertyCard({
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
-        transition: 'box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease',
-        cursor: 'pointer',
+        transition: 'box-shadow 150ms ease, border-color 150ms ease',
         boxShadow: selected ? selectedShadow : defaultShadow,
       }}
-      onClick={onSelect}
       onMouseEnter={(event) => {
-        event.currentTarget.style.boxShadow = 'none';
-        event.currentTarget.style.borderColor = 'var(--color-border-strong)';
-        event.currentTarget.style.transform = 'translateY(-1px)';
+        event.currentTarget.style.boxShadow = selected ? selectedShadow : hoverShadow;
+        event.currentTarget.style.borderColor = selected ? 'var(--color-brand)' : 'var(--color-border-strong)';
         event.currentTarget.querySelectorAll<HTMLElement>('[data-photo-nav]').forEach((button) => { button.style.opacity = '1'; });
       }}
       onMouseLeave={(event) => {
         event.currentTarget.style.boxShadow = selected ? selectedShadow : defaultShadow;
         event.currentTarget.style.borderColor = selected ? 'var(--color-brand)' : 'var(--color-border-default)';
-        event.currentTarget.style.transform = 'none';
         event.currentTarget.querySelectorAll<HTMLElement>('[data-photo-nav]').forEach((button) => { button.style.opacity = '0'; });
       }}
     >
-      <span
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          inset: '0 auto 0 0',
-          width: 3,
-          background: priorityAccent(priorityTone),
-          opacity: priorityTone === 'low' ? 0.55 : 0.9,
-          zIndex: 1,
-        }}
-      />
-      <div style={{ position: 'relative', height: 168, overflow: 'hidden', background: cssVar('--color-bg-muted'), flexShrink: 0 }}>
-        <DeferredImage
-          src={currentPhoto}
-          alt={property.title}
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: cssVar('--color-bg-muted') }}
-          eager={priorityImage}
-          loading={priorityImage ? 'eager' : 'lazy'}
-          decoding="async"
-          onError={(event) => {
-            event.currentTarget.style.opacity = '0';
+      {priorityAccent(priorityTone) && (
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: '0 auto 0 0',
+            width: 3,
+            background: priorityAccent(priorityTone) as string,
+            opacity: 0.9,
+            zIndex: 1,
           }}
         />
+      )}
+      <div className="lv-property-card-media" style={{ position: 'relative', height: 168, overflow: 'hidden', background: cssVar('--color-bg-muted'), flexShrink: 0 }}>
+        <button
+          type="button"
+          className="lv-property-card-photo-button"
+          onClick={onSelect}
+          aria-label={`Ouvrir la fiche de ${property.title}`}
+        >
+          <DeferredImage
+            key={currentPhoto}
+            className="lv-property-card-photo"
+            src={currentPhoto}
+            alt={property.title}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: cssVar('--color-bg-muted'), viewTransitionName: photoTransitionName }}
+            eager={priorityImage}
+            loading={priorityImage ? 'eager' : 'lazy'}
+            decoding="async"
+            onError={(event) => {
+              event.currentTarget.style.opacity = '0';
+            }}
+          />
+        </button>
 
         {photos.length > 1 && (
           <>
             <button
+              type="button"
+              className="lv-photo-nav"
               data-photo-nav
+              data-card-interactive
+              onPointerDown={(event) => event.stopPropagation()}
               onClick={onCarouselPrev}
-              style={{ ...photoNavStyle, left: 6 }}
+              style={{ left: 0 }}
               onFocus={(event) => { event.currentTarget.style.opacity = '1'; }}
               aria-label="Photo précédente"
             >
-              <ChevronLeft size={14} color={cssVar('--color-text-inverse')} />
+              <span><ChevronLeft size={15} /></span>
             </button>
             <button
+              type="button"
+              className="lv-photo-nav"
               data-photo-nav
+              data-card-interactive
+              onPointerDown={(event) => event.stopPropagation()}
               onClick={onCarouselNext}
-              style={{ ...photoNavStyle, right: 6 }}
+              style={{ right: 0 }}
               onFocus={(event) => { event.currentTarget.style.opacity = '1'; }}
               aria-label="Photo suivante"
             >
-              <ChevronRight size={14} color={cssVar('--color-text-inverse')} />
+              <span><ChevronRight size={15} /></span>
             </button>
           </>
         )}
@@ -295,16 +308,9 @@ export function PropertyCard({
         )}
 
         {photos.length > 1 && (
-          <div style={{ position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 4 }}>
-            {photos.map((_, index) => (
-              <span key={index} style={{
-                width: 6,
-                height: 6,
-                borderRadius: 'var(--radius)',
-                background: index === carouselIndex % photos.length ? cssVar('--color-bg-surface') : 'color-mix(in srgb, var(--color-bg-surface) 50%, transparent)',
-              }} />
-            ))}
-          </div>
+          <span className="lv-photo-counter" data-photo-nav aria-hidden="true">
+            {(carouselIndex % photos.length) + 1}/{photos.length}
+          </span>
         )}
 
         <div
@@ -331,6 +337,8 @@ export function PropertyCard({
         </div>
 
         <button
+          type="button"
+          data-card-interactive
           onClick={onToggleFavorite}
           style={{
             position: 'absolute', bottom: 8, right: 8,
@@ -352,23 +360,35 @@ export function PropertyCard({
         </button>
       </div>
 
-      <div style={{ padding: '11px 14px 12px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+      <div
+        style={{ padding: '11px 14px 12px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1, cursor: 'pointer' }}
+        onClick={(event) => {
+          if ((event.target as Element).closest('button, a, [data-card-interactive]')) return;
+          onSelect();
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--lv-font-mono, var(--notion-mono))', fontVariantNumeric: 'tabular-nums', color: cssVar('--color-text-primary'), lineHeight: 1 }}>
+          <span style={{ fontSize: 16.5, fontWeight: 700, fontFamily: 'var(--lv-font-title, var(--font-sans))', fontVariantNumeric: 'tabular-nums', color: cssVar('--color-text-primary'), lineHeight: 1 }}>
             {price}
           </span>
-          <span style={{
-            fontSize: 11,
-            fontWeight: 650,
-            fontFamily: 'var(--lv-font-mono, var(--notion-mono))',
-            padding: '2px 8px',
-            borderRadius: 0,
-            background: status.bg,
-            color: status.text,
-            border: `1px solid ${status.border}`,
-          }}>
-            {status.label}
-          </span>
+          {property.price > 0 && property.surface > 0 && (
+            <span style={{ fontSize: 11, color: cssVar('--color-text-tertiary'), fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+              {Math.round(property.price / property.surface).toLocaleString('fr-BE')} €/m²
+            </span>
+          )}
+          {status && (
+            <span style={{
+              fontSize: 11,
+              fontWeight: 650,
+              padding: '2px 8px',
+              borderRadius: 0,
+              background: status.bg,
+              color: status.text,
+              border: `1px solid ${status.border}`,
+            }}>
+              {status.label}
+            </span>
+          )}
         </div>
 
         <p style={{
@@ -390,9 +410,23 @@ export function PropertyCard({
           <span style={{ fontSize: 12, fontFamily: 'var(--font-sans, var(--notion-sans))' }}>{property.city}</span>
         </div>
 
-        <SignalBadges signals={signals} onSignalClick={onSignalBadgeClick} />
+        {/* Zones à hauteur FIXE : une seule ligne de badges (1 + compteur « +N »),
+            jamais de retour à la ligne — le ring de score tombe ainsi exactement
+            à la même hauteur sur toutes les cartes de la grille.
+            L'absence de signal est une information, pas un trou : on l'écrit. */}
+        <div style={{ height: 24, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+          {signals.length > 0 ? (
+            <SignalBadges signals={signals} onSignalClick={onSignalBadgeClick} maxVisible={1} />
+          ) : (
+            <span style={{ color: cssVar('--color-text-tertiary'), fontSize: 10.5, lineHeight: 1 }}>
+              Aucun signal actif
+            </span>
+          )}
+        </div>
 
-        {scoreContent}
+        <div style={{ height: 48, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+          {scoreContent}
+        </div>
 
         {contactName && opportunityReason && (
           <div
@@ -426,10 +460,21 @@ export function PropertyCard({
           color: cssVar('--color-text-tertiary'),
           fontSize: 11.5,
           fontWeight: 560,
-          marginTop: 1,
+          // Absorbe l'espace excédentaire des rangées égalisées : le pied de
+          // carte (jours/vendeur + métriques) reste ancré en bas partout, et le
+          // filet supérieur fait lire l'espace au-dessus comme une respiration
+          // voulue, pas comme un manque.
+          marginTop: 'auto',
+          borderTop: '1px solid var(--color-border-subtle)',
+          paddingTop: 8,
         }}>
-          <span style={{ fontFamily: 'var(--lv-font-mono, var(--notion-mono))', fontVariantNumeric: 'tabular-nums' }}>{daysOnlineLabel(property.publishedDays)}</span>
-          <span aria-hidden="true">-</span>
+          <span style={{
+            fontVariantNumeric: 'tabular-nums',
+            // Au-delà de 90 jours, la durée devient un signal en soi : vendeur fatigué.
+            color: property.publishedDays > 90 ? cssVar('--lv-ocre') : undefined,
+            fontWeight: property.publishedDays > 90 ? 680 : undefined,
+          }}>{daysOnlineLabel(property.publishedDays)}</span>
+          <span aria-hidden="true">·</span>
           <span style={{ color: property.fsbo ? cssVar('--color-brand') : cssVar('--color-text-secondary'), fontWeight: property.fsbo ? 680 : 560 }}>
             {sellerLabel(property)}
           </span>

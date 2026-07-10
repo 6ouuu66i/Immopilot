@@ -2,6 +2,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import type { Property } from '../types';
 import { normalizePropertyListFilters, queryKeys } from './queryKeys';
 import type { Json, Tables } from './database.types';
+import { sentenceCaseIfShouty, titleCaseIfShouty } from './formatText';
 import { supabase } from './supabase';
 
 type ListingRow = Tables<'listings'>;
@@ -21,12 +22,14 @@ interface ActivePropertyCanonicalRow {
   has_republished_signal: boolean;
   house_number: string | null;
   is_fsbo: boolean | null;
+  is_under_option: boolean | null;
   land_area: number | null;
   last_seen_at: string;
   listing_id: string;
   living_area: number | null;
   locality: string | null;
   old_price: number | null;
+  photo_urls: string[] | null;
   postal_code: string | null;
   price: number | null;
   primary_photo_url: string | null;
@@ -120,6 +123,7 @@ export const ACTIVE_PROPERTIES_CANONICAL_SELECT = `
   price,
   old_price,
   is_fsbo,
+  is_under_option,
   first_seen_at,
   last_seen_at,
   published_at,
@@ -132,6 +136,7 @@ export const ACTIVE_PROPERTIES_CANONICAL_SELECT = `
   has_price_drop,
   has_republished_signal,
   days_online,
+  photo_urls,
   primary_photo_url,
   canonical_property_id,
   street,
@@ -169,7 +174,7 @@ function propertyTitle(
   property: { street: string | null; house_number: string | null; locality: string | null; property_subtype: string | null; property_type: string | null } | null,
 ): string {
   const explicitTitle = listing.title_fr ?? listing.title_nl;
-  if (explicitTitle?.trim()) return explicitTitle.trim();
+  if (explicitTitle?.trim()) return sentenceCaseIfShouty(explicitTitle.trim());
 
   const address = addressLabel(property);
   if (address) return address;
@@ -180,16 +185,17 @@ function propertyTitle(
 function propertyTagFromCanonical(row: ActivePropertyCanonicalRow): Property['tag'] {
   if (row.is_fsbo) return 'FSBO';
   if (row.has_price_drop) return 'Baisse de prix';
-  if (row.has_republished_signal) return 'RepubliÃ©';
+  if (row.has_republished_signal) return 'Republié';
   if (row.days_online <= 7) return 'Nouveau';
-  return row.ai_badges?.[0] ?? 'Nouveau';
+  // Pas de badge par défaut : « Nouveau » sur un bien de 500 jours était un mensonge.
+  return row.ai_badges?.[0] ?? '';
 }
 
 function propertyTag(listing: ListingRow, publishedDays: number): Property['tag'] {
   if (listing.is_fsbo) return 'FSBO';
   if (listing.old_price && listing.price && listing.old_price > listing.price) return 'Baisse de prix';
   if (publishedDays <= 7) return 'Nouveau';
-  return listing.ai_badges?.[0] ?? 'Nouveau';
+  return listing.ai_badges?.[0] ?? '';
 }
 
 function priceHistory(listing: ListingRow): Property['priceHistory'] {
@@ -207,7 +213,7 @@ function priceHistory(listing: ListingRow): Property['priceHistory'] {
 
 function mapCanonicalPropertyRow(row: ActivePropertyCanonicalRow): Property {
   const source = sourceLabel(row.source);
-  const location = row.locality ?? row.province ?? 'Belgique';
+  const location = titleCaseIfShouty(row.locality ?? row.province ?? 'Belgique');
   const stablePropertyId = row.property_id ?? row.canonical_property_id ?? row.listing_id;
 
   return {
@@ -218,7 +224,9 @@ function mapCanonicalPropertyRow(row: ActivePropertyCanonicalRow): Property {
     propertyType: typeLabel(row),
     city: location,
     price: row.price ?? 0,
-    photos: row.primary_photo_url ? [row.primary_photo_url] : [],
+    // Le carrousel des cartes a besoin de plusieurs photos ; la matview en
+    // expose jusqu'à 6, repli sur la photo principale seule.
+    photos: row.photo_urls?.length ? row.photo_urls : row.primary_photo_url ? [row.primary_photo_url] : [],
     tag: propertyTagFromCanonical(row),
     score: row.seller_score ?? 0,
     peb: 'N/A',
@@ -227,6 +235,7 @@ function mapCanonicalPropertyRow(row: ActivePropertyCanonicalRow): Property {
     bathrooms: row.bathroom_count ?? 0,
     source,
     reserved: row.status !== 'active',
+    underOption: Boolean(row.is_under_option),
     ownerId: null,
     fsbo: Boolean(row.is_fsbo),
     publishedDays: row.days_online,
@@ -251,7 +260,7 @@ function mapListingToProperty(
     ? Math.max(0, Math.ceil((Date.now() - new Date(publishedAt).getTime()) / (24 * 60 * 60 * 1000)))
     : 0;
   const source = sourceLabel(row.source);
-  const location = row.properties?.locality ?? row.properties?.province ?? 'Belgique';
+  const location = titleCaseIfShouty(row.properties?.locality ?? row.properties?.province ?? 'Belgique');
   const livingArea = row.properties?.living_area ?? row.properties?.land_area ?? 0;
   const photos = row.photo_urls ?? [];
   const stablePropertyId = row.properties?.id ?? row.property_id ?? row.id;
@@ -273,6 +282,7 @@ function mapListingToProperty(
     bathrooms: row.properties?.bathroom_count ?? 0,
     source,
     reserved: row.status !== 'active',
+    underOption: Boolean(row.is_under_option),
     ownerId: null,
     fsbo: Boolean(row.is_fsbo),
     publishedDays,

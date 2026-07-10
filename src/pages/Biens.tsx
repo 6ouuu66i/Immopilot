@@ -18,9 +18,10 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { PropertyCard } from '../components/biens/PropertyCard';
 import { SellerTensionScoreZone } from '../components/biens/SellerTensionScoreZone';
-import { ImageLightbox, NotesList } from '../components/ui';
+import { CarouselNavButton, ImageLightbox, NotesList } from '../components/ui';
 import { DeferredImage } from '../components/ui/DeferredImage';
 import { SkeletonBox, SkeletonText } from '../components/ui/Skeleton';
 import type { store as appStore } from '../lib/store';
@@ -45,7 +46,7 @@ import { capturePostHogEvent } from '../lib/posthog';
 import { contactsService } from '../lib/services/contactsService';
 import { dealsService } from '../lib/services/dealsService';
 import type { ListingScore } from '../lib/services/listingScoresService';
-import { propertyImageFallbacks } from '../lib/propertyImageFallbacks';
+import { propertyImageFallbacks, resolvePropertyImages } from '../lib/propertyImageFallbacks';
 import { formatEuro } from '../lib/formatCurrency';
 import type { Property, PropertyInternalStatus, PropertyKey } from '../types';
 
@@ -67,7 +68,21 @@ type PropertyDetailSurface = 'mini' | 'full';
 type ScoreExplanationSurface = 'mini_fiche' | 'legacy_fiche' | 'full_dossier';
 type PriorityTone = 'high' | 'watch' | 'low';
 
-const PAGE_SIZE = 16;
+const PAGE_SIZE = 20;
+
+// Nom d'élément partagé pour le morphing photo carte → mini-fiche (View Transitions).
+export const PROPERTY_PHOTO_TRANSITION = 'ip-property-photo';
+
+type DocumentWithViewTransition = Document & {
+  startViewTransition?: (update: () => void) => { finished: Promise<void> };
+};
+
+function canUseViewTransition(): boolean {
+  return (
+    typeof (document as DocumentWithViewTransition).startViewTransition === 'function' &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
 const PRICE_MIN_OPTIONS = ['Min', '150000', '250000', '350000', '500000', '750000', '1000000'];
 const PRICE_MAX_OPTIONS = ['Max', '250000', '350000', '500000', '750000', '1000000', '1500000'];
 const BEDROOM_OPTIONS = ['Tous', '1+', '2+', '3+', '4+'];
@@ -168,7 +183,9 @@ function getCardSignals(property: Property, store: Store): { primarySignal: stri
   uniqueLabels.sort((a, b) => getSignalPriority(a) - getSignalPriority(b));
 
   return {
-    primarySignal: uniqueLabels[0] ?? 'Nouveau',
+    // Pas de fallback « Nouveau » : un bien sans signal n'affiche aucun badge,
+    // plutôt qu'une fausse information sur des annonces vieilles de 500 jours.
+    primarySignal: uniqueLabels[0] ?? '',
     secondarySignalCount: Math.max(0, uniqueLabels.length - 1),
   };
 }
@@ -236,8 +253,26 @@ export function Biens({ store }: BiensProps) {
   const [, forceUpdate] = useState(0);
   const { user } = useAuth();
   const propertyMarks = usePropertyMarks();
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => {
+    // La recherche globale du header (Ctrl+K puis Entrée) atterrit ici.
+    const pending = sessionStorage.getItem('ip_global_search');
+    if (pending) sessionStorage.removeItem('ip_global_search');
+    return pending ?? '';
+  });
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const applyGlobalSearch = (event: Event) => {
+      const query = (event as CustomEvent<string>).detail;
+      if (typeof query !== 'string') return;
+      sessionStorage.removeItem('ip_global_search');
+      setSearch(query);
+      setPage(1);
+    };
+
+    window.addEventListener('ip-global-search', applyGlobalSearch);
+    return () => window.removeEventListener('ip-global-search', applyGlobalSearch);
+  }, []);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sort, setSort] = useState<SortKey>('recent');
   const [filterCommune, setFilterCommune] = useState('Toutes');
@@ -266,6 +301,7 @@ export function Biens({ store }: BiensProps) {
     return propertyKeyFromHashParam(params.get('propertyId'));
   });
   const [fullPropertyId, setFullPropertyId] = useState<PropertyKey | null>(null);
+  const [morphPhotoId, setMorphPhotoId] = useState<PropertyKey | null>(null);
   const [panelPhotoIndex, setPanelPhotoIndex] = useState(0);
   const [noteDraft, setNoteDraft] = useState('');
   const [propertyDetailsById, setPropertyDetailsById] = useState<Record<string, PropertyDetail>>({});
@@ -491,7 +527,6 @@ export function Biens({ store }: BiensProps) {
   }, [fullProperty?.supabasePropertyId, selectedProperty?.supabasePropertyId, visiblePropertyIds]);
   const { signalsByProperty } = useListingSignals(scorePropertyIds);
   const { scoresByProperty } = useListingScores(scorePropertyIds);
-  const panelOpen = Boolean(selectedProperty);
 
   useEffect(() => {
     let cancelled = false;
@@ -579,20 +614,11 @@ export function Biens({ store }: BiensProps) {
   ].filter(Boolean).length;
 
   useEffect(() => {
-    if (!panelOpen) return undefined;
-
-    window.dispatchEvent(new Event('ip-property-panel-open'));
-
-    return () => {
-      window.dispatchEvent(new Event('ip-property-panel-close'));
-    };
-  }, [panelOpen]);
-
-  useEffect(() => {
     if (!fullProperty) return undefined;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    window.dispatchEvent(new Event('ip-property-panel-open'));
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setFullPropertyId(null);
@@ -601,6 +627,7 @@ export function Biens({ store }: BiensProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
+      window.dispatchEvent(new Event('ip-property-panel-close'));
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [fullProperty]);
@@ -610,7 +637,7 @@ export function Biens({ store }: BiensProps) {
     setCarouselMap((prev) => {
       const prop = allProps.find((p) => p.id === id);
       if (!prop) return prev;
-      const len = prop.photos.length;
+      const len = resolvePropertyImages(prop.id, prop.photos).length;
       const key = String(id);
       const cur = prev[key] ?? 0;
       return { ...prev, [key]: ((cur + dir) % len + len) % len };
@@ -786,11 +813,44 @@ export function Biens({ store }: BiensProps) {
     if (target) selectProperty(target.id);
   };
 
+  // Ouverture avec morphing : la photo de la carte cliquée « vole » vers la
+  // mini-fiche. Deux temps : (1) armer le nom de transition sur la carte source
+  // (flushSync pour qu'il soit présent dans le snapshot "avant"), (2) ouvrir le
+  // panneau dans startViewTransition — dans le snapshot "après", seul le panneau
+  // porte le nom, le navigateur interpole entre les deux. Si un panneau est déjà
+  // ouvert, on n'arme pas la carte (deux éléments porteraient le même nom dans
+  // le snapshot "avant", ce qui annulerait la transition) : la photo du panneau
+  // se morphe alors d'un bien à l'autre, ce qui est le comportement voulu.
+  const openPropertyWithMorph = (id: PropertyKey) => {
+    if (!canUseViewTransition()) {
+      selectProperty(id);
+      return;
+    }
+    if (selectedPropertyId === null) {
+      flushSync(() => setMorphPhotoId(id));
+    }
+    (document as DocumentWithViewTransition).startViewTransition!(() => {
+      flushSync(() => selectProperty(id));
+    });
+  };
+
   const closePanel = () => {
     setSelectedPropertyId(null);
     setFullPropertyId(null);
     setNoteDraft('');
     setPanelPhotoIndex(0);
+  };
+
+  // Fermeture : le film à l'envers — la photo du panneau retourne dans sa carte.
+  const closePanelWithMorph = () => {
+    if (!canUseViewTransition() || selectedPropertyId === null) {
+      closePanel();
+      return;
+    }
+    flushSync(() => setMorphPhotoId(selectedPropertyId));
+    (document as DocumentWithViewTransition).startViewTransition!(() => {
+      flushSync(closePanel);
+    });
   };
 
   const openFullProperty = (property: Property | undefined) => {
@@ -841,8 +901,6 @@ export function Biens({ store }: BiensProps) {
         background: 'var(--color-bg-page)',
         fontFamily: 'var(--font-sans, var(--notion-sans))',
         position: 'relative',
-        paddingRight: selectedProperty ? 462 : 0,
-        transition: 'padding-right 180ms ease',
       }}
     >
       {/* ── Page Header ───────────────────────────── */}
@@ -903,12 +961,12 @@ export function Biens({ store }: BiensProps) {
                 }}
               />
               {usingLiveData
-                ? `${liveProperties.length} biens Supabase`
+                ? `${(useServerPagination ? liveTotalCount : liveProperties.length).toLocaleString('fr-BE')} biens suivis`
                 : liveLoading
-                  ? 'Connexion Supabase...'
+                  ? 'Synchronisation des données...'
                   : liveError
-                    ? 'Erreur Supabase'
-                    : 'Supabase non configure'}
+                    ? 'Données indisponibles'
+                    : 'Source de données non configurée'}
             </div>
           </div>
         </div>
@@ -1327,7 +1385,6 @@ export function Biens({ store }: BiensProps) {
             className="lv-biens-grid"
             style={{
               display: 'grid',
-              gridTemplateColumns: selectedProperty ? 'repeat(3, 1fr)' : 'repeat(4, 1fr)',
               gap: 14,
             }}
           >
@@ -1343,9 +1400,10 @@ export function Biens({ store }: BiensProps) {
                   onCarouselPrev={handleCarousel(p.id, -1)}
                   onCarouselNext={handleCarousel(p.id, 1)}
                   onToggleFavorite={handleFav(p.id)}
-                  onSelect={() => selectProperty(p.id)}
+                  onSelect={() => openPropertyWithMorph(p.id)}
                   isFavorite={propertyMarks.isFavorite(getMarkId(p))}
                   selected={selectedPropertyId === p.id}
+                  photoTransitionName={morphPhotoId === p.id && selectedPropertyId !== p.id ? PROPERTY_PHOTO_TRANSITION : undefined}
                   priorityTone={priorityToneFromScore(propertyScore, p.score)}
                   primarySignal={cardSignals.primarySignal}
                   secondarySignalCount={cardSignals.secondarySignalCount}
@@ -1385,16 +1443,16 @@ export function Biens({ store }: BiensProps) {
               <Search size={18} />
             </div>
             <strong style={{ display: 'block', color: 'var(--color-text-primary)', fontSize: 15, marginBottom: 5 }}>
-              {liveError ? 'Impossible de charger Supabase' : 'Aucun bien dans cette vue'}
+              {liveError ? 'Impossible de charger les données' : 'Aucun bien dans cette vue'}
             </strong>
             <span style={{ display: 'block', lineHeight: 1.5 }}>
               {liveError
-                ? 'La page n affiche plus les annonces mock. Verifie la connexion Supabase ou les variables .env.local.'
-                : 'Elargis la recherche, change de vue sauvegardee ou reinitialise les filtres actifs.'}
+                ? 'Une erreur est survenue lors de la synchronisation. Réessayez dans un instant ou contactez le support si le problème persiste.'
+                : 'Élargissez la recherche, changez de vue sauvegardée ou réinitialisez les filtres actifs.'}
             </span>
             {!liveError && (
               <button type="button" onClick={resetFilters} style={{ ...smallSecondaryButtonStyle, margin: '14px auto 0', height: 34 }}>
-                Reinitialiser les filtres
+                Réinitialiser les filtres
               </button>
             )}
           </div>
@@ -1501,7 +1559,7 @@ export function Biens({ store }: BiensProps) {
           noteDraft={noteDraft}
           setNoteDraft={setNoteDraft}
           onSaveNote={savePanelNote}
-          onClose={closePanel}
+          onClose={closePanelWithMorph}
           onToggleFavorite={handleFav(selectedProperty.id)}
           onToggleIgnored={handleIgnored(selectedProperty.id)}
           isFavorite={propertyMarks.isFavorite(getMarkId(selectedProperty))}
@@ -1772,7 +1830,7 @@ interface MiniFicheBienProps {
   liveSignals?: ListingSignal[];
   currentAgentName: string;
   photoIndex: number;
-  setPhotoIndex: (index: number) => void;
+  setPhotoIndex: React.Dispatch<React.SetStateAction<number>>;
   noteDraft: string;
   setNoteDraft: (value: string) => void;
   onSaveNote: () => void;
@@ -1967,7 +2025,7 @@ function MiniFicheBien({
   }, [propertyNotes.error, store]);
 
   const goToPhoto = (direction: 1 | -1) => {
-    setPhotoIndex((photoIndex + direction + photos.length) % photos.length);
+    setPhotoIndex((currentIndex) => (currentIndex + direction + photos.length) % photos.length);
   };
 
   const handleSaveNote = () => {
@@ -2067,22 +2125,8 @@ function MiniFicheBien({
           />
           {photos.length > 1 && (
             <>
-              <button
-                type="button"
-                onClick={() => goToPhoto(-1)}
-                style={galleryButtonStyle('left')}
-                aria-label="Photo précédente"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => goToPhoto(1)}
-                style={galleryButtonStyle('right')}
-                aria-label="Photo suivante"
-              >
-                <ChevronRight size={16} />
-              </button>
+              <CarouselNavButton direction="previous" persistent onClick={() => goToPhoto(-1)} />
+              <CarouselNavButton direction="next" persistent onClick={() => goToPhoto(1)} />
               <div
                 style={{
                   position: 'absolute',
@@ -2300,24 +2344,6 @@ function MiniFicheBien({
   );
 }
 
-function galleryButtonStyle(side: 'left' | 'right'): React.CSSProperties {
-  return {
-    position: 'absolute',
-    top: '50%',
-    [side]: 10,
-    transform: 'translateY(-50%)',
-    width: 30,
-    height: 30,
-    borderRadius: 999,
-    border: '1px solid rgba(255,255,255,0.72)',
-    background: 'rgba(255,255,255,0.88)',
-    color: 'var(--color-text-primary)',
-    display: 'grid',
-    placeItems: 'center',
-    cursor: 'pointer',
-  };
-}
-
 function LegacyMiniFicheBien({
   property,
   store,
@@ -2406,7 +2432,7 @@ function LegacyMiniFicheBien({
   const recommendedAction = nextOpenTask
     ? nextOpenTask.title
     : !relatedContact
-      ? 'Lier un contact vendeur avant de creer le suivi commercial.'
+      ? 'Lier un contact vendeur avant de créer le suivi commercial.'
       : relatedDeal
         ? `Faire avancer le deal vers ${relatedDeal.stage}.`
         : primarySignal
@@ -2424,7 +2450,7 @@ function LegacyMiniFicheBien({
   }, [propertyNotes.error, store]);
 
   const goToPhoto = (direction: 1 | -1) => {
-    setPhotoIndex((photoIndex + direction + photos.length) % photos.length);
+    setPhotoIndex((currentIndex) => (currentIndex + direction + photos.length) % photos.length);
   };
 
   const handleSaveNote = () => {
@@ -2463,7 +2489,7 @@ function LegacyMiniFicheBien({
     }
 
     if (!property.supabasePropertyId) {
-      setActionMessage("Ce bien n'est pas encore synchronise avec Supabase.");
+      setActionMessage("Ce bien n'est pas encore synchronisé, réessayez dans un instant.");
       return;
     }
 
@@ -2503,7 +2529,7 @@ function LegacyMiniFicheBien({
     }
 
     if (!property.supabasePropertyId) {
-      setActionMessage("Ce bien n'est pas encore synchronise avec Supabase.");
+      setActionMessage("Ce bien n'est pas encore synchronisé, réessayez dans un instant.");
       return;
     }
 
@@ -2521,7 +2547,7 @@ function LegacyMiniFicheBien({
       setActionMessage(`Deal cree : ${deal.reference ?? deal.title}`);
       window.location.hash = deal.reference ? `#pipeline?deal=${encodeURIComponent(deal.reference)}` : '#pipeline';
     }).catch((error) => {
-      setActionMessage(error instanceof Error ? error.message : 'Impossible de creer le deal.');
+      setActionMessage(error instanceof Error ? error.message : 'Impossible de créer le deal.');
     });
   };
 
@@ -2549,7 +2575,7 @@ function LegacyMiniFicheBien({
       : { ...smallPrimaryButtonStyle, height: 36, justifyContent: 'center' };
 
     if (!dealForActions) {
-      return <button type="button" onClick={handleCreateDeal} style={buttonStyle}>Creer un deal</button>;
+      return <button type="button" onClick={handleCreateDeal} style={buttonStyle}>Créer un deal</button>;
     }
 
     if (isDealOwner) {
@@ -2631,9 +2657,9 @@ function LegacyMiniFicheBien({
               <span style={{ color: 'var(--color-text-secondary)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {property.city} · {property.source}
               </span>
-              <span style={legacyStatusStyle(property.reserved)}>
-                <span style={{ width: 6, height: 6, borderRadius: 99, background: property.reserved ? 'var(--color-warning-dot)' : 'var(--color-brand)' }} />
-                {property.reserved ? 'Réservé' : 'Disponible'}
+              <span style={legacyStatusStyle(property.reserved || Boolean(property.underOption))}>
+                <span style={{ width: 6, height: 6, borderRadius: 99, background: property.reserved || property.underOption ? 'var(--color-warning-dot)' : 'var(--color-brand)' }} />
+                {property.reserved ? 'Réservé' : property.underOption ? 'Sous option' : 'Disponible'}
               </span>
             </div>
           </div>
@@ -2724,9 +2750,9 @@ function LegacyMiniFicheBien({
           <span style={{ color: 'var(--color-text-secondary)', fontSize: 12.5, fontWeight: 500 }}>
             {property.city} · Publié il y a {property.publishedDays} j
           </span>
-          <span style={legacyStatusStyle(property.reserved)}>
-            <span style={{ width: 6, height: 6, borderRadius: 99, background: property.reserved ? 'var(--color-warning-dot)' : 'var(--color-brand)' }} />
-            {property.reserved ? 'Réservé' : 'Disponible'}
+          <span style={legacyStatusStyle(property.reserved || Boolean(property.underOption))}>
+            <span style={{ width: 6, height: 6, borderRadius: 99, background: property.reserved || property.underOption ? 'var(--color-warning-dot)' : 'var(--color-brand)' }} />
+            {property.reserved ? 'Réservé' : property.underOption ? 'Sous option' : 'Disponible'}
           </span>
         </div>
       </div>
@@ -2742,18 +2768,14 @@ function LegacyMiniFicheBien({
                 alt={property.title}
                 loading="eager"
                 decoding="async"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', viewTransitionName: PROPERTY_PHOTO_TRANSITION }}
               />
             </button>
             <span style={legacyGalleryCounterStyle}>{(photoIndex % photos.length) + 1} / {photos.length}</span>
             {photos.length > 1 && (
               <>
-                <button type="button" onClick={() => goToPhoto(-1)} style={galleryButtonStyle('left')} aria-label="Photo précédente">
-                  <ChevronLeft size={14} />
-                </button>
-                <button type="button" onClick={() => goToPhoto(1)} style={galleryButtonStyle('right')} aria-label="Photo suivante">
-                  <ChevronRight size={14} />
-                </button>
+                <CarouselNavButton direction="previous" persistent onClick={() => goToPhoto(-1)} />
+                <CarouselNavButton direction="next" persistent onClick={() => goToPhoto(1)} />
               </>
             )}
           </div>
@@ -2792,7 +2814,7 @@ function LegacyMiniFicheBien({
             <p style={{ margin: '5px 0 12px', color: 'var(--color-brand)', fontSize: 13, lineHeight: 1.45, fontWeight: 750 }}>
               {opportunityReason}
             </p>
-            <div style={legacyLabelStyle}>ACTION RECOMMANDEE</div>
+            <div style={legacyLabelStyle}>ACTION RECOMMANDÉE</div>
             <p style={{ margin: '5px 0 10px', color: 'var(--color-text-primary)', fontSize: 13, lineHeight: 1.45, fontWeight: 650 }}>
               {recommendedAction}
             </p>
@@ -2804,11 +2826,11 @@ function LegacyMiniFicheBien({
               )}
               {!nextOpenTask && (
                 <button type="button" onClick={() => setTaskTitle('Appeler le proprietaire')} style={smallSecondaryButtonStyle}>
-                  Preparer une tache
+                  Préparer une tâche
                 </button>
               )}
               <button type="button" onClick={handleCreateDeal} style={smallPrimaryButtonStyle}>
-                {relatedDeal ? 'Voir le deal' : 'Creer un deal'}
+                {relatedDeal ? 'Voir le deal' : 'Créer un deal'}
               </button>
             </div>
           </section>
@@ -2823,7 +2845,7 @@ function LegacyMiniFicheBien({
               isInactive={property.reserved || property.status?.startsWith('archiv')}
             />
             <div style={{ marginTop: 10 }}>
-              <span style={legacyAlertChipStyle}>Bande {scoreBandLabel(score)} · score vendeur recalcule en base</span>
+              <span style={legacyAlertChipStyle}>Bande {scoreBandLabel(score)} · score recalculé automatiquement</span>
             </div>
           </section>
 
@@ -3118,7 +3140,7 @@ function GrandeFicheBien({
   }, [propertyNotes.error, store]);
 
   const goToPhoto = (direction: 1 | -1) => {
-    setPhotoIndex((photoIndex + direction + photos.length) % photos.length);
+    setPhotoIndex((currentIndex) => (currentIndex + direction + photos.length) % photos.length);
   };
 
   const saveNote = () => {
@@ -3129,6 +3151,7 @@ function GrandeFicheBien({
 
   return (
     <div
+      className="lv-biens-dossier-backdrop"
       role="dialog"
       aria-modal="true"
       aria-label="Grande fiche bien"
@@ -3147,6 +3170,7 @@ function GrandeFicheBien({
       }}
     >
       <section
+        className="lv-biens-dossier"
         onMouseDown={(event) => event.stopPropagation()}
         style={{
           width: 'min(1280px, calc(100vw - 32px))',
@@ -3233,12 +3257,8 @@ function GrandeFicheBien({
                 </span>
                 {photos.length > 1 && (
                   <>
-                    <button type="button" onClick={() => goToPhoto(-1)} style={dossierGalleryButtonStyle('left')} aria-label="Photo précédente">
-                      <ChevronLeft size={18} />
-                    </button>
-                    <button type="button" onClick={() => goToPhoto(1)} style={dossierGalleryButtonStyle('right')} aria-label="Photo suivante">
-                      <ChevronRight size={18} />
-                    </button>
+                    <CarouselNavButton direction="previous" persistent onClick={() => goToPhoto(-1)} />
+                    <CarouselNavButton direction="next" persistent onClick={() => goToPhoto(1)} />
                   </>
                 )}
                 <span style={{ position: 'absolute', right: 14, bottom: 14, padding: '4px 8px', borderRadius: 6, background: 'rgba(29,31,30,0.78)', color: 'var(--color-text-inverse)', fontFamily: 'var(--notion-mono)', fontSize: 10.5, fontWeight: 700 }}>
@@ -3625,25 +3645,6 @@ function DossierSignal({ title, meta, tone }: { title: string; meta: string; ton
       </span>
     </div>
   );
-}
-
-function dossierGalleryButtonStyle(side: 'left' | 'right'): React.CSSProperties {
-  return {
-    position: 'absolute',
-    top: '50%',
-    [side]: 12,
-    transform: 'translateY(-50%)',
-    width: 32,
-    height: 32,
-    borderRadius: 999,
-    border: '1px solid rgba(255,255,255,0.75)',
-    background: 'rgba(255,255,255,0.92)',
-    color: 'var(--color-text-primary)',
-    display: 'grid',
-    placeItems: 'center',
-    cursor: 'pointer',
-    boxShadow: '0 6px 16px rgba(29,31,30,0.16)',
-  };
 }
 
 function dossierThumbStyle(active: boolean): React.CSSProperties {

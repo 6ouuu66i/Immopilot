@@ -10,12 +10,13 @@ import {
   Plus,
   SlidersHorizontal,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ScoreRing } from '../components/biens/ScoreRing';
 import { useAuth } from '../lib/auth';
 import {
   type DashboardOpportunity,
   type DashboardSignalItem,
+  type DashboardSnapshot,
 } from '../lib/services/dashboardService';
 import type { store as appStore } from '../lib/store';
 import { useDashboardSnapshot } from '../lib/useDashboardSnapshot';
@@ -34,7 +35,6 @@ interface KpiCard {
   deltaLabel?: string;
   hint: string;
   label: string;
-  spark: number[];
   tone: KpiTone;
   value: string;
 }
@@ -56,11 +56,11 @@ function formatNumber(value: number): string {
 
 function formatCurrency(value: number | null): string {
   if (typeof value !== 'number') return '-';
-  return `${formatNumber(value)} EUR`;
+  return `${formatNumber(value)} €`;
 }
 
 function formatSurface(value: number | null): string {
-  return typeof value === 'number' && value > 0 ? `${Math.round(value)} m2` : '-';
+  return typeof value === 'number' && value > 0 ? `${Math.round(value)} m²` : '-';
 }
 
 function formatDateTime(value: string | null): string {
@@ -91,37 +91,33 @@ function buildKpis({
 }): KpiCard[] {
   return [
     {
-      delta: `${surveillerCount} a surveiller`,
-      deltaLabel: `score moy. ${scoreAverage.toFixed(1)}`,
-      hint: 'bandes',
-      label: 'Opportunites chaudes',
-      spark: [0, 0, 1, 1, 1, 0, 0, 0],
+      delta: `${surveillerCount} à surveiller`,
+      deltaLabel: `score moyen ${scoreAverage.toFixed(1)}`,
+      hint: 'score ≥ 70',
+      label: 'Opportunités chaudes',
       tone: hotCount > 0 ? 'good' : 'neutral',
       value: String(hotCount),
     },
     {
-      delta: priceDropTotal > 0 ? `-${formatCurrency(priceDropTotal)}` : '0 EUR',
+      delta: priceDropTotal > 0 ? `-${formatCurrency(priceDropTotal)}` : '0 €',
       deltaLabel: '7 derniers jours',
       hint: '7 j',
       label: 'Baisses de prix',
-      spark: [0, 0, 1, 0, 0, 1, 0, 0],
       tone: priceDropCount > 0 ? 'risk' : 'neutral',
       value: String(priceDropCount),
     },
     {
       delta: overdueCount > 0 ? `${overdueCount} en retard` : `${todayTaskCount} aujourd'hui`,
       hint: '24 h',
-      label: 'Taches dues',
-      spark: [2, 3, 2, 4, 3, 5, 4, 5],
+      label: 'Tâches dues',
       tone: overdueCount > 0 ? 'watch' : 'good',
       value: String(todayTaskCount + overdueCount),
     },
     {
-      delta: `${fsboCount} a contacter`,
+      delta: `${fsboCount} à contacter`,
       deltaLabel: 'particuliers',
       hint: 'actifs',
       label: 'Particuliers FSBO',
-      spark: [0, 1, 1, 2, 2, 2, 3, 2],
       tone: fsboCount > 0 ? 'good' : 'neutral',
       value: String(fsboCount),
     },
@@ -174,7 +170,7 @@ export function Dashboard({ store: _store }: DashboardProps) {
         <div>
           <div>
             <h1 className="lv-title">Tableau de bord</h1>
-            <p>Bonjour {firstName}, voici les opportunites et signaux a traiter aujourd'hui.</p>
+            <p>Bonjour {firstName}, voici les opportunités et signaux à traiter aujourd'hui.</p>
           </div>
         </div>
         <a className="lv-secondary-button" href="#biens">
@@ -182,6 +178,8 @@ export function Dashboard({ store: _store }: DashboardProps) {
           Vue du jour
         </a>
       </section>
+
+      <MorningJournal snapshot={snapshot} firstName={firstName} />
 
       <div className="lv-dashboard-meta" aria-label="Etat de la prospection">
         <span className="lv-live-pill">Live</span>
@@ -191,13 +189,13 @@ export function Dashboard({ store: _store }: DashboardProps) {
         <span className="lv-meta-separator" aria-hidden="true" />
         <span><b>{formatNumber(snapshot?.activePropertiesCount ?? 0)}</b> biens actifs</span>
         <span className="lv-meta-separator" aria-hidden="true" />
-        <span><b>{formatNumber(snapshot?.scoredPropertiesCount ?? 0)}</b> biens scores</span>
+        <span><b>{formatNumber(snapshot?.scoredPropertiesCount ?? 0)}</b> biens scorés</span>
         <span className="lv-meta-separator" aria-hidden="true" />
         <span>Moyenne <b>{snapshot?.scoreAverage.toFixed(1) ?? '0.0'}</b></span>
         <span className="lv-meta-separator" aria-hidden="true" />
-        <span>Bandes <b>{snapshot?.scoreDistribution.forte ?? 0}</b> / <b>{snapshot?.scoreDistribution.surveiller ?? 0}</b> / <b>{snapshot?.scoreDistribution.faible ?? 0}</b></span>
+        <span>Scores <b>{snapshot?.scoreDistribution.forte ?? 0}</b> fortes / <b>{snapshot?.scoreDistribution.surveiller ?? 0}</b> à surveiller / <b>{snapshot?.scoreDistribution.faible ?? 0}</b> faibles</span>
         <span className="lv-meta-separator" aria-hidden="true" />
-        <span>Derniere sync <b>{lastSync}</b></span>
+        <span>Dernière synchro <b>{lastSync}</b></span>
       </div>
 
       {dashboardError && (
@@ -216,8 +214,8 @@ export function Dashboard({ store: _store }: DashboardProps) {
         <section className="lv-priority-panel lv-surface">
           <header className="lv-panel-head">
             <div>
-              <h2>Priorites commerciales</h2>
-              <p>Biens actifs tries sur le score vendeur reel.</p>
+              <h2>Priorités commerciales</h2>
+              <p>Biens actifs triés par score vendeur.</p>
             </div>
             <a href="#biens">
               <Filter size={14} />
@@ -238,31 +236,31 @@ export function Dashboard({ store: _store }: DashboardProps) {
         </section>
 
         <aside className="lv-dashboard-rail" aria-label="Taches et signaux">
-          <MiniPanel title="Taches du jour" count={visibleTodayTasks.length} actionHref="#agenda">
+          <MiniPanel title="Tâches du jour" count={visibleTodayTasks.length} actionHref="#agenda">
             <div className="lv-task-list">
               {todayTasksState.isLoading ? (
-                <EmptyDashboardLine>Chargement des taches...</EmptyDashboardLine>
+                <EmptyDashboardLine>Chargement des tâches...</EmptyDashboardLine>
               ) : tasksError ? (
                 <EmptyDashboardLine>{tasksError}</EmptyDashboardLine>
               ) : visibleTodayTasks.length === 0 ? (
-                <EmptyDashboardLine>Aucune tache prevue aujourd'hui.</EmptyDashboardLine>
+                <EmptyDashboardLine>Aucune tâche prévue aujourd'hui.</EmptyDashboardLine>
               ) : (
                 visibleTodayTasks.map((task) => (
                   <TaskRow key={task.id} task={task} onToggle={() => { void todayTasksState.toggleTask(task.id); }} />
                 ))
               )}
             </div>
-            <a className="lv-panel-link" href="#agenda">Voir toutes les taches</a>
+            <a className="lv-panel-link" href="#agenda">Voir toutes les tâches</a>
           </MiniPanel>
 
-          <MiniPanel title="Signaux a surveiller" count={visibleSignals.length}>
+          <MiniPanel title="Signaux à surveiller" count={visibleSignals.length}>
             <div className="lv-signal-list">
               {dashboardLoading ? (
                 <EmptyDashboardLine>Chargement des signaux...</EmptyDashboardLine>
               ) : dashboardError ? (
                 <EmptyDashboardLine>{dashboardError}</EmptyDashboardLine>
               ) : visibleSignals.length === 0 ? (
-                <EmptyDashboardLine>Aucun signal actif a afficher.</EmptyDashboardLine>
+                <EmptyDashboardLine>Aucun signal actif à afficher.</EmptyDashboardLine>
               ) : (
                 visibleSignals.map((signal) => <SignalRow key={signal.id} signal={signal} />)
               )}
@@ -283,6 +281,141 @@ export function Dashboard({ store: _store }: DashboardProps) {
         </aside>
       </div>
     </main>
+  );
+}
+
+/* ── Le Journal du matin ────────────────────────────────────────────
+   Première ouverture de la journée : le dashboard se compose comme une
+   une de journal — date en serif, manchette dont les chiffres comptent
+   depuis zéro, trois biens chauds en vignettes. Une fois par jour. */
+
+const JOURNAL_SEEN_KEY = 'ip_journal_seen';
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function useCountUp(target: number, durationMs = 450): number {
+  const [value, setoalue] = useState(0);
+  const frameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || target <= 0) {
+      setoalue(target);
+      return;
+    }
+
+    const startedAt = performance.now();
+    const tick = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / durationMs);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setoalue(Math.round(eased * target));
+      if (progress < 1) frameRef.current = requestAnimationFrame(tick);
+    };
+
+    frameRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    };
+  }, [target, durationMs]);
+
+  return value;
+}
+
+function JournalFigure({ value, label, tone }: { value: number; label: string; tone: 'risk' | 'good' | 'watch' }) {
+  const displayed = useCountUp(value);
+  return (
+    <span className={`lv-journal-figure tone-${tone}`}>
+      <b>{displayed}</b> {label}
+    </span>
+  );
+}
+
+function MorningJournal({ snapshot, firstName }: { snapshot: DashboardSnapshot | null; firstName: string }) {
+  const [visible, setoisible] = useState(() => localStorage.getItem(JOURNAL_SEEN_KEY) !== todayKey());
+  const markedRef = useRef(false);
+
+  // Marqué « lu » dès qu'il s'affiche avec des données : il ne reparaîtra pas
+  // avant demain, mais reste visible tant que l'agent ne le ferme pas.
+  useEffect(() => {
+    if (visible && snapshot && !markedRef.current) {
+      markedRef.current = true;
+      localStorage.setItem(JOURNAL_SEEN_KEY, todayKey());
+    }
+  }, [visible, snapshot]);
+
+  if (!visible || !snapshot) return null;
+
+  const topOpportunities = snapshot.opportunities.slice(0, 3);
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Ce matin' : hour < 18 ? 'Cet après-midi' : 'Ce soir';
+
+  // Une manchette n'annonce que ce qui s'est passé : les compteurs à zéro
+  // sont retirés, et si tout est calme, on le dit calmement.
+  const figures = [
+    {
+      value: snapshot.priceDropCount,
+      label: snapshot.priceDropCount > 1 ? 'baisses de prix' : 'baisse de prix',
+      tone: 'risk' as const,
+    },
+    {
+      value: snapshot.hotOpportunitiesCount,
+      label: snapshot.hotOpportunitiesCount > 1 ? 'opportunités fortes' : 'opportunité forte',
+      tone: 'good' as const,
+    },
+    {
+      value: snapshot.fsboCount,
+      label: snapshot.fsboCount > 1 ? 'particuliers à contacter' : 'particulier à contacter',
+      tone: 'watch' as const,
+    },
+  ].filter((figure) => figure.value > 0);
+
+  return (
+    <section className="lv-journal" aria-label="Le journal du jour">
+      <button
+        type="button"
+        className="lv-journal-close"
+        aria-label="Fermer le journal du jour"
+        onClick={() => setoisible(false)}
+      >
+        ×
+      </button>
+      <p className="lv-journal-kicker">Le journal du matin</p>
+      <h2 className="lv-journal-headline">
+        {figures.length === 0 ? (
+          <>{greeting}, {firstName} — marché calme, aucun nouveau signal prioritaire.</>
+        ) : (
+          <>
+            {greeting}, {firstName} —{' '}
+            {figures.map((figure, index) => (
+              <span key={figure.tone}>
+                {index > 0 && ' · '}
+                <JournalFigure value={figure.value} label={figure.label} tone={figure.tone} />
+              </span>
+            ))}
+          </>
+        )}
+      </h2>
+      {topOpportunities.length > 0 && (
+        <div className="lv-journal-picks">
+          {topOpportunities.map((opportunity, index) => (
+            <a
+              key={opportunity.id}
+              className="lv-journal-pick"
+              style={{ animationDelay: `${350 + index * 110}ms` }}
+              href={opportunity.propertyId ? `#biens?propertyId=${opportunity.propertyId}` : '#biens'}
+            >
+              {opportunity.photo ? <img src={opportunity.photo} alt="" loading="lazy" /> : <span className="lv-journal-pick-thumb" aria-hidden="true" />}
+              <span className="lv-journal-pick-copy">
+                <strong>{opportunity.title}</strong>
+                <small>{formatCurrency(opportunity.price)} · {opportunity.signal}</small>
+              </span>
+              <ScoreRing score={opportunity.score} size="sm" />
+            </a>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -324,30 +457,7 @@ function KpiCardView({ kpi }: { kpi: KpiCard }) {
         <span className={`lv-kpi-delta ${kpi.tone}`}>{kpi.delta}</span>
       </div>
       {kpi.deltaLabel ? <small>{kpi.deltaLabel}</small> : null}
-      <Sparkline points={kpi.spark} />
     </article>
-  );
-}
-
-function Sparkline({ points }: { points: number[] }) {
-  const width = 150;
-  const height = 30;
-  const max = Math.max(...points);
-  const min = Math.min(...points);
-  const range = Math.max(1, max - min);
-  const coordinates = points.map((point, index) => {
-    const x = (index / Math.max(1, points.length - 1)) * width;
-    const y = height - ((point - min) / range) * (height - 4) - 2;
-    return `${x.toFixed(2)},${y.toFixed(2)}`;
-  });
-  const line = coordinates.join(' ');
-  const area = `0,${height} ${line} ${width},${height}`;
-
-  return (
-    <svg className="lv-kpi-spark" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
-      <polyline className="area" points={area} />
-      <polyline className="line" points={line} />
-    </svg>
   );
 }
 
@@ -375,7 +485,7 @@ function OpportunityList({
   }
 
   if (opportunities.length === 0) {
-    return <div className="lv-dashboard-empty">Aucune opportunite scoree a afficher.</div>;
+    return <div className="lv-dashboard-empty">Aucune opportunité scorée à afficher.</div>;
   }
 
   return (
@@ -419,7 +529,7 @@ function TaskRow({ task, onToggle }: { task: TaskWithRelations; onToggle: () => 
   const meta = [
     view.time,
     task.relations.property?.locality ?? taskLinkLabel(task),
-  ].filter(Boolean).join(' - ');
+  ].filter(Boolean).join(' · ');
 
   return (
     <button className="lv-task-row" type="button" onClick={onToggle} aria-pressed={task.is_completed}>
@@ -439,7 +549,7 @@ function SignalRow({ signal }: { signal: DashboardSignalItem }) {
     <a className={`lv-signal-row tone-${signal.tone}`} href={`#biens?propertyId=${signal.propertyId}`}>
       <span>
         <strong>{signal.title}</strong>
-        <small>{`${signal.source} - ${signal.timeLabel}`}</small>
+        <small>{`${signal.source} · ${signal.timeLabel}`}</small>
       </span>
       <b>{signal.value}</b>
     </a>

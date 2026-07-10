@@ -271,6 +271,13 @@ export function Pipeline({ store }: PipelineProps) {
     const commission = active.reduce((sum, deal) => sum + deal.commissionAmount, 0);
     return { active: active.length, mandats, vendus, commission };
   }, [deals]);
+  const skeletonStageCounts = useMemo(() => (
+    deals.reduce<Record<string, number>>((counts, deal) => {
+      counts[deal.stage] = (counts[deal.stage] ?? 0) + 1;
+      return counts;
+    }, {})
+  ), [deals]);
+  const skeletonDealCount = Math.max(1, Math.min(deals.length || 3, 4));
 
   const handleSelectDeal = (dealId: string) => {
     setSelectedDealId((prev) => {
@@ -431,7 +438,7 @@ export function Pipeline({ store }: PipelineProps) {
         >
           <div style={{ minWidth: 0 }}>
             {isLoading ? (
-              <PipelineSkeleton viewMode={viewMode} />
+              <PipelineSkeleton viewMode={viewMode} stageCounts={skeletonStageCounts} dealCount={skeletonDealCount} />
             ) : viewMode === 'kanban' ? (
             <KanbanBoard
               deals={deals}

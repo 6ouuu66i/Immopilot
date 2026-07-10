@@ -6,6 +6,8 @@ import type { ListingSignal, ListingSignalType } from '../lib/services/listingSi
 interface SignalBadgesProps {
   signals: ListingSignal[];
   onSignalClick?: (signal: ListingSignal) => void;
+  /** Nombre max de badges affichés avant le compteur "+N" (défaut 3, 2 sur les cartes). */
+  maxVisible?: number;
 }
 
 type SignalTone = 'price' | 'belowMarket' | 'overpriced' | 'context' | 'behavior' | 'alert' | 'neutral';
@@ -226,11 +228,11 @@ function tooltipFor(signal: ListingSignal) {
   return fallbackMetadata(metadata);
 }
 
-export function SignalBadges({ signals, onSignalClick }: SignalBadgesProps) {
+export function SignalBadges({ signals, onSignalClick, maxVisible = MAX_VISIBLE_SIGNALS }: SignalBadgesProps) {
   if (signals.length === 0) return null;
 
-  const visibleSignals = signals.slice(0, MAX_VISIBLE_SIGNALS);
-  const hiddenSignals = signals.slice(MAX_VISIBLE_SIGNALS);
+  const visibleSignals = signals.slice(0, maxVisible);
+  const hiddenSignals = signals.slice(maxVisible);
   const hiddenTitle = hiddenSignals
     .map((signal) => `${definitionFor(signal.signal_type).label}: ${tooltipFor(signal)}`)
     .join('\n');

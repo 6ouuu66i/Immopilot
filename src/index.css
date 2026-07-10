@@ -1,22 +1,25 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   --radius: 0;
-  --bg-page: #F6F7F5;
+  /* Fond « papier chaud » : l'ancien #F6F7F5 était un gris teinté de vert,
+     froid à l'écran. Toute la gamme neutre (fond, surfaces douces, hovers,
+     filets) est réchauffée d'un cran pour coller à l'identité crème/serif. */
+  --bg-page: #F8F6F1;
   --bg-surface: #FFFFFF;
-  --border-default: #E1E4E1;
+  --border-default: #E6E2D8;
   --text-ink: #101613;
   --accent-forest: #1E5A3A;
   --alert-brique: #B3402E;
   --alert-ocre: #8A6D1F;
   --lv-app-bg: var(--bg-page);
   --lv-surface: #FFFFFF;
-  --lv-surface-soft: #F4F6F4;
+  --lv-surface-soft: #F2EFE8;
   --lv-text: var(--text-ink);
   --lv-muted: rgba(16, 22, 19, 0.62);
   --lv-faint: rgba(16, 22, 19, 0.42);
   --lv-border: var(--border-default);
-  --lv-border-strong: #BFC6C1;
+  --lv-border-strong: #C8C3B5;
   --lv-green: var(--accent-forest);
   --lv-green-hover: #16442C;
   --lv-green-tint: #E8F0EB;
@@ -24,7 +27,12 @@
   --lv-ocre: var(--alert-ocre);
   --lv-font-title: 'Archivo', 'Inter', system-ui, sans-serif;
   --lv-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --lv-font-mono: 'JetBrains Mono', 'IBM Plex Mono', Consolas, monospace;
+  /* Discipline typographique : la vraie mono est réservée aux références
+     (DEAL-0001, kbd, code). Tout le reste — badges, KPIs, dates, labels —
+     retombe sur la sans pour un rendu produit, pas terminal. Les valeurs
+     numériques gardent leur alignement via font-variant-numeric. */
+  --lv-font-mono-code: 'JetBrains Mono', 'IBM Plex Mono', Consolas, monospace;
+  --lv-font-mono: var(--lv-font-sans);
   --font-title: var(--lv-font-title);
   --font-sans: var(--lv-font-sans);
   --font-mono: var(--lv-font-mono);
@@ -628,7 +636,7 @@
 @theme {
   --color-forest: #1E5A3A;
   --color-forest-soft: #CFE1D2;
-  --color-surface-tint: #F6F7F5;
+  --color-surface-tint: #F8F6F1;
   --color-surface-tint-strong: #E6E4DF;
   --color-bone: #FBF2ED;
   --color-ink: #1D1F1E;
@@ -640,7 +648,7 @@
 :root {
   --forest: #1E5A3A;
   --forest-soft: #CFE1D2;
-  --surface-tint: #F6F7F5;
+  --surface-tint: #F8F6F1;
   --surface-tint-strong: #E6E4DF;
   --bone: #FBF2ED;
   --ink: #1D1F1E;
@@ -648,7 +656,8 @@
   --stone-light: #8E8B83;
   --notion-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --notion-serif: 'Lora', Georgia, 'Times New Roman', serif;
-  --notion-mono: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace;
+  --notion-mono: var(--notion-sans);
+  --notion-mono-code: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace;
   --sidebar-width: 240px;
 }
 
@@ -1331,22 +1340,24 @@ body,
   padding: var(--lv-space-4);
 }
 
+/* Sidebar « colonne de journal » : étroite, plate, typographique.
+   Pas de boîtes dans des boîtes — la hiérarchie vient du texte et d'un rail. */
 .ip-sidebar.lv-lovable-sidebar {
-  width: 268px;
-  flex-basis: 268px;
-  gap: 12px;
-  padding: 12px;
+  width: 220px;
+  flex-basis: 220px;
+  gap: 10px;
+  padding: 14px 10px 10px;
   background: var(--lv-surface);
   border-right: 1px solid #DDE2D8;
-  box-shadow: inset -1px 0 0 rgba(30, 90, 58, 0.03);
+  box-shadow: none;
 }
 
 .ip-sidebar.lv-lovable-sidebar .ip-sidebar-brand {
-  min-height: 48px;
-  padding: 6px;
-  border: 1px solid rgba(30, 90, 58, 0.1);
-  border-radius: var(--lv-radius-md);
-  background: color-mix(in srgb, var(--lv-surface) 76%, transparent);
+  min-height: 40px;
+  padding: 0 4px 0 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .ip-sidebar.lv-lovable-sidebar .ip-brand-lockup {
@@ -1354,27 +1365,40 @@ body,
 }
 
 .ip-sidebar.lv-lovable-sidebar .ip-brand-mark {
-  width: 32px;
-  height: 32px;
-  border-color: rgba(30, 90, 58, 0.16);
+  width: 27px;
+  height: 27px;
+  border: 0;
   border-radius: var(--lv-radius-md);
   background: var(--lv-green);
   color: #FFFFFF;
   box-shadow: none;
 }
 
+.ip-sidebar.lv-lovable-sidebar .ip-brand-mark svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* La marque porte l'identité éditoriale : serif, comme les titres de pages. */
 .ip-sidebar.lv-lovable-sidebar .ip-brand-name {
   color: var(--lv-text);
-  font-family: var(--lv-font-title);
-  font-size: 15px;
+  font-family: var(--notion-serif, Georgia, serif);
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: 0;
+  letter-spacing: -0.01em;
 }
 
 .ip-sidebar.lv-lovable-sidebar .ip-brand-sub {
-  color: var(--lv-muted);
-  font-size: 11px;
-  font-weight: 500;
+  color: var(--lv-faint);
+  font-size: 10px;
+  font-weight: 550;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Le chip « Live » n'a pas sa place ici — la fraîcheur des données vit dans le header. */
+.ip-sidebar.lv-lovable-sidebar .ip-brand-status {
+  display: none;
 }
 
 .ip-brand-status {
@@ -1406,8 +1430,8 @@ body,
 }
 
 .ip-sidebar.lv-lovable-sidebar .ip-sidebar-nav {
-  gap: 6px;
-  padding: 2px 0 0;
+  gap: 4px;
+  padding: 4px 0 0;
 }
 
 .ip-sidebar.lv-lovable-sidebar .ip-nav-group {
@@ -1434,58 +1458,51 @@ body,
   border-radius: 0;
 }
 
+.ip-nav-group-label,
 .ip-sidebar.lv-lovable-sidebar .ip-nav-group-label {
-  padding: 1px 10px 7px;
-  color: #7A8177;
-  font-family: var(--lv-font-mono);
+  padding: 6px 9px 5px;
+  color: var(--lv-faint);
+  font-family: var(--lv-font-sans);
   font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0;
+  font-weight: 650;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 
 .ip-sidebar.lv-lovable-sidebar .ip-sidebar-link {
   position: relative;
-  min-height: 34px;
+  min-height: 32px;
   gap: 9px;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--lv-radius-md);
   color: #4E584E;
-  padding: 0 9px 0 10px;
+  padding: 0 9px;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 550;
   transition:
     background var(--lv-transition),
-    border-color var(--lv-transition),
-    color var(--lv-transition),
-    transform var(--lv-transition);
+    color var(--lv-transition);
 }
 
 .ip-sidebar.lv-lovable-sidebar .ip-sidebar-link:hover {
-  border-color: rgba(30, 90, 58, 0.1);
-  background: rgba(255, 255, 255, 0.76);
+  background: color-mix(in srgb, var(--lv-green) 5%, transparent);
   color: var(--lv-text);
 }
 
-.ip-sidebar.lv-lovable-sidebar .ip-sidebar-link:active {
-  transform: translateY(1px);
-}
-
 .ip-sidebar.lv-lovable-sidebar .ip-sidebar-link.is-active {
-  border-color: rgba(30, 90, 58, 0.14);
-  background: #FFFFFF;
+  background: color-mix(in srgb, var(--lv-green) 8%, transparent);
   color: var(--lv-green);
-  box-shadow: 0 1px 0 rgba(16, 22, 19, 0.04);
-  font-weight: 700;
+  box-shadow: none;
+  font-weight: 650;
 }
 
 .ip-sidebar-active-rail {
   position: absolute;
-  left: -1px;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  border-radius: 0 var(--lv-radius-sm) var(--lv-radius-sm) 0;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  border-radius: 0;
   background: transparent;
 }
 
@@ -1530,19 +1547,25 @@ body,
 }
 
 .ip-sidebar.lv-lovable-sidebar .ip-sidebar-footer {
-  gap: 5px;
+  gap: 3px;
   margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid rgba(30, 90, 58, 0.1);
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--lv-border) 70%, transparent);
 }
 
+/* Carte agent aplatie : avatar + nom, la surface n'apparaît qu'au survol. */
 .ip-sidebar.lv-lovable-sidebar .ip-agent-card {
-  margin-top: 6px;
-  border-color: rgba(30, 90, 58, 0.12);
+  margin-top: 4px;
+  border: 0;
   border-radius: var(--lv-radius-md);
-  background: #FFFFFF;
-  padding: 8px;
-  box-shadow: 0 1px 0 rgba(16, 22, 19, 0.04);
+  background: transparent;
+  padding: 6px 7px;
+  box-shadow: none;
+  transition: background var(--lv-transition);
+}
+
+.ip-sidebar.lv-lovable-sidebar .ip-agent-card:hover {
+  background: color-mix(in srgb, var(--lv-green) 5%, transparent);
 }
 
 .ip-sidebar.lv-lovable-sidebar .ip-agent-avatar,
@@ -1576,14 +1599,17 @@ body,
 }
 
 .ip-shell.is-collapsed .ip-sidebar.lv-lovable-sidebar {
-  width: 72px;
-  flex-basis: 72px;
-  padding: 10px;
+  width: 64px;
+  flex-basis: 64px;
+  padding: 14px 8px 10px;
 }
 
 .ip-shell.is-collapsed .ip-sidebar.lv-lovable-sidebar .ip-sidebar-brand {
+  flex-direction: column;
   justify-content: center;
-  padding: 6px 0;
+  gap: 6px;
+  min-height: auto;
+  padding: 0 0 4px;
 }
 
 .ip-shell.is-collapsed .ip-sidebar.lv-lovable-sidebar .ip-brand-status {
@@ -6229,7 +6255,8 @@ body,
 .lv-dashboard {
   width: min(1268px, 100%);
   margin: 0 auto;
-  padding: 20px 14px 34px;
+  /* Aligné sur la marge latérale des autres pages (Biens, Tâches : 32px). */
+  padding: 20px 32px 34px;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -6606,23 +6633,24 @@ body,
 }
 
 .lv-signal-pill {
-  max-width: 118px;
-  min-height: 22px;
+  /* inline-block (pas flex) : l'ellipsis ne fonctionne pas sur un conteneur
+     flex centré — le texte était clippé brutalement au milieu. */
+  max-width: 168px;
   border: 1px solid var(--lv-border);
   border-radius: var(--lv-radius-sm);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-block;
   overflow: hidden;
   background: var(--lv-surface-soft);
   color: var(--lv-muted);
-  font-family: var(--lv-font-mono);
+  font-family: var(--lv-font-sans);
   font-size: 10px;
   font-weight: 700;
-  line-height: 1;
-  padding: 0 7px;
+  line-height: 20px;
+  padding: 0 8px;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .lv-signal-pill.tone-good {
@@ -7223,7 +7251,14 @@ body,
 
 .lv-biens-grid {
   grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)) !important;
+  /* Toutes les rangées partagent la même hauteur : une carte sans signal ni
+     score ne peut plus être plus courte que ses voisines. */
+  grid-auto-rows: 1fr;
   gap: 12px !important;
+}
+
+.lv-biens-grid .lv-property-card {
+  height: 100%;
 }
 
 .lv-property-card {
@@ -7237,7 +7272,6 @@ body,
 .lv-property-card:hover,
 .lv-property-card.is-selected {
   border-color: var(--lv-border-strong) !important;
-  box-shadow: var(--lv-shadow-hover) !important;
 }
 
 .lv-property-card.is-selected {
@@ -10585,8 +10619,8 @@ table.contacts-table {
   /* Fonds â€” palette originelle du design board */
   --color-bg-page:        var(--bg-page);
   --color-bg-surface:     var(--bg-surface);
-  --color-bg-muted:       #F4F6F4;
-  --color-bg-hover:       #E9ECE9;
+  --color-bg-muted:       #F2EFE8;
+  --color-bg-hover:       #EBE7DD;
   --color-bg-overlay:     rgba(29, 31, 30, 0.5);  /* modales */
 
   /* Textes */
@@ -10599,7 +10633,7 @@ table.contacts-table {
   /* Bordures */
   --color-border-subtle:  var(--border-default);
   --color-border-default: var(--border-default);
-  --color-border-strong:  #C7CCC8;
+  --color-border-strong:  #C8C3B5;
   --color-border-focus:   var(--accent-forest);
 
 
@@ -10653,7 +10687,7 @@ table.contacts-table {
   --color-info-dot:       #2D6CDF;
 
   /* Neutral â€” base attenuee */
-  --color-neutral-bg:     #F4F6F4;
+  --color-neutral-bg:     #F2EFE8;
   --color-neutral-text:   #5B625D;
   --color-neutral-border: var(--border-default);
   --color-neutral-dot:    #8A8781;
@@ -10683,11 +10717,13 @@ table.contacts-table {
   --color-score-high-text:       var(--accent-forest);
   --color-score-high-border:     #7FA68E;
 
-  /* Anneau circulaire â€” couleurs du remplissage progressif */
+  /* Anneau circulaire — sémantique en 3 bandes : ≥70 vert (Forte),
+     40-69 ambre (À surveiller), <40 gris neutre (Faible). Jamais de rouge
+     sur un bien : le rouge est réservé aux erreurs système. */
   --color-score-ring-track:      var(--border-default);
-  --color-score-ring-critical:   var(--alert-brique);
-  --color-score-ring-low:        var(--alert-ocre);
-  --color-score-ring-medium:     #4A6B0F;
+  --color-score-ring-critical:   #98A19B;
+  --color-score-ring-low:        #98A19B;
+  --color-score-ring-medium:     var(--alert-ocre);
   --color-score-ring-high:       var(--accent-forest);
 
 
@@ -10960,19 +10996,22 @@ body {
    mapped to the official La Cote palette so no old side bands appear. */
 :root {
   --radius: 0;
-  --bg-page: #F6F7F5;
+  /* Fond « papier chaud » : l'ancien #F6F7F5 était un gris teinté de vert,
+     froid à l'écran. Toute la gamme neutre (fond, surfaces douces, hovers,
+     filets) est réchauffée d'un cran pour coller à l'identité crème/serif. */
+  --bg-page: #F8F6F1;
   --bg-surface: #FFFFFF;
-  --border-default: #E1E4E1;
+  --border-default: #E6E2D8;
   --text-ink: #101613;
   --accent-forest: #1E5A3A;
   --alert-brique: #B3402E;
   --alert-ocre: #8A6D1F;
   --lv-app-bg: var(--bg-page);
   --lv-surface: var(--bg-surface);
-  --lv-surface-soft: #F4F6F4;
+  --lv-surface-soft: #F2EFE8;
   --lv-text: var(--text-ink);
   --lv-border: var(--border-default);
-  --lv-border-strong: #BFC6C1;
+  --lv-border-strong: #C8C3B5;
   --lv-green: var(--accent-forest);
   --lv-green-tint: #E8F0EB;
   --lv-red: var(--alert-brique);
@@ -10985,11 +11024,11 @@ body {
   --lv-shadow-hover: none;
   --color-bg-page: var(--bg-page);
   --color-bg-surface: var(--bg-surface);
-  --color-bg-muted: #F4F6F4;
-  --color-bg-hover: #E6EAE7;
+  --color-bg-muted: #F2EFE8;
+  --color-bg-hover: #EBE7DD;
   --color-text-primary: var(--text-ink);
   --color-border-default: var(--border-default);
-  --color-border-strong: #BFC6C1;
+  --color-border-strong: #C8C3B5;
   --color-brand: var(--accent-forest);
   --color-brand-hover: #16442C;
   --color-brand-bg: #E8F0EB;
@@ -11045,7 +11084,6 @@ body,
 
 .lv-surface,
 .lv-kpi-card,
-.lv-property-card,
 .lv-biens-table-shell,
 .lv-biens-filter-bar,
 .lv-biens-mini,
@@ -11154,3 +11192,847 @@ h3, h4, h5, h6 {
 h3 { font-size: var(--text-xl); }
 h4 { font-size: var(--text-lg); }
 
+/* ============================================================
+   POLISH PASS — discipline mono, micro-interactions, entrée
+   ============================================================ */
+
+/* La vraie mono ne survit que pour les références et raccourcis clavier. */
+kbd,
+code,
+.ip-ref,
+[data-ref] {
+  font-family: var(--lv-font-mono-code, var(--notion-mono-code)) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Les valeurs numériques alignées restent tabulaires même en Inter. */
+.lv-kpi-value strong,
+.lv-row-price b,
+.lv-badge,
+.lv-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus clavier visible et cohérent sur toute l'app. */
+.ip-shell :focus-visible,
+.ip-login-page :focus-visible {
+  outline: 2px solid var(--lv-green);
+  outline-offset: 2px;
+}
+
+/* Flèches du carrousel des cartes : zone de clic généreuse (40×56) pour
+   qu'un clic imprécis reste sur le carrousel au lieu de retomber sur la
+   carte (qui ouvrirait la fiche). Visuel compact centré, pression au clic. */
+.lv-property-card-media {
+  isolation: isolate;
+}
+
+.lv-property-card-photo-button {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  background: var(--color-bg-muted);
+  cursor: pointer;
+  overflow: hidden;
+  transform: none !important;
+}
+
+.lv-property-card-photo {
+  position: absolute;
+  inset: 0;
+  animation: ip-property-card-photo-in 180ms ease-out both;
+}
+
+@keyframes ip-property-card-photo-in {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+
+.lv-photo-nav {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  height: auto;
+  transform: none !important;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  z-index: 4;
+}
+
+.lv-photo-nav--persistent {
+  opacity: 1;
+}
+
+.lv-photo-nav > span {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--color-text-primary) 55%, transparent);
+  color: var(--color-text-inverse);
+  transition: transform 130ms cubic-bezier(0.22, 0.61, 0.36, 1), background 130ms ease;
+}
+
+.lv-photo-nav:hover > span {
+  background: color-mix(in srgb, var(--color-text-primary) 78%, transparent);
+}
+
+.lv-photo-nav:active > span {
+  background: color-mix(in srgb, var(--color-text-primary) 88%, transparent);
+}
+
+/* Compteur photo des cartes : visible au survol seulement, comme les flèches. */
+.lv-photo-counter {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--color-text-primary) 62%, transparent);
+  color: var(--color-text-inverse);
+  font-size: 10px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lv-property-card { animation: none; }
+  .lv-property-card-photo { animation: none; }
+  .lv-surface-hover,
+  .lv-photo-counter,
+  .ip-sidebar,
+  .ip-sidebar-link { transition: none; }
+}
+
+/* ── Command palette (Ctrl+K) ───────────────────────────────────────
+   Panneau central net, navigation 100 % clavier, résultats groupés. */
+@keyframes ip-palette-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+.ip-palette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: clamp(48px, 14vh, 140px) 16px 16px;
+  background: color-mix(in srgb, var(--lv-text) 26%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.ip-palette {
+  width: min(600px, 100%);
+  max-height: min(480px, 72vh);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--lv-border-strong);
+  background: var(--lv-surface);
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--lv-text) 18%, transparent);
+  animation: ip-palette-in 160ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.ip-palette-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  min-height: 48px;
+  border-bottom: 1px solid var(--lv-border);
+  color: var(--lv-muted);
+}
+
+.ip-palette-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--lv-text);
+  font: 500 14px / 1 var(--lv-font-sans);
+}
+
+.ip-palette-input input::placeholder {
+  color: var(--lv-faint);
+}
+
+.ip-palette-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--lv-border);
+  border-top-color: var(--lv-green);
+  border-radius: 999px;
+  animation: ip-palette-spin 700ms linear infinite;
+}
+
+@keyframes ip-palette-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ip-palette-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.ip-palette-group {
+  margin: 8px 8px 4px;
+  color: var(--lv-faint);
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.ip-palette-empty {
+  margin: 0;
+  padding: 26px 14px;
+  color: var(--lv-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.ip-palette-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--lv-text);
+  padding: 7px 8px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ip-palette-item[data-active='true'] {
+  background: color-mix(in srgb, var(--lv-green) 8%, transparent);
+}
+
+.ip-palette-item img,
+.ip-palette-thumb {
+  width: 40px;
+  height: 32px;
+  object-fit: cover;
+  display: block;
+  background: var(--lv-surface-soft);
+  border: 1px solid var(--lv-border);
+}
+
+.ip-palette-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--lv-muted);
+  border: 1px solid var(--lv-border);
+  background: var(--lv-surface-soft);
+}
+
+.ip-palette-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ip-palette-copy strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ip-palette-copy small {
+  overflow: hidden;
+  color: var(--lv-muted);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ip-palette-score {
+  min-width: 26px;
+  padding: 3px 6px;
+  text-align: center;
+  color: var(--lv-green);
+  background: var(--lv-green-tint);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ip-palette-foot {
+  display: flex;
+  gap: 14px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--lv-border);
+  color: var(--lv-faint);
+  font-size: 11px;
+}
+
+.ip-palette-foot kbd {
+  border: 1px solid var(--lv-border);
+  background: var(--lv-surface-soft);
+  color: var(--lv-muted);
+  font-size: 10px;
+  padding: 2px 5px;
+}
+
+/* La barre du header devient le déclencheur de la palette. */
+.ip-command-search-trigger {
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color var(--lv-transition), background var(--lv-transition);
+}
+
+.ip-command-search-trigger:hover {
+  border-color: var(--lv-border-strong);
+  background: var(--lv-surface-soft);
+}
+
+.ip-command-search-placeholder {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--lv-faint);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ip-palette { animation: none; }
+}
+
+/* ── Le Journal du matin ────────────────────────────────────────────
+   Une manchette de presse : double filet, kicker en petites capitales,
+   manchette serif, vignettes en cascade. Affiché une fois par jour. */
+@keyframes lv-journal-line {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.lv-journal {
+  position: relative;
+  margin-top: 18px;
+  padding: 14px 40px 16px 0;
+  border-top: 2px solid var(--lv-text);
+  border-bottom: 1px solid var(--lv-border-strong);
+  background: transparent;
+}
+
+.lv-journal::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--lv-text);
+  opacity: 0.55;
+}
+
+.lv-journal-kicker {
+  margin: 0 0 7px;
+  color: var(--lv-faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  animation: lv-journal-line 340ms ease both;
+}
+
+.lv-journal-headline {
+  margin: 0;
+  max-width: 860px;
+  color: var(--lv-text);
+  font-family: var(--notion-serif, Georgia, serif);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  animation: lv-journal-line 380ms ease 120ms both;
+}
+
+.lv-journal-figure b {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.lv-journal-figure.tone-risk b { color: var(--lv-red); }
+.lv-journal-figure.tone-good b { color: var(--lv-green); }
+.lv-journal-figure.tone-watch b { color: var(--lv-ocre); }
+
+.lv-journal-picks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.lv-journal-pick {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 8px;
+  border: 1px solid var(--lv-border);
+  background: var(--lv-surface);
+  color: var(--lv-text);
+  text-decoration: none;
+  animation: lv-journal-line 360ms ease both;
+  transition: border-color var(--lv-transition), background var(--lv-transition), transform var(--lv-transition);
+}
+
+.lv-journal-pick:hover {
+  border-color: var(--lv-border-strong);
+  background: var(--lv-surface-soft);
+  transform: translateY(-1px);
+}
+
+.lv-journal-pick img,
+.lv-journal-pick-thumb {
+  width: 52px;
+  height: 44px;
+  object-fit: cover;
+  display: block;
+  background: var(--lv-surface-soft);
+}
+
+.lv-journal-pick-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lv-journal-pick-copy strong {
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lv-journal-pick-copy small {
+  overflow: hidden;
+  color: var(--lv-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lv-journal-close {
+  position: absolute;
+  top: 10px;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--lv-faint);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: color var(--lv-transition), border-color var(--lv-transition);
+}
+
+.lv-journal-close:hover {
+  color: var(--lv-text);
+  border-color: var(--lv-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lv-journal-kicker,
+  .lv-journal-headline,
+  .lv-journal-pick { animation: none; }
+}
+
+/* ── Morphing carte → mini-fiche (View Transitions) ─────────────────
+   La photo voyage entre la carte et le panneau ; le reste de la page
+   fait un cross-fade rapide pour ne pas concurrencer le mouvement. */
+::view-transition-group(ip-property-photo) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+::view-transition-old(ip-property-photo),
+::view-transition-new(ip-property-photo) {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  overflow: hidden;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+}
+
+/* Desktop workspace rhythm: shared PC/Mac alignment pass. */
+@media (min-width: 1021px) {
+  :root {
+    --lv-desktop-gutter: 32px;
+    --lv-desktop-gutter-tight: 24px;
+    --lv-desktop-panel: 420px;
+    --lv-desktop-panel-wide: 462px;
+    --lv-toolbar-height: 38px;
+    --lv-control-height: 36px;
+    --lv-icon-control: 38px;
+  }
+
+  .lv-dashboard,
+  .lv-biens,
+  .lv-pipeline,
+  .lv-contacts.contacts-page {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .lv-biens.has-panel,
+  .lv-pipeline.has-panel,
+  .lv-contacts.has-panel {
+    max-width: none;
+  }
+
+  .lv-dashboard {
+    padding-left: var(--lv-desktop-gutter) !important;
+    padding-right: var(--lv-desktop-gutter) !important;
+  }
+
+  .lv-dashboard-head,
+  .lv-biens-head,
+  .lv-pipeline-head,
+  .lv-contacts .contacts-head {
+    padding-top: 22px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .lv-biens-head,
+  .lv-biens-views,
+  .lv-biens-toolbar,
+  .lv-biens-filter-wrap,
+  .lv-biens-results,
+  .lv-pipeline-head,
+  .lv-pipeline-toolbar,
+  .lv-pipeline .pipeline-workarea,
+  .lv-contacts.contacts-page {
+    padding-left: var(--lv-desktop-gutter) !important;
+    padding-right: var(--lv-desktop-gutter) !important;
+  }
+
+  .lv-biens.has-panel .lv-biens-head,
+  .lv-biens.has-panel .lv-biens-views,
+  .lv-biens.has-panel .lv-biens-toolbar,
+  .lv-biens.has-panel .lv-biens-results {
+    padding-right: calc(var(--lv-desktop-panel-wide) + var(--lv-desktop-gutter-tight)) !important;
+  }
+
+  .lv-pipeline.has-panel .lv-pipeline-head,
+  .lv-pipeline.has-panel .lv-pipeline-toolbar,
+  .lv-pipeline.has-panel .pipeline-workarea {
+    padding-right: calc(var(--lv-desktop-panel-wide) + var(--lv-desktop-gutter-tight)) !important;
+  }
+
+  .lv-biens-toolbar,
+  .lv-pipeline-toolbar,
+  .lv-contacts .contacts-head {
+    gap: 12px !important;
+  }
+
+  .lv-biens-toolbar,
+  .lv-pipeline-toolbar {
+    padding-top: 12px !important;
+  }
+
+  .lv-biens-filter-wrap,
+  .lv-biens-results,
+  .lv-pipeline .pipeline-workarea {
+    padding-top: 12px !important;
+  }
+
+  .lv-biens-search-input,
+  .lv-contacts .contacts-search,
+  .lv-contacts .contacts-view-toggle,
+  .lv-contacts .contacts-export,
+  .lv-pipeline-view-toggle,
+  .lv-biens-view-toggle,
+  .lv-biens .lv-primary-button,
+  .lv-biens .lv-secondary-button,
+  .lv-biens-sort .lv-secondary-button,
+  .lv-pipeline-actions .lv-primary-button,
+  .lv-pipeline-actions .lv-secondary-button {
+    height: var(--lv-toolbar-height) !important;
+    min-height: var(--lv-toolbar-height) !important;
+  }
+
+  .lv-contacts .contacts-view-toggle button,
+  .lv-contacts .contacts-export button,
+  .lv-contacts .icon-action,
+  .lv-icon-toggle,
+  .lv-contacts .contacts-filter-square {
+    width: var(--lv-icon-control) !important;
+    height: var(--lv-toolbar-height) !important;
+    min-height: var(--lv-toolbar-height) !important;
+  }
+
+  .lv-biens-filter-bar button,
+  .lv-filter-button,
+  .lv-reset-button,
+  .lv-contacts .filter-pill,
+  .lv-contacts .contacts-filter-square,
+  .lv-contacts .panel-action {
+    height: var(--lv-control-height) !important;
+    min-height: var(--lv-control-height) !important;
+  }
+
+  .lv-biens-filter-bar,
+  .lv-contacts .filters-row {
+    min-height: 48px !important;
+    padding: 6px !important;
+  }
+
+  .lv-biens-grid {
+    grid-template-columns: repeat(auto-fill, minmax(252px, 1fr)) !important;
+    align-items: start !important;
+    gap: 14px !important;
+  }
+
+  .lv-biens.has-panel .lv-biens-grid {
+    grid-template-columns: repeat(auto-fill, minmax(252px, 1fr)) !important;
+  }
+
+  .lv-dashboard-kpis,
+  .lv-dashboard-split,
+  .lv-dashboard-rail,
+  .lv-contacts .contacts-body-grid,
+  .lv-pipeline .kanban-board {
+    gap: 14px !important;
+  }
+
+  .lv-contacts .contacts-body-grid {
+    grid-template-columns: minmax(0, 1fr) var(--lv-desktop-panel) !important;
+  }
+
+  .lv-contacts.is-panel-closed .contacts-body-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .lv-contacts .contact-panel,
+  .lv-biens-mini,
+  .lv-biens-advanced,
+  .lv-pipeline .fiche-panel,
+  .deal-fiche-panel {
+    width: var(--lv-desktop-panel) !important;
+    border-left: 1px solid var(--lv-border) !important;
+    box-shadow: -12px 0 28px -24px rgba(16, 22, 19, 0.45) !important;
+  }
+
+  .lv-biens-mini,
+  .lv-biens-advanced,
+  .lv-pipeline .fiche-panel,
+  .deal-fiche-panel {
+    width: var(--lv-desktop-panel-wide) !important;
+  }
+
+  .lv-contacts .panel-top,
+  .lv-pipeline .fiche-head {
+    padding: 16px 18px 14px !important;
+  }
+
+  .lv-contacts .panel-actions {
+    padding: 12px 18px !important;
+    gap: 8px !important;
+  }
+
+  .lv-contacts .panel-stats,
+  .lv-contacts .panel-section {
+    padding-top: 14px !important;
+    padding-bottom: 14px !important;
+  }
+
+  .lv-property-card.is-selected,
+  .lv-pipeline .deal-card.is-selected,
+  .lv-pipeline .list-row.is-selected {
+    border-color: color-mix(in srgb, var(--lv-green) 34%, var(--lv-border)) !important;
+    background: color-mix(in srgb, var(--lv-green-tint) 54%, var(--lv-surface)) !important;
+    box-shadow: inset 3px 0 0 var(--lv-green) !important;
+    outline: 0 !important;
+  }
+
+  .lv-biens-table-row.is-selected,
+  .lv-contacts .contacts-table tr.selected {
+    background: color-mix(in srgb, var(--lv-green-tint) 64%, var(--lv-surface)) !important;
+    box-shadow: inset 3px 0 0 var(--lv-green) !important;
+  }
+
+  .lv-biens-tab.is-active,
+  .lv-contacts .filter-pill.active,
+  .lv-filter-button.is-active,
+  .lv-biens-filter-bar button[aria-expanded="true"] {
+    border-color: color-mix(in srgb, var(--lv-green) 30%, transparent) !important;
+    background: color-mix(in srgb, var(--lv-green-tint) 82%, var(--lv-surface)) !important;
+    color: var(--lv-green) !important;
+  }
+
+  .lv-contacts .contacts-table-shell {
+    min-height: 260px !important;
+  }
+
+  .lv-contacts .table-scroll {
+    flex: 0 1 auto !important;
+  }
+
+  .lv-contacts .contacts-table tbody:has(tr:only-child) td {
+    height: 56px !important;
+  }
+
+  .lv-contacts .panel-actions {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+
+  .lv-contacts .panel-action {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    white-space: nowrap !important;
+  }
+
+  .lv-pipeline .column-body {
+    min-height: 292px !important;
+  }
+
+  .lv-pipeline .column-body:has(.column-empty) {
+    min-height: 0 !important;
+  }
+
+  .lv-pipeline .column-empty {
+    margin-top: 8px !important;
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .ip-sidebar.lv-lovable-sidebar {
+    position: relative;
+    z-index: 90;
+  }
+
+  .lv-biens-dossier-backdrop {
+    left: 220px !important;
+    z-index: 70 !important;
+    background: rgba(29, 31, 30, 0.32) !important;
+    backdrop-filter: blur(3px) !important;
+  }
+
+  .ip-shell.is-collapsed .lv-biens-dossier-backdrop {
+    left: 76px !important;
+  }
+
+  .lv-biens-dossier {
+    width: min(1280px, calc(100vw - 116px)) !important;
+  }
+
+  .lv-property-card {
+    will-change: transform;
+    transform: translateY(0);
+  }
+
+  .lv-property-card:hover {
+    animation: none !important;
+    transform: translateY(-4px) !important;
+    border-color: color-mix(in srgb, var(--lv-green) 28%, var(--lv-border-strong)) !important;
+    box-shadow:
+      0 14px 34px -28px rgba(16, 22, 19, 0.58),
+      0 0 0 1px color-mix(in srgb, var(--lv-green) 10%, transparent) !important;
+    z-index: 2;
+  }
+
+  .lv-property-card.is-selected {
+    animation: none !important;
+    transform: translateY(-2px) !important;
+    border-color: color-mix(in srgb, var(--lv-green) 46%, var(--lv-border)) !important;
+    background: color-mix(in srgb, var(--lv-green-tint) 38%, var(--lv-surface)) !important;
+    box-shadow:
+      inset 3px 0 0 var(--lv-green),
+      0 16px 34px -30px rgba(16, 22, 19, 0.62),
+      0 0 0 1px color-mix(in srgb, var(--lv-green) 16%, transparent) !important;
+    z-index: 3;
+  }
+
+  .lv-biens .lv-biens-grid .lv-property-card:hover {
+    animation: none !important;
+    transform: translateY(-4px) !important;
+    box-shadow:
+      0 14px 34px -28px rgba(16, 22, 19, 0.58),
+      0 0 0 1px rgba(30, 90, 58, 0.1) !important;
+  }
+
+  .lv-biens .lv-biens-grid .lv-property-card.is-selected {
+    animation: none !important;
+    transform: translateY(-2px) !important;
+    box-shadow:
+      inset 3px 0 0 var(--lv-green),
+      0 16px 34px -30px rgba(16, 22, 19, 0.62),
+      0 0 0 1px rgba(30, 90, 58, 0.16) !important;
+  }
+
+  .lv-page,
+  .agenda-react-page,
+  .settings-react-page,
+  .admin-react-page,
+  .transfers-page,
+  .commissions-page,
+  .notifications-page {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .agenda-react-content {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: var(--lv-desktop-gutter) !important;
+    padding-right: var(--lv-desktop-gutter) !important;
+  }
+
+  .settings-react-page,
+  .admin-react-page,
+  .transfers-page,
+  .commissions-page,
+  .notifications-page {
+    padding-left: var(--lv-desktop-gutter) !important;
+    padding-right: var(--lv-desktop-gutter) !important;
+  }
+}

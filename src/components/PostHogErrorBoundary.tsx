@@ -29,13 +29,13 @@ export class PostHogErrorBoundary extends React.Component<PostHogErrorBoundaryPr
             minHeight: '100vh',
             display: 'grid',
             placeItems: 'center',
-            background: 'var(--color-bg-page, #F6F7F5)',
+            background: 'var(--color-bg-page, #F8F6F1)',
             color: 'var(--color-text-primary, #101613)',
             fontFamily: 'var(--font-sans, Inter, sans-serif)',
             padding: 24,
           }}
         >
-          <div style={{ maxWidth: 460, border: '1px solid var(--color-border-default, #E1E4E1)', background: '#FFFFFF', padding: 24 }}>
+          <div style={{ maxWidth: 460, border: '1px solid var(--color-border-default, #E6E2D8)', background: '#FFFFFF', padding: 24 }}>
             <strong style={{ display: 'block', fontSize: 16, marginBottom: 8 }}>Une erreur est survenue.</strong>
             <span style={{ color: 'var(--color-text-secondary, #5F6862)', fontSize: 13 }}>
               Rechargez la page. L'incident a ete transmis au monitoring si PostHog est configure.

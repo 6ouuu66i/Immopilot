@@ -1,4 +1,5 @@
 export { ActivityTimeline } from './ActivityTimeline';
+export { CarouselNavButton } from './CarouselNavButton';
 export { ConfirmModal } from './ConfirmModal';
 export { DataToolbar, type DataToolbarView } from './DataToolbar';
 export { EmptyState } from './EmptyState';

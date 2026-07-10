@@ -35,3 +35,7 @@ function numericSeed(value: string | number): number {
 export function propertyImageFallbacks(propertyId: string | number): string[] {
   return PROPERTY_IMAGE_SETS[numericSeed(propertyId) % PROPERTY_IMAGE_SETS.length];
 }
+
+export function resolvePropertyImages(propertyId: string | number, photos: string[]): string[] {
+  return photos.length > 0 ? photos : propertyImageFallbacks(propertyId);
+}

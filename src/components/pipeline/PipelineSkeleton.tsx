@@ -2,17 +2,29 @@ import { SkeletonBox, SkeletonCard } from '../ui/Skeleton';
 
 interface PipelineSkeletonProps {
   viewMode: 'kanban' | 'list';
+  stageCounts?: Record<string, number>;
+  dealCount?: number;
 }
 
-export function PipelineSkeleton({ viewMode }: PipelineSkeletonProps) {
+export function PipelineSkeleton({ viewMode, stageCounts, dealCount = 3 }: PipelineSkeletonProps) {
   if (viewMode === 'list') {
-    return <PipelineListSkeleton />;
+    return <PipelineListSkeleton stageCounts={stageCounts} dealCount={dealCount} />;
   }
-  return <PipelineKanbanSkeleton />;
+  return <PipelineKanbanSkeleton stageCounts={stageCounts} dealCount={dealCount} />;
 }
 
-function PipelineKanbanSkeleton() {
+function getStageSkeletonCounts(stages: string[], stageCounts: Record<string, number> | undefined, dealCount: number) {
+  if (stageCounts && Object.values(stageCounts).some((count) => count > 0)) {
+    return stages.map((stage) => Math.max(0, Math.min(stageCounts[stage] ?? 0, 3)));
+  }
+
+  const safeDealCount = Math.max(1, Math.min(dealCount, 4));
+  return stages.map((_, index) => (index < safeDealCount ? 1 : 0));
+}
+
+function PipelineKanbanSkeleton({ stageCounts, dealCount }: { stageCounts?: Record<string, number>; dealCount: number }) {
   const stages = ['Nouveau', 'Qualifie', 'Contact', 'Visite', 'Proposition', 'Mandat', 'Vendu', 'Perdu'];
+  const cardCounts = getStageSkeletonCounts(stages, stageCounts, dealCount);
 
   return (
     <div
@@ -43,7 +55,7 @@ function PipelineKanbanSkeleton() {
 
           {/* Column body with cards */}
           <div className="column-body" style={{ flex: 1, marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {Array.from({ length: 5 }).map((_, cardIndex) => (
+            {Array.from({ length: cardCounts[index] }).map((_, cardIndex) => (
               <DealCardSkeleton key={`${index}-${cardIndex}`} />
             ))}
           </div>
@@ -95,11 +107,14 @@ function DealCardSkeleton() {
   );
 }
 
-function PipelineListSkeleton() {
+function PipelineListSkeleton({ stageCounts, dealCount }: { stageCounts?: Record<string, number>; dealCount: number }) {
+  const stages = ['Nouveau', 'Qualifie', 'Contact', 'Visite', 'Proposition', 'Mandat', 'Vendu', 'Perdu'];
+  const rowCounts = getStageSkeletonCounts(stages, stageCounts, dealCount);
+
   return (
     <div className="list-view" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '4px 0 18px' }}>
       {/* Group headers for each stage */}
-      {['Nouveau', 'Qualifie', 'Contact', 'Visite', 'Proposition', 'Mandat', 'Vendu', 'Perdu'].map((stage) => (
+      {stages.map((stage, stageIndex) => (
         <div key={stage} className="list-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {/* Group header */}
           <div className="list-group-head" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 6px 4px 0' }}>
@@ -110,7 +125,7 @@ function PipelineListSkeleton() {
           </div>
 
           {/* List rows */}
-          {Array.from({ length: 3 }).map((_, rowIndex) => (
+          {Array.from({ length: rowCounts[stageIndex] }).map((_, rowIndex) => (
             <ListRowSkeleton key={`${stage}-${rowIndex}`} />
           ))}
         </div>

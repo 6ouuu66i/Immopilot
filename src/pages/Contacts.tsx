@@ -253,6 +253,7 @@ export function Contacts({ store }: ContactsProps) {
   }, [selectedContactId]);
 
   const contacts = useMemo(() => supabaseContacts.map(contactToView), [supabaseContacts]);
+  const skeletonRowCount = Math.max(1, Math.min(contacts.length || 3, 6));
   const relationsById = useMemo(() => {
     const map = new Map<string, ContactRelations>();
     supabaseContacts.forEach((contact) => {
@@ -422,7 +423,7 @@ export function Contacts({ store }: ContactsProps) {
             {(error || selectedContactDetails.error || actionMessage) && (
               <div className="contact-action-message">{error ?? selectedContactDetails.error ?? actionMessage}</div>
             )}
-            {isLoading && <ContactsSkeleton />}
+            {isLoading && <ContactsSkeleton rowCount={skeletonRowCount} />}
             <div className="table-scroll">
               <table className="contacts-table">
                 <thead>

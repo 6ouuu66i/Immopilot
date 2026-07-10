@@ -18,6 +18,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { CommandPalette } from './CommandPalette';
 import { useAuth } from '../lib/auth';
 import type { store as appStore } from '../lib/store';
 import { resolveNotificationUrl, type NotificationRow } from '../lib/services/notificationsService';
@@ -61,6 +62,7 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('ip_sidebar_collapsed') === 'true');
   const [, refreshShell] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const collapsedRef = useRef(collapsed);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const shouldRestoreSidebarRef = useRef(false);
@@ -111,6 +113,28 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
     document.addEventListener('mousedown', closeOnOutsideClick);
     return () => document.removeEventListener('mousedown', closeOnOutsideClick);
   }, []);
+
+  // Ctrl+K / Cmd+K : ouvre la command palette — le raccourci affiché est réel.
+  useEffect(() => {
+    const openPalette = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setPaletteOpen((value) => !value);
+      }
+    };
+
+    window.addEventListener('keydown', openPalette);
+    return () => window.removeEventListener('keydown', openPalette);
+  }, []);
+
+  function submitGlobalSearch(query: string) {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    // Biens consomme cette valeur au montage (sessionStorage) ou en direct (event).
+    sessionStorage.setItem('ip_global_search', trimmed);
+    window.dispatchEvent(new CustomEvent('ip-global-search', { detail: trimmed }));
+    if (!window.location.hash.startsWith('#biens')) window.location.hash = '#biens';
+  }
 
   async function handleSignOut() {
     await signOut();
@@ -203,7 +227,7 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
 
         <div className="ip-sidebar-footer">
           <a className="ip-sidebar-link" href="#settings">
-            <Settings size={17} />
+            <Settings size={16} strokeWidth={1.8} />
             <span>Paramètres</span>
           </a>
 
@@ -217,7 +241,7 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
           </div>
 
           <button className="ip-sidebar-link ip-signout-button" type="button" onClick={handleSignOut}>
-            <LogOut size={17} />
+            <LogOut size={16} strokeWidth={1.8} />
             <span>Se déconnecter</span>
           </button>
         </div>
@@ -228,11 +252,16 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
           <div className="ip-topbar-left">
             <span className="ip-breadcrumb">Workspace</span>
           </div>
-          <label className="ip-command-search">
+          <button
+            type="button"
+            className="ip-command-search ip-command-search-trigger"
+            onClick={() => setPaletteOpen(true)}
+            aria-label="Ouvrir la recherche rapide"
+          >
             <Search size={16} strokeWidth={1.9} />
-            <input type="search" placeholder="Rechercher un bien, contact, signal..." />
+            <span className="ip-command-search-placeholder">Rechercher un bien, une ville, un code postal...</span>
             <kbd>Ctrl K</kbd>
-          </label>
+          </button>
           <div className="ip-topbar-right">
             <span className="ip-date-chip">
               <CalendarDays size={15} />
@@ -302,6 +331,12 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
           {children}
         </main>
       </div>
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onSearchBiens={submitGlobalSearch}
+      />
     </div>
   );
 }
@@ -341,7 +376,7 @@ function SidebarLink({ active, item }: SidebarLinkProps) {
       data-page={item.key}
     >
       <i className="ip-sidebar-active-rail" aria-hidden="true" />
-      <Icon size={17} strokeWidth={1.9} />
+      <Icon size={16} strokeWidth={1.8} />
       <span>{item.label}</span>
       {item.count !== undefined && <span className="ip-nav-count">{item.count}</span>}
     </a>

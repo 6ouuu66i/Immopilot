@@ -123,7 +123,7 @@ export function SellerTensionScoreZone({
             ))}
           </div>
         ) : (
-          <span style={{ color: 'var(--color-text-tertiary)', fontSize: 11.5 }}>Aucun signal score</span>
+          <span style={{ color: 'var(--color-text-tertiary)', fontSize: 11.5 }}>Pas encore de score</span>
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -132,7 +132,7 @@ export function SellerTensionScoreZone({
           </span>
           {isLowConfidence && (
             <span style={{ color: 'var(--color-text-secondary)', fontSize: 10.5, fontWeight: 650 }}>
-              Donnees partielles
+              Données partielles
             </span>
           )}
           {mandateValue && mandateValue !== 'monitor' && (

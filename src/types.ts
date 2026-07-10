@@ -46,6 +46,8 @@ export interface Property {
   bathrooms: number;
   source: PropertySource;
   reserved: boolean;
+  /** Le bien est sous option (compromis en cours) — écrit par le scraper, transition suivie par le signal back_to_market. */
+  underOption?: boolean;
   ownerId: ID | null;
   fsbo: boolean;
   publishedDays: number;
