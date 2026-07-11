@@ -26,6 +26,7 @@ import { appQueryClient } from './lib/queryClient';
 type RouteKey =
   | 'dashboard'
   | 'biens'
+  | 'biens-agence'
   | 'pipeline'
   | 'contacts'
   | 'agenda'
@@ -58,7 +59,7 @@ function getRouteFromHash(): RouteKey {
   if (window.location.pathname === '/login') return 'login';
   const rawHash = window.location.hash.replace(/^#/, '') || DEFAULT_ROUTE;
   const routeName = rawHash.split('?')[0] as RouteKey;
-  if (routeName === 'login' || routeName === 'dashboard' || routeName === 'biens' || routeName === 'pipeline' || routeName === 'agenda' || routeName === 'contacts' || routeName === 'transfers' || routeName === 'commissions' || routeName === 'notifications' || routeName === 'settings' || routeName === 'admin' || routeName === 'score-test' || legacyRouteLoaders[routeName]) return routeName;
+  if (routeName === 'login' || routeName === 'dashboard' || routeName === 'biens' || routeName === 'biens-agence' || routeName === 'pipeline' || routeName === 'agenda' || routeName === 'contacts' || routeName === 'transfers' || routeName === 'commissions' || routeName === 'notifications' || routeName === 'settings' || routeName === 'admin' || routeName === 'score-test' || legacyRouteLoaders[routeName]) return routeName;
   return DEFAULT_ROUTE;
 }
 
@@ -174,7 +175,9 @@ function App() {
           ) : route === 'score-test' ? (
             <ScoreTest />
           ) : route === 'biens' ? (
-            <Biens store={store} />
+            <Biens key="particulier" segment="particulier" store={store} />
+          ) : route === 'biens-agence' ? (
+            <Biens key="agence" segment="agence" store={store} />
           ) : route === 'pipeline' ? (
             <Pipeline store={store} />
           ) : route === 'agenda' ? (

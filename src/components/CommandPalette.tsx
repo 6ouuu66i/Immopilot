@@ -30,6 +30,7 @@ interface PropertyHit {
   price: number | null;
   primary_photo_url: string | null;
   seller_score: number | null;
+  seller_segment: 'particulier' | 'agence';
 }
 
 interface PaletteEntry {
@@ -45,7 +46,8 @@ interface PaletteEntry {
 
 const NAV_TARGETS: Array<{ label: string; hash: string; icon: typeof Home; keywords: string }> = [
   { label: 'Tableau de bord', hash: '#dashboard', icon: Home, keywords: 'dashboard accueil tableau' },
-  { label: 'Biens', hash: '#biens', icon: Building2, keywords: 'biens propriétés annonces liste' },
+  { label: 'Biens Particuliers', hash: '#biens', icon: Building2, keywords: 'biens propriétés annonces particuliers fsbo liste' },
+  { label: 'Biens Agence', hash: '#biens-agence', icon: Building2, keywords: 'biens propriétés annonces agences mandats liste' },
   { label: 'Opportunités', hash: '#pipeline', icon: BriefcaseBusiness, keywords: 'pipeline deals opportunités mandats' },
   { label: 'Contacts', hash: '#contacts', icon: ContactRound, keywords: 'contacts vendeurs clients' },
   { label: 'Tâches', hash: '#agenda', icon: ListChecks, keywords: 'tâches agenda rappels' },
@@ -65,7 +67,7 @@ async function searchProperties(query: string): Promise<PropertyHit[]> {
 
   const { data, error } = await supabase
     .from('active_properties_canonical_mat')
-    .select('listing_id, property_id, title_fr, locality, postal_code, price, primary_photo_url, seller_score')
+    .select('listing_id, property_id, title_fr, locality, postal_code, price, primary_photo_url, seller_score, seller_segment')
     .or(`title_fr.ilike.%${sanitized}%,locality.ilike.%${sanitized}%,postal_code.ilike.%${sanitized}%`)
     .order('last_seen_at', { ascending: false })
     .limit(6)
@@ -138,7 +140,8 @@ export function CommandPalette({ open, onClose, onSearchBiens }: CommandPaletteP
         photo: hit.primary_photo_url,
         score: hit.seller_score,
         run: () => {
-          window.location.hash = hit.property_id ? `#biens?propertyId=${hit.property_id}` : '#biens';
+          const route = hit.seller_segment === 'agence' ? '#biens-agence' : '#biens';
+          window.location.hash = hit.property_id ? `${route}?propertyId=${hit.property_id}` : route;
         },
       });
     }

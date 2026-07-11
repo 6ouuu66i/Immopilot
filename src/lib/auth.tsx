@@ -76,12 +76,12 @@ async function prefetchInitialAppData(userId: string): Promise<void> {
 
   const defaultBiensFilters: SupabasePropertyListFilters = {
     ignoredPropertyIds: propertyMarks.ignored,
-    sellerFilter: 'Tous',
   };
 
   const firstBiensPage = await appQueryClient.fetchQuery({
     queryKey: queryKeys.supabasePropertiesPage(
       userId,
+      'particulier',
       DEFAULT_BIENS_PAGE,
       DEFAULT_BIENS_PAGE_SIZE,
       'recent',
@@ -91,6 +91,7 @@ async function prefetchInitialAppData(userId: string): Promise<void> {
       filters: defaultBiensFilters,
       page: DEFAULT_BIENS_PAGE,
       pageSize: DEFAULT_BIENS_PAGE_SIZE,
+      segment: 'particulier',
       sort: 'recent',
     }),
     staleTime: 5 * 60 * 1000,

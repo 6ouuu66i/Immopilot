@@ -1836,6 +1836,7 @@ export type Database = {
           bathroom_count: number | null
           bedroom_count: number | null
           canonical_property_id: string | null
+          customer_type: string | null
           days_online: number | null
           first_seen_at: string | null
           has_price_drop: boolean | null
@@ -1857,6 +1858,7 @@ export type Database = {
           province: string | null
           published_at: string | null
           seller_score: number | null
+          seller_segment: string | null
           source: string | null
           status: string | null
           street: string | null
@@ -1897,6 +1899,7 @@ export type Database = {
           bathroom_count: number | null
           bedroom_count: number | null
           canonical_property_id: string | null
+          customer_type: string | null
           days_online: number | null
           first_seen_at: string | null
           has_price_drop: boolean | null
@@ -1918,6 +1921,7 @@ export type Database = {
           province: string | null
           published_at: string | null
           seller_score: number | null
+          seller_segment: string | null
           source: string | null
           status: string | null
           street: string | null

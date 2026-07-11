@@ -52,6 +52,36 @@ PostHog est integre cote frontend en mode restrictif pour la beta.
   - `agency_mandate_aging`
 - Repo nettoye : branche unique `master`, plus de legacy HTML, dependances mortes retirees.
 
+## Segmentation de la page Biens au 2026-07-11
+
+La page Biens est partagee en deux routes qui utilisent le meme composant React,
+les memes filtres, cards, vues, mini fiches, grandes fiches et zones de score :
+
+- `#biens` : Biens Particuliers.
+- `#biens-agence` : Biens Agence.
+
+La segmentation est calculee au niveau du `property_id` sur les annonces actives :
+
+- Particulier si au moins une annonce active a `customer_type = 'PRIVATE'`.
+  Cette regle a priorite lorsqu'un bien possede aussi une annonce agence.
+- Agence uniquement en l'absence d'annonce active `PRIVATE` et avec au moins une
+  annonce active de type `AGENCY`, `AGENCY_PAYING_WITH_OGONE` ou
+  `REAL_ESTATE_AGENCY`.
+- Les biens uniquement `COMPANY`, `COMPANY_PAYING_WITH_OGONE`, `NOTARY` ou
+  `PROPERTY_DEVELOPER` sont volontairement exclus des deux segments et ne doivent
+  apparaitre nulle part dans l'application pour le moment.
+
+Mesure de reference lors de la decision :
+
+- 535 biens Particuliers.
+- 7 126 biens Agence.
+- 195 biens professionnels exclus.
+- 0 chevauchement entre les deux segments.
+
+L'exclusion des 195 biens est un choix produit assume, pas une omission. Une
+decision ulterieure devra determiner s'ils obtiennent leur propre segment ou sont
+rattaches a Biens Agence.
+
 ## Direction UI
 
 Le contexte du 2026-07-03 mentionnait une refonte visuelle "La Cote" :

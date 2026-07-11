@@ -16,6 +16,7 @@ interface ActivePropertyCanonicalRow {
   bathroom_count: number | null;
   bedroom_count: number | null;
   canonical_property_id: string | null;
+  customer_type: string | null;
   days_online: number;
   first_seen_at: string;
   has_price_drop: boolean;
@@ -39,6 +40,7 @@ interface ActivePropertyCanonicalRow {
   province: string | null;
   published_at: string | null;
   seller_score: number | null;
+  seller_segment: PropertySellerSegment;
   source: string;
   status: string;
   street: string | null;
@@ -52,6 +54,8 @@ export interface PropertyDetail extends Property {
   rawData: Json | null;
   sourceUrl: string | null;
 }
+
+export type PropertySellerSegment = 'particulier' | 'agence';
 
 export interface SupabasePropertyListFilters {
   ageMinDays?: number | null;
@@ -76,6 +80,7 @@ export interface FetchSupabasePropertiesPageOptions {
   filters?: SupabasePropertyListFilters;
   page: number;
   pageSize: number;
+  segment: PropertySellerSegment;
   sort?: 'recent' | 'price_asc' | 'price_desc' | 'score';
 }
 
@@ -133,6 +138,8 @@ export const ACTIVE_PROPERTIES_CANONICAL_SELECT = `
   title_fr,
   title_nl,
   seller_score,
+  customer_type,
+  seller_segment,
   has_price_drop,
   has_republished_signal,
   days_online,
@@ -237,7 +244,7 @@ function mapCanonicalPropertyRow(row: ActivePropertyCanonicalRow): Property {
     reserved: row.status !== 'active',
     underOption: Boolean(row.is_under_option),
     ownerId: null,
-    fsbo: Boolean(row.is_fsbo),
+    fsbo: row.seller_segment === 'particulier',
     publishedDays: row.days_online,
     floodZone: 'Sûre',
     notes: row.ai_summary ? [row.ai_summary] : [],
@@ -385,8 +392,9 @@ export async function fetchSupabasePropertiesPage(
 
   let query = supabase
     .from(ACTIVE_PROPERTIES_CANONICAL_VIEW)
-    .select(ACTIVE_PROPERTIES_CANONICAL_SELECT, { count: 'estimated' });
+    .select(ACTIVE_PROPERTIES_CANONICAL_SELECT, { count: 'exact' });
 
+  query = query.eq('seller_segment', options.segment);
   query = applyListFilters(query, options.filters);
   query = applySort(query, options.sort);
 
@@ -457,6 +465,7 @@ export function useSupabasePropertiesPageQuery(
   return useQuery({
     queryKey: queryKeys.supabasePropertiesPage(
       options.userId,
+      options.segment,
       options.page,
       options.pageSize,
       options.sort ?? 'recent',

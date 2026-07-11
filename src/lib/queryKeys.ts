@@ -1,4 +1,4 @@
-import type { SupabasePropertyListFilters } from './supabaseProperties';
+import type { PropertySellerSegment, SupabasePropertyListFilters } from './supabaseProperties';
 
 export function createPropertyIdsKey(propertyIds: string[]): string[] {
   return Array.from(new Set(propertyIds.filter(Boolean))).sort();
@@ -35,6 +35,7 @@ export const queryKeys = {
   },
   supabasePropertiesPage(
     userId: string | null | undefined,
+    segment: PropertySellerSegment,
     page: number,
     pageSize: number,
     sort: 'recent' | 'price_asc' | 'price_desc' | 'score' = 'recent',
@@ -43,6 +44,7 @@ export const queryKeys = {
     return [
       'supabase-properties-page',
       userId ?? 'anonymous',
+      segment,
       page,
       pageSize,
       sort,

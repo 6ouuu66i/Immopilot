@@ -45,7 +45,8 @@ const mainNav: NavItem[] = [
 ];
 
 const prospectNav: NavItem[] = [
-  { key: 'biens', label: 'Biens', href: '#biens', icon: Building2 },
+  { key: 'biens', label: 'Biens Particuliers', href: '#biens', icon: Building2 },
+  { key: 'biens-agence', label: 'Biens Agence', href: '#biens-agence', icon: Building2 },
 ];
 
 const crmNav: NavItem[] = [

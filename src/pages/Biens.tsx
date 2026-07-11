@@ -29,6 +29,7 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import {
   fetchPropertyDetail,
   type PropertyDetail,
+  type PropertySellerSegment,
   type SupabasePropertyListFilters,
   useSupabasePropertiesPageQuery,
 } from '../lib/supabaseProperties';
@@ -53,12 +54,13 @@ import type { Property, PropertyInternalStatus, PropertyKey } from '../types';
 type Store = typeof appStore;
 
 interface BiensProps {
+  segment: PropertySellerSegment;
   store: Store;
 }
 
 type ViewMode = 'table' | 'grid';
 type SortKey = 'recent' | 'price_asc' | 'price_desc' | 'score';
-type SavedViewKey = 'tous' | 'nouveaux' | 'baisses' | 'fsbo' | 'a_contacter' | 'favoris' | 'sans_contact' | 'pipeline';
+type SavedViewKey = 'tous' | 'nouveaux' | 'baisses' | 'a_contacter' | 'favoris' | 'sans_contact' | 'pipeline';
 type SellerFilter = 'Tous' | 'Particulier' | 'Agence' | 'Notaire';
 type ContactFilter = 'Tous' | 'Sans contact' | 'Avec contact';
 type PipelineFilter = 'Tous' | 'En pipeline' | 'Hors pipeline';
@@ -89,7 +91,6 @@ const BEDROOM_OPTIONS = ['Tous', '1+', '2+', '3+', '4+'];
 const SURFACE_OPTIONS = ['Tous', '50+', '100+', '150+', '200+', '300+'];
 const SCORE_OPTIONS = ['Tous', '50', '60', '70', '80', '90'];
 const AGE_OPTIONS = ['Tous', '+7 jours', '+30 jours', '+60 jours', '+90 jours'];
-const SELLER_OPTIONS: SellerFilter[] = ['Tous', 'Particulier', 'Agence', 'Notaire'];
 const CONTACT_OPTIONS: ContactFilter[] = ['Tous', 'Sans contact', 'Avec contact'];
 const PIPELINE_OPTIONS: PipelineFilter[] = ['Tous', 'En pipeline', 'Hors pipeline'];
 const TASK_OPTIONS: TaskFilter[] = ['Tous', 'Avec tâche ouverte', 'Sans tâche ouverte'];
@@ -106,7 +107,6 @@ const SAVED_VIEWS: Array<{ key: SavedViewKey; label: string; description: string
   { key: 'tous', label: 'Tous', description: 'Base complete' },
   { key: 'nouveaux', label: 'Nouveaux', description: 'Publies recemment' },
   { key: 'baisses', label: 'Baisses de prix', description: 'Signal prix' },
-  { key: 'fsbo', label: 'FSBO', description: 'Particuliers' },
   { key: 'a_contacter', label: 'A contacter', description: 'Action urgente' },
   { key: 'favoris', label: 'Favoris', description: 'Suivi personnel' },
   { key: 'sans_contact', label: 'Sans contact', description: 'A enrichir' },
@@ -233,6 +233,10 @@ function propertyKeyFromHashParam(value: string | null): PropertyKey | null {
   return Number.isFinite(numeric) && String(numeric) === value ? numeric : value;
 }
 
+function currentBiensHref(): '#biens' | '#biens-agence' {
+  return window.location.hash.startsWith('#biens-agence') ? '#biens-agence' : '#biens';
+}
+
 
 function propertyDisplaySeed(value: PropertyKey): number {
   if (typeof value === 'number') return (Math.abs(Math.trunc(value)) % 97) + 1;
@@ -249,7 +253,7 @@ function supportsServerPagination(_params: {
   return true;
 }
 
-export function Biens({ store }: BiensProps) {
+export function Biens({ segment, store }: BiensProps) {
   const [, forceUpdate] = useState(0);
   const { user } = useAuth();
   const propertyMarks = usePropertyMarks();
@@ -283,7 +287,6 @@ export function Biens({ store }: BiensProps) {
   const [filterSignal, setFilterSignal] = useState('Tous');
   const [bedroomsMin, setBedroomsMin] = useState('Tous');
   const [surfaceMin, setSurfaceMin] = useState('Tous');
-  const [sellerFilter, setSellerFilter] = useState<SellerFilter>('Tous');
   const [scoreMin, setScoreMin] = useState('Tous');
   const [ageFilter, setAgeFilter] = useState('Tous');
   const [contactFilter, setContactFilter] = useState<ContactFilter>('Tous');
@@ -356,12 +359,10 @@ export function Biens({ store }: BiensProps) {
     signalFilter: filterSignal !== 'Tous' ? filterSignal : null,
     minBedrooms: bedroomFloor,
     minSurface: surfaceFloor,
-    sellerFilter,
     minScore: scoreFloor,
     ageMinDays: ageFloor,
     favoritePropertyIds: favoritesOnly || savedView === 'favoris' ? propertyMarks.favorites : undefined,
     ignoredPropertyIds: propertyMarks.ignored,
-    fsboOnly: savedView === 'fsbo',
   }), [
     ageFloor,
     bedroomFloor,
@@ -377,7 +378,6 @@ export function Biens({ store }: BiensProps) {
     propertyMarks.ignored,
     savedView,
     scoreFloor,
-    sellerFilter,
     surfaceFloor,
   ]);
   const pagedPropertiesQuery = useSupabasePropertiesPageQuery({
@@ -385,6 +385,7 @@ export function Biens({ store }: BiensProps) {
     filters: serverFilters,
     page,
     pageSize: PAGE_SIZE,
+    segment,
     sort,
     userId: user?.id,
   });
@@ -403,7 +404,7 @@ export function Biens({ store }: BiensProps) {
 
   useEffect(() => {
     if (!propertyMarks.error) return;
-    store.addNotification('property_mark_error', 'Synchronisation favoris impossible', propertyMarks.error, '#biens');
+    store.addNotification('property_mark_error', 'Synchronisation favoris impossible', propertyMarks.error, currentBiensHref());
   }, [propertyMarks.error, store]);
 
 
@@ -444,14 +445,12 @@ export function Biens({ store }: BiensProps) {
       if (filterType !== 'Tous') list = list.filter((p) => getPropertyType(p) === filterType);
       if (minPrice !== null) list = list.filter((p) => p.price >= minPrice);
       if (maxPrice !== null) list = list.filter((p) => p.price <= maxPrice);
-      if (filterSignal === 'FSBO') list = list.filter((p) => p.fsbo);
       if (filterSignal === 'Baisse de prix') list = list.filter((p) => p.tag === 'Baisse de prix');
       if (filterSignal === 'Nouveau') list = list.filter((p) => p.tag === 'Nouveau');
       if (filterSignal === 'Republié') list = list.filter((p) => p.tag === 'Republié');
       if (filterSignal === 'Archivé') list = list.filter((p) => p.status === 'archivé');
       if (bedroomFloor !== null) list = list.filter((p) => p.bedrooms >= bedroomFloor);
       if (surfaceFloor !== null) list = list.filter((p) => p.surface >= surfaceFloor);
-      if (sellerFilter !== 'Tous') list = list.filter((p) => getSellerType(p) === sellerFilter);
       if (scoreFloor !== null) list = list.filter((p) => p.score >= scoreFloor);
       if (ageFloor !== null) list = list.filter((p) => p.publishedDays >= ageFloor);
       list = list.filter((p) => !propertyMarks.isIgnored(getMarkId(p)));
@@ -492,7 +491,6 @@ export function Biens({ store }: BiensProps) {
     propertyMarks,
     scoreFloor,
     search,
-    sellerFilter,
     sort,
     statusFilter,
     store,
@@ -558,7 +556,7 @@ export function Biens({ store }: BiensProps) {
             `property_detail_error_${listingId}`,
             'Chargement de la fiche impossible',
             error instanceof Error ? error.message : 'Le detail du bien est indisponible.',
-            '#biens',
+            currentBiensHref(),
           );
         })
         .finally(() => {
@@ -603,7 +601,6 @@ export function Biens({ store }: BiensProps) {
     filterSignal !== 'Tous',
     bedroomsMin !== 'Tous',
     surfaceMin !== 'Tous',
-    sellerFilter !== 'Tous',
     scoreMin !== 'Tous',
     ageFilter !== 'Tous',
     contactFilter !== 'Tous',
@@ -668,7 +665,6 @@ export function Biens({ store }: BiensProps) {
     setFilterSignal('Tous');
     setBedroomsMin('Tous');
     setSurfaceMin('Tous');
-    setSellerFilter('Tous');
     setScoreMin('Tous');
     setAgeFilter('Tous');
     setContactFilter('Tous');
@@ -714,10 +710,6 @@ export function Biens({ store }: BiensProps) {
 
     if (view === 'nouveaux') setFilterSignal('Nouveau');
     if (view === 'baisses') setFilterSignal('Baisse de prix');
-    if (view === 'fsbo') {
-      setFilterSignal('FSBO');
-      setSellerFilter('Particulier');
-    }
     if (view === 'a_contacter') {
       setContactFilter('Sans contact');
       setScoreMin('70');
@@ -727,7 +719,7 @@ export function Biens({ store }: BiensProps) {
     if (view === 'pipeline') setPipelineFilter('En pipeline');
   };
 
-  const applyPreset = (preset: 'fsbo' | 'drops' | 'score70' | 'age60' | 'no_contact' | 'follow_up') => {
+  const applyPreset = (preset: 'drops' | 'score70' | 'age60' | 'no_contact' | 'follow_up') => {
     setPage(1);
     capturePostHogEvent('biens_filter_applied', {
       filter_name: 'preset',
@@ -735,10 +727,6 @@ export function Biens({ store }: BiensProps) {
       saved_view: savedView,
       view_mode: viewMode,
     });
-    if (preset === 'fsbo') {
-      setFilterSignal('FSBO');
-      setSellerFilter('Particulier');
-    }
     if (preset === 'drops') {
       setFilterSignal('Baisse de prix');
     }
@@ -792,7 +780,7 @@ export function Biens({ store }: BiensProps) {
             `property_detail_error_${property.supabaseListingId}`,
             'Chargement de la fiche impossible',
             error instanceof Error ? error.message : 'Le detail du bien est indisponible.',
-            '#biens',
+            currentBiensHref(),
           );
         })
         .finally(() => {
@@ -929,7 +917,7 @@ export function Biens({ store }: BiensProps) {
                 letterSpacing: '-0.02em',
               }}
             >
-              Biens
+              {segment === 'particulier' ? 'Biens Particuliers' : 'Biens Agence'}
             </h1>
             <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--color-text-secondary)' }}>
               Base de données des propriétés prospectées
@@ -1291,7 +1279,7 @@ export function Biens({ store }: BiensProps) {
           />
           <FilterChip
             label={filterSignal === 'Tous' ? 'Signal' : filterSignal}
-            options={['Tous', 'FSBO', 'Baisse de prix', 'Republié', 'Nouveau', 'Archivé']}
+            options={['Tous', 'Baisse de prix', 'Republié', 'Nouveau', 'Archivé']}
             value={filterSignal}
             onChange={(v) => applyTrackedFilter('signal', v, () => setFilterSignal(v))}
           />
@@ -1526,8 +1514,6 @@ export function Biens({ store }: BiensProps) {
           filterSource={filterSource}
           setFilterSource={(value) => applyTrackedFilter('source', value, () => setFilterSource(value))}
           sources={sources}
-          sellerFilter={sellerFilter}
-          setSellerFilter={(value) => applyTrackedFilter('seller_type', value, () => setSellerFilter(value))}
           filterSignal={filterSignal}
           setFilterSignal={(value) => applyTrackedFilter('signal', value, () => setFilterSignal(value))}
           scoreMin={scoreMin}
@@ -1588,7 +1574,7 @@ export function Biens({ store }: BiensProps) {
 interface AdvancedFiltersPanelProps {
   onClose: () => void;
   onReset: () => void;
-  onPreset: (preset: 'fsbo' | 'drops' | 'score70' | 'age60' | 'no_contact' | 'follow_up') => void;
+  onPreset: (preset: 'drops' | 'score70' | 'age60' | 'no_contact' | 'follow_up') => void;
   priceMin: string;
   setPriceMin: (value: string) => void;
   priceMax: string;
@@ -1606,8 +1592,6 @@ interface AdvancedFiltersPanelProps {
   filterSource: string;
   setFilterSource: (value: string) => void;
   sources: string[];
-  sellerFilter: SellerFilter;
-  setSellerFilter: (value: SellerFilter) => void;
   filterSignal: string;
   setFilterSignal: (value: string) => void;
   scoreMin: string;
@@ -1632,7 +1616,7 @@ function AdvancedFiltersPanel(props: AdvancedFiltersPanelProps) {
     onClose, onReset, onPreset, priceMin, setPriceMin, priceMax, setPriceMax,
     bedroomsMin, setBedroomsMin, surfaceMin, setSurfaceMin, filterCommune,
     setFilterCommune, communes, filterType, setFilterType, propertyTypes,
-    filterSource, setFilterSource, sources, sellerFilter, setSellerFilter,
+    filterSource, setFilterSource, sources,
     filterSignal, setFilterSignal, scoreMin, setScoreMin, ageFilter,
     setAgeFilter, favoritesOnly, setFavoritesOnly, contactFilter,
     setContactFilter, pipelineFilter, setPipelineFilter, taskFilter,
@@ -1656,7 +1640,6 @@ function AdvancedFiltersPanel(props: AdvancedFiltersPanelProps) {
           <section style={advancedSectionStyle}>
             <AdvancedSectionTitle title="Presets rapides" />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              <PresetButton label="Particuliers" onClick={() => onPreset('fsbo')} />
               <PresetButton label="Baisses de prix" onClick={() => onPreset('drops')} />
               <PresetButton label="Score 70+" onClick={() => onPreset('score70')} />
               <PresetButton label="+60 jours" onClick={() => onPreset('age60')} />
@@ -1681,14 +1664,13 @@ function AdvancedFiltersPanel(props: AdvancedFiltersPanelProps) {
             <AdvancedSectionTitle title="Source" />
             <div style={advancedGridStyle}>
               <AdvancedSelect label="Plateforme" value={filterSource} options={sources} onChange={setFilterSource} />
-              <AdvancedSelect label="Vendeur" value={sellerFilter} options={SELLER_OPTIONS} onChange={(value) => setSellerFilter(value as SellerFilter)} />
             </div>
           </section>
 
           <section style={advancedSectionStyle}>
             <AdvancedSectionTitle title="Opportunité" />
             <div style={advancedGridStyle}>
-              <AdvancedSelect label="Signal" value={filterSignal} options={['Tous', 'FSBO', 'Baisse de prix', 'Republié', 'Nouveau', 'Archivé']} onChange={setFilterSignal} />
+              <AdvancedSelect label="Signal" value={filterSignal} options={['Tous', 'Baisse de prix', 'Republié', 'Nouveau', 'Archivé']} onChange={setFilterSignal} />
               <AdvancedSelect label="Score min" value={scoreMin} options={SCORE_OPTIONS} onChange={setScoreMin} />
               <AdvancedSelect label="Ancienneté" value={ageFilter} options={AGE_OPTIONS} onChange={setAgeFilter} />
               <TogglePill label="Favoris uniquement" checked={favoritesOnly} onChange={setFavoritesOnly} />
@@ -2021,7 +2003,7 @@ function MiniFicheBien({
 
   useEffect(() => {
     if (!propertyNotes.error) return;
-    store.addNotification('notes_error', 'Synchronisation notes impossible', propertyNotes.error, '#biens');
+    store.addNotification('notes_error', 'Synchronisation notes impossible', propertyNotes.error, currentBiensHref());
   }, [propertyNotes.error, store]);
 
   const goToPhoto = (direction: 1 | -1) => {
@@ -2446,7 +2428,7 @@ function LegacyMiniFicheBien({
 
   useEffect(() => {
     if (!propertyNotes.error) return;
-    store.addNotification('notes_error', 'Synchronisation notes impossible', propertyNotes.error, '#biens');
+    store.addNotification('notes_error', 'Synchronisation notes impossible', propertyNotes.error, currentBiensHref());
   }, [propertyNotes.error, store]);
 
   const goToPhoto = (direction: 1 | -1) => {
@@ -3134,7 +3116,7 @@ function GrandeFicheBien({
 
   useEffect(() => {
     if (!propertyNotes.error) return;
-    store.addNotification('notes_error', 'Synchronisation notes impossible', propertyNotes.error, '#biens');
+    store.addNotification('notes_error', 'Synchronisation notes impossible', propertyNotes.error, currentBiensHref());
   }, [propertyNotes.error, store]);
 
   const goToPhoto = (direction: 1 | -1) => {

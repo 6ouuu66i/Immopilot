@@ -33,7 +33,13 @@ test('seller score remains visible on Biens and Pipeline without console errors'
   await login(page);
 
   await page.goto('/#biens');
-  await expect(page.getByRole('heading', { name: 'Biens' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Biens Particuliers' })).toBeVisible();
+  await expect(page.getByText('535 biens suivis', { exact: true })).toBeVisible();
+  await expect(page.locator('[aria-label^="Indice de tension vendeur"]').first()).toBeVisible();
+
+  await page.goto('/#biens-agence');
+  await expect(page.getByRole('heading', { name: 'Biens Agence' })).toBeVisible();
+  await expect(page.getByText(/7.126 biens suivis/, { exact: true })).toBeVisible();
   await expect(page.locator('[aria-label^="Indice de tension vendeur"]').first()).toBeVisible();
 
   await page.goto('/#pipeline');
