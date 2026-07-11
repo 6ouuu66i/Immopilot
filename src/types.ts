@@ -50,6 +50,7 @@ export interface Property {
   underOption?: boolean;
   ownerId: ID | null;
   fsbo: boolean;
+  publishedAt?: ISODateTime;
   publishedDays: number;
   floodZone: FloodZone;
   notes: string[];

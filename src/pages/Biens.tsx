@@ -21,6 +21,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { PropertyCard } from '../components/biens/PropertyCard';
 import { SellerTensionScoreZone } from '../components/biens/SellerTensionScoreZone';
+import {
+  MandateContextPanel,
+  MandateStatusZone,
+  mandatePriorityTone,
+} from '../components/biens/MandateStatusZone';
 import { CarouselNavButton, ImageLightbox, NotesList } from '../components/ui';
 import { DeferredImage } from '../components/ui/DeferredImage';
 import { SkeletonBox, SkeletonText } from '../components/ui/Skeleton';
@@ -1392,14 +1397,17 @@ export function Biens({ segment, store }: BiensProps) {
                   isFavorite={propertyMarks.isFavorite(getMarkId(p))}
                   selected={selectedPropertyId === p.id}
                   photoTransitionName={morphPhotoId === p.id && selectedPropertyId !== p.id ? PROPERTY_PHOTO_TRANSITION : undefined}
-                  priorityTone={priorityToneFromScore(propertyScore, p.score)}
+                  priorityTone={segment === 'agence'
+                    ? mandatePriorityTone(p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] ?? [] : [])
+                    : priorityToneFromScore(propertyScore, p.score)}
                   primarySignal={cardSignals.primarySignal}
                   secondarySignalCount={cardSignals.secondarySignalCount}
                   signals={p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] ?? [] : []}
                   scoreContent={(
-                    <SellerTensionScoreZone
+                    <PropertyInsightDisplay
+                      property={p}
                       score={propertyScore}
-                      fallbackScore={p.score}
+                      segment={segment}
                       signals={p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] ?? [] : []}
                       isInactive={p.reserved || p.status?.startsWith('archiv')}
                     />
@@ -1416,6 +1424,7 @@ export function Biens({ segment, store }: BiensProps) {
         ) : (
           <BiensTable
             items={pageItems}
+            segment={segment}
             selectedId={selectedPropertyId}
             scoresByProperty={scoresByProperty}
             signalsByProperty={signalsByProperty}
@@ -1536,6 +1545,7 @@ export function Biens({ segment, store }: BiensProps) {
       {selectedProperty && (
         <LegacyMiniFicheBien
           property={selectedProperty}
+          segment={segment}
           store={store}
           score={selectedProperty.supabasePropertyId ? scoresByProperty[selectedProperty.supabasePropertyId] : undefined}
           liveSignals={selectedProperty.supabasePropertyId ? signalsByProperty[selectedProperty.supabasePropertyId] ?? [] : []}
@@ -1555,6 +1565,7 @@ export function Biens({ segment, store }: BiensProps) {
       {fullProperty && (
         <GrandeFicheBien
           property={fullProperty}
+          segment={segment}
           store={store}
           score={fullProperty.supabasePropertyId ? scoresByProperty[fullProperty.supabasePropertyId] : undefined}
           liveSignals={fullProperty.supabasePropertyId ? signalsByProperty[fullProperty.supabasePropertyId] ?? [] : []}
@@ -1807,6 +1818,7 @@ function FilterChip({ label, options, value, onChange }: FilterChipProps) {
 
 interface MiniFicheBienProps {
   property: Property;
+  segment: PropertySellerSegment;
   store: Store;
   score?: ListingScore;
   liveSignals?: ListingSignal[];
@@ -1967,6 +1979,7 @@ function WhyThisScorePanel({
 
 function MiniFicheBien({
   property,
+  segment,
   store,
   score,
   liveSignals = [],
@@ -2178,9 +2191,10 @@ function MiniFicheBien({
               <MiniMetric icon={<FileText size={14} />} label="PEB" value={property.peb} />
             </div>
             <div style={{ marginTop: 12 }}>
-              <SellerTensionScoreZone
+              <PropertyInsightDisplay
+                property={property}
                 score={score}
-                fallbackScore={property.score}
+                segment={segment}
                 size="panel"
                 signals={liveSignals}
                 isInactive={property.reserved || property.status?.startsWith('archiv')}
@@ -2188,7 +2202,14 @@ function MiniFicheBien({
             </div>
           </section>
 
-          <WhyThisScorePanel score={score} compact property={property} surface="mini_fiche" />
+          <PropertyInsightExplanation
+            score={score}
+            compact
+            property={property}
+            segment={segment}
+            signals={liveSignals}
+            surface="mini_fiche"
+          />
 
           <section style={miniSectionStyle}>
             <MiniSectionTitle title="Résumé" />
@@ -2328,6 +2349,7 @@ function MiniFicheBien({
 
 function LegacyMiniFicheBien({
   property,
+  segment,
   store,
   score,
   liveSignals = [],
@@ -2818,20 +2840,29 @@ function LegacyMiniFicheBien({
           </section>
 
           <section style={legacyModuleStyle}>
-            <div style={legacyLabelStyle}>Indice de tension vendeur</div>
-            <SellerTensionScoreZone
+            <div style={legacyLabelStyle}>{segment === 'agence' ? 'STATUT DU MANDAT' : 'Indice de tension vendeur'}</div>
+            <PropertyInsightDisplay
+              property={property}
               score={score}
-              fallbackScore={property.score}
+              segment={segment}
               size="panel"
               signals={liveSignals}
               isInactive={property.reserved || property.status?.startsWith('archiv')}
             />
-            <div style={{ marginTop: 10 }}>
-              <span style={legacyAlertChipStyle}>Bande {scoreBandLabel(score)} · score recalculé automatiquement</span>
-            </div>
+            {segment === 'particulier' && (
+              <div style={{ marginTop: 10 }}>
+                <span style={legacyAlertChipStyle}>Bande {scoreBandLabel(score)} · score recalculé automatiquement</span>
+              </div>
+            )}
           </section>
 
-          <WhyThisScorePanel score={score} property={property} surface="legacy_fiche" />
+          <PropertyInsightExplanation
+            score={score}
+            property={property}
+            segment={segment}
+            signals={liveSignals}
+            surface="legacy_fiche"
+          />
 
           <section style={legacyModuleStyle}>
             <div style={legacyLabelStyle}>CARACTÉRISTIQUES</div>
@@ -3059,6 +3090,7 @@ function LegacyMiniFicheBien({
 
 interface GrandeFicheBienProps {
   property: Property;
+  segment: PropertySellerSegment;
   store: Store;
   score?: ListingScore;
   liveSignals?: ListingSignal[];
@@ -3071,6 +3103,7 @@ interface GrandeFicheBienProps {
 
 function GrandeFicheBien({
   property,
+  segment,
   store,
   score,
   liveSignals = [],
@@ -3285,9 +3318,10 @@ function GrandeFicheBien({
               </div>
 
               <div style={{ marginTop: 16, padding: '14px 0', borderBottom: '1px solid var(--color-border-subtle)' }}>
-                <SellerTensionScoreZone
+                <PropertyInsightDisplay
+                  property={property}
                   score={score}
-                  fallbackScore={property.score}
+                  segment={segment}
                   size="panel"
                   signals={liveSignals}
                   isInactive={property.reserved || property.status?.startsWith('archiv')}
@@ -3356,8 +3390,14 @@ function GrandeFicheBien({
               </div>
             </DossierCard>
 
-            <DossierCard title="Pourquoi cet indice" icon={<FileText size={14} />} style={{ gridColumn: '1 / -1', order: 3 }}>
-              <WhyThisScorePanel score={score} property={property} surface="full_dossier" />
+            <DossierCard title={segment === 'agence' ? 'Contexte du mandat' : 'Pourquoi cet indice'} icon={<FileText size={14} />} style={{ gridColumn: '1 / -1', order: 3 }}>
+              <PropertyInsightExplanation
+                score={score}
+                property={property}
+                segment={segment}
+                signals={liveSignals}
+                surface="full_dossier"
+              />
             </DossierCard>
 
             <DossierCard title="Contact / Pipeline" avatar={vendorName.slice(0, 2).toUpperCase()} style={{ gridColumn: 'span 4', order: 1 }}>
@@ -3781,6 +3821,71 @@ const legacyMoreThumbOverlayStyle: React.CSSProperties = {
   letterSpacing: '0.01em',
   zIndex: 2,
 };
+function PropertyInsightDisplay({
+  isInactive,
+  property,
+  score,
+  segment,
+  signals = [],
+  size = 'compact',
+}: {
+  isInactive?: boolean;
+  property: Property;
+  score?: ListingScore;
+  segment: PropertySellerSegment;
+  signals?: ListingSignal[];
+  size?: 'compact' | 'panel';
+}) {
+  if (segment === 'agence') {
+    return (
+      <MandateStatusZone
+        daysOnline={property.publishedDays}
+        publishedAt={property.publishedAt}
+        signals={signals}
+        size={size}
+      />
+    );
+  }
+
+  return (
+    <SellerTensionScoreZone
+      score={score}
+      fallbackScore={property.score}
+      signals={signals}
+      isInactive={isInactive}
+      size={size}
+    />
+  );
+}
+
+function PropertyInsightExplanation({
+  compact = false,
+  property,
+  score,
+  segment,
+  signals = [],
+  surface,
+}: {
+  compact?: boolean;
+  property: Property;
+  score?: ListingScore;
+  segment: PropertySellerSegment;
+  signals?: ListingSignal[];
+  surface: ScoreExplanationSurface;
+}) {
+  if (segment === 'agence') {
+    return (
+      <MandateContextPanel
+        compact={compact}
+        daysOnline={property.publishedDays}
+        publishedAt={property.publishedAt}
+        signals={signals}
+      />
+    );
+  }
+
+  return <WhyThisScorePanel score={score} compact={compact} property={property} surface={surface} />;
+}
 
 const legacyModuleStyle: React.CSSProperties = {
   background: 'var(--color-bg-surface)',
@@ -4259,6 +4364,7 @@ function statusMeta(p: Property): { label: string; bg: string; color: string } {
 
 interface BiensTableProps {
   items: Property[];
+  segment: PropertySellerSegment;
   selectedId: PropertyKey | null;
   scoresByProperty: Record<string, ListingScore>;
   signalsByProperty: Record<string, ListingSignal[]>;
@@ -4269,6 +4375,7 @@ interface BiensTableProps {
 
 function BiensTable({
   items,
+  segment,
   selectedId,
   scoresByProperty,
   signalsByProperty,
@@ -4314,7 +4421,7 @@ function BiensTable({
           <span>Type</span>
           <span style={{ textAlign: 'right' }}>Prix actuel</span>
           <span style={{ textAlign: 'right' }}>Baisse</span>
-          <span style={{ textAlign: 'center' }}>Score</span>
+          <span style={{ textAlign: 'center' }}>{segment === 'agence' ? 'Statut mandat' : 'Score'}</span>
           <span>Source</span>
           <span>Vendeur</span>
           <span>Statut</span>
@@ -4326,6 +4433,7 @@ function BiensTable({
           <BiensTableRow
             key={p.id}
             property={p}
+            segment={segment}
             score={p.supabasePropertyId ? scoresByProperty[p.supabasePropertyId] : undefined}
             liveSignals={p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] ?? [] : []}
             selected={selectedId === p.id}
@@ -4443,6 +4551,7 @@ function BiensTableSkeleton() {
 
 interface BiensTableRowProps {
   property: Property;
+  segment: PropertySellerSegment;
   score?: ListingScore;
   liveSignals?: ListingSignal[];
   selected: boolean;
@@ -4454,6 +4563,7 @@ interface BiensTableRowProps {
 
 function BiensTableRow({
   property: p,
+  segment,
   score,
   liveSignals = [],
   selected,
@@ -4466,7 +4576,9 @@ function BiensTableRow({
   const drop = deriveDrop(p);
   const status = statusMeta(p);
   const mono = 'var(--notion-mono)';
-  const priorityTone = priorityToneFromScore(score, p.score);
+  const priorityTone = segment === 'agence'
+    ? mandatePriorityTone(liveSignals)
+    : priorityToneFromScore(score, p.score);
   const accentColor = priorityAccentColor(priorityTone);
   const rowShadow = `${selected ? 'inset 3px 0 0 var(--color-brand),' : ''} inset 0 0 0 9999px transparent`;
 
@@ -4549,11 +4661,12 @@ function BiensTableRow({
         )}
       </span>
 
-      {/* Score */}
+      {/* Score particulier / statut mandat agence */}
       <span style={{ display: 'flex', justifyContent: 'flex-start', minWidth: 0, padding: '8px 0' }}>
-        <SellerTensionScoreZone
+        <PropertyInsightDisplay
+          property={p}
           score={score}
-          fallbackScore={p.score}
+          segment={segment}
           signals={liveSignals}
           isInactive={p.reserved || p.status?.startsWith('archiv')}
           size="compact"

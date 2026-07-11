@@ -1,5 +1,6 @@
 import type { ListingSignal } from '../../lib/services/listingSignalsService';
 import type { ListingScore, ScoreReason } from '../../lib/services/listingScoresService';
+import { PropertyInsightZone } from './PropertyInsightZone';
 import { ScoreRing } from './ScoreRing';
 
 interface SellerTensionScoreZoneProps {
@@ -76,25 +77,18 @@ export function SellerTensionScoreZone({
   const ringSize = size === 'panel' ? 'lg' : 'sm';
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: size === 'panel' ? '86px minmax(0, 1fr)' : '44px minmax(0, 1fr)',
-        gap: size === 'panel' ? 12 : 8,
-        alignItems: 'center',
-        minWidth: 0,
-      }}
-    >
-      <ScoreRing
+    <PropertyInsightZone
+      ariaLabel="Indice de tension vendeur"
+      size={size}
+      leading={<ScoreRing
         score={numericScore}
         size={ringSize}
         label="Indice de tension vendeur"
         strokeColor={ringColor}
         dashed={isLowConfidence || isInactive}
         muted={isInactive}
-      />
-
-      <div style={{ minWidth: 0, display: 'grid', gap: 4 }}>
+      />}
+    >
         {isInactive ? (
           <span style={{ color: 'var(--color-text-secondary)', fontSize: 11.5, lineHeight: 1.35 }}>
             Derniere evaluation le {formatDate(score?.computed_at)} - bien retire du marche
@@ -152,7 +146,6 @@ export function SellerTensionScoreZone({
             </span>
           )}
         </div>
-      </div>
-    </div>
+    </PropertyInsightZone>
   );
 }
