@@ -1,6 +1,6 @@
 # ImmoPilot - Contexte de reprise Codex
 
-Derniere mise a jour de ce contexte : 2026-07-03  
+Derniere mise a jour de ce contexte : 2026-07-11
 Reference prioritaire pour la DA et le score : ce fichier prime sur `AGENTS.md`, peu importe les dates de fichier.
 
 Pour tout ce qui concerne la direction artistique, la palette, les tokens visuels, le `ScoreRing`, l'Indice de tension vendeur, le calcul `property_id` vs `listing_id`, le bareme, les familles de signaux, les signaux d'etat/evenement, les decays, les seuils, les garde-fous et l'architecture Postgres du score, `CONTEXT.md` est la source d'autorite.
@@ -293,6 +293,98 @@ Non urgent :
 - GitHub Actions cron scraping, encore manuel.
 - `.limit(80)` dans `supabaseProperties.ts`.
 - Logo / identite de marque : le nom "ImmoPilot" a des conflits de marque identifies en Allemagne, Autriche et France ; un nouveau nom reste a trouver.
+
+## Calibration et audit du score au 2026-07-11
+
+Le diagnostic a ete execute sur 7 856 biens actifs ayant tous un score courant.
+Les migrations de cette session ont ete testees en transaction avec rollback avant
+application, puis reverifiees sur l'etat persistant.
+
+Corrections appliquees :
+
+- `20260711033857_fix_competition_percentile_and_signal_deduplication.sql`
+  - `competition_shock` n'utilise plus le seuil absolu de 3 concurrents.
+  - Le signal classe la pression concurrentielle specifique au bien dans le segment
+    `postal_code + property_type`, a transaction identique et dans une bande de prix
+    de +/-20 %, avec `PERCENT_RANK() >= 0.85` et au moins 5 comparables.
+  - Distribution finale : 758 lignes, 719 proprietes, soit 9,77 % des proprietes
+    portant au moins un signal, contre 97,65 % avant correction.
+  - Le score deduplique chaque type de signal par
+    `property_id + family_key + COALESCE(exclusive_group, signal_type)`.
+    Aucun doublon de signal n'est present dans les breakdowns des biens actifs.
+- `20260711035817_recalibrate_failed_launch_threshold_to_segment_relative_percentile.sql`
+  - Le seuil absolu de 30 jours est remplace par le 85e percentile de duree de
+    publication dans `postal_code + property_type + transaction_type`, avec au
+    moins 5 comparables.
+  - Les exclusions historiques restent actives : bien sous option ou ayant deja
+    subi une baisse de prix.
+  - Le rafraichissement quotidien ne remet plus `detected_at` a maintenant. La
+    demi-vie evenementielle de 30 jours peut donc produire une vraie decroissance.
+  - Distribution : 670 lignes et 615 proprietes, soit 9,10 % des lignes et 8,36 %
+    des proprietes, contre 3 616 lignes et 49,14 % avant correction.
+- `20260711040342_recalibrate_score_band_thresholds_from_real_distribution.sql`
+  - `score_version = 2`.
+  - Entree `forte` : score >= 53 et au moins 2 familles contributrices.
+  - Sortie hysteretique de `forte` : score < 51.
+  - Entree `surveiller` : score >= 33,6.
+  - Sortie hysteretique de `surveiller` : score < 31,6.
+  - Les changements de bande ou de version creent maintenant un snapshot
+    `listing_score_history`, meme lorsque le score varie de moins d'un point.
+
+Distribution active finale :
+
+| Bande | Nombre | Part | Score min | Score max | Score moyen |
+|---|---:|---:|---:|---:|---:|
+| Forte | 256 | 3,26 % | 53 | 66,45 | 54,7490 |
+| Surveiller | 559 | 7,12 % | 33,6 | 50 | 40,6731 |
+| Faible | 7 041 | 89,63 % | 0 | 32 | 12,1077 |
+
+Percentiles finaux P50/P75/P90/P95/P99 : `14 / 28 / 33,6 / 50 / 53`.
+
+Verification de l'historique version 2 :
+
+- 7 856 snapshots, exactement un par bien actif.
+- 0 bien actif sans snapshot version 2.
+- 0 doublon exact.
+- 0 divergence entre le dernier snapshot et le score courant.
+- Un second recalcul identique ajoute 0 snapshot.
+
+Points verifies et volontairement inchanges :
+
+- `stale_dom_relative.mult_agency` vaut deja 1,0 en base et dans le seed initial.
+  Aucun nettoyage n'etait necessaire. La valeur hypothetique 1,2 ne serait pas
+  sans effet : `22 x 1,2` plafonne a 25, soit encore 3 points de plus que 22.
+- `overpriced` est actif sur 33,88 % des proprietes. Son seuil est fixe a +10 %,
+  mais la mesure est deja relative a la mediane prix/m2 du segment local. Il n'a
+  pas ete assimile au bug de seuil absolu de `competition_shock`.
+- `price_drop` reste limite par la couverture de `price_history` du scraper.
+  Ce chantier appartient au depot du scraper et n'a pas ete modifie ici.
+- `agency_mandate_aging` et `fsbo` restent hors contribution directe au score,
+  conformement a la separation statut mandat / contexte / score.
+
+Dettes residuelles identifiees, non corrigees dans cette session :
+
+- `sync_below_market_signal()` est uniquement branche sur les INSERT/UPDATE de
+  `listings`. Une evolution quotidienne de `market_reference` ne reevalue donc
+  pas ce signal tant que l'annonce ne change pas. C'est un risque de signal d'etat
+  obsolete a traiter dans un batch dedie.
+- `sync_multi_source_signal()` active le signal a partir de deux sources mais ne
+  le desactive pas lorsque le nombre redescend sous deux. Il n'existe actuellement
+  aucune ligne `multi_source`, donc aucun score courant n'est affecte.
+- 134 proprietes sans annonce active conservent une ligne historique dans
+  `listing_scores` en version 1. Les statistiques operationnelles doivent rester
+  filtrees sur les biens actifs tant qu'une politique d'archivage explicite n'est
+  pas decidee.
+- Les trois migrations de cette session sont alignees local/distant. La liste CLI
+  montre encore des divergences plus anciennes du 9 et 10 juillet, hors perimetre
+  de cette calibration.
+
+Explicitement hors perimetre et non touche :
+
+- Axe de fraicheur/urgence "Fenetre d'or".
+- Bareme v2 et nouveaux signaux (`desc_motivation`, `agency_to_fsbo`, dependance
+  Biddit, hachage perceptuel des photos).
+- Correction de la couverture `price_drop` dans le scraper.
 
 ## Documents de reference
 
