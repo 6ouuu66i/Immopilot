@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from './auth';
 import {
   contactsService,
   type ContactFull,
   type CreateContactInput,
-  type ListContactsParams,
   type SupabaseContact,
   type UpdateContactInput,
 } from './services/contactsService';
@@ -17,10 +16,7 @@ export interface UseContactsResult {
   isLoading: boolean;
   error: string | null;
   search: string;
-  roleFilters: string[];
   setSearch: (value: string) => void;
-  setRoleFilters: (roles: string[]) => void;
-  toggleRoleFilter: (role: string) => void;
   refresh: () => Promise<void>;
   createContact: (input: CreateContactInput) => Promise<SupabaseContact>;
   updateContact: (contactId: string, patch: UpdateContactInput) => Promise<SupabaseContact>;
@@ -69,18 +65,13 @@ function createOptimisticContact(input: CreateContactInput, agencyId: string, us
   };
 }
 
-export function useContacts(initialParams: ListContactsParams = {}): UseContactsResult {
+export function useContacts(initialParams: { search?: string } = {}): UseContactsResult {
   const { user, profile } = useAuth();
   const [contacts, setContacts] = useState<SupabaseContact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(initialParams.search ?? '');
-  const [roleFilters, setRoleFilters] = useState<string[]>(() => {
-    if (!initialParams.role) return [];
-    return Array.isArray(initialParams.role) ? initialParams.role : [initialParams.role];
-  });
   const debouncedSearch = useDebouncedValue(search, CONTACT_SEARCH_DEBOUNCE_MS);
-  const rolesKey = useMemo(() => roleFilters.join('|'), [roleFilters]);
 
   const refresh = useCallback(async () => {
     if (!user) {
@@ -94,7 +85,6 @@ export function useContacts(initialParams: ListContactsParams = {}): UseContacts
     try {
       const nextContacts = await contactsService.listContacts({
         search: debouncedSearch,
-        role: roleFilters,
       });
       setContacts(nextContacts);
     } catch (loadError) {
@@ -102,17 +92,11 @@ export function useContacts(initialParams: ListContactsParams = {}): UseContacts
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, roleFilters, user]);
+  }, [debouncedSearch, user]);
 
   useEffect(() => {
     void refresh();
-  }, [refresh, rolesKey]);
-
-  const toggleRoleFilter = useCallback((role: string) => {
-    setRoleFilters((current) => current.includes(role)
-      ? current.filter((item) => item !== role)
-      : [...current, role]);
-  }, []);
+  }, [refresh]);
 
   const createContact = useCallback(
     async (input: CreateContactInput) => {
@@ -180,10 +164,7 @@ export function useContacts(initialParams: ListContactsParams = {}): UseContacts
     isLoading,
     error,
     search,
-    roleFilters,
     setSearch,
-    setRoleFilters,
-    toggleRoleFilter,
     refresh,
     createContact,
     updateContact,

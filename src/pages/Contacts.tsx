@@ -1,15 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Download,
   ExternalLink,
-  Filter,
-  Grid2X2,
   Home,
-  List,
   Mail,
   MapPin,
   MessageCircle,
@@ -45,7 +40,7 @@ interface ContactsProps {
   store: Store;
 }
 
-const ROLE_FILTERS = ['vendeur', 'acheteur', 'prospect', 'investisseur', 'proprietaire'];
+const CONTACT_ROLES = ['vendeur', 'acheteur', 'prospect', 'investisseur', 'proprietaire'];
 const RELATIONSHIP_OPTIONS: { value: RelationshipOption; label: string }[] = [
   { value: 'interested', label: 'Interesse' },
   { value: 'owner', label: 'Proprietaire' },
@@ -112,10 +107,6 @@ function tomorrowIso() {
   const date = new Date();
   date.setDate(date.getDate() + 1);
   return date.toISOString().split('T')[0];
-}
-
-function openContactHash(contactId: string) {
-  window.location.hash = `#contacts?contact=${encodeURIComponent(contactId)}`;
 }
 
 function contactToView(contact: SupabaseContact): Contact {
@@ -202,16 +193,12 @@ export function Contacts({ store }: ContactsProps) {
     isLoading,
     error,
     search,
-    roleFilters,
     setSearch,
-    setRoleFilters,
-    toggleRoleFilter,
     createContact,
     deleteContact,
     refresh,
   } = useContacts();
   const allTasks = useTasks({ scope: 'all' });
-  const [panelOpen, setPanelOpen] = useState(true);
   const [actionMessage, setActionMessage] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDate, setTaskDate] = useState(tomorrowIso);
@@ -219,38 +206,8 @@ export function Contacts({ store }: ContactsProps) {
   const [taskPriority, setTaskPriority] = useState<TaskPriority>('moyenne');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [linkPropertyModalOpen, setLinkPropertyModalOpen] = useState(false);
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(() => {
-    const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
-    return params.get('contact') ?? params.get('contactId');
-  });
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const selectedContactDetails = useContact(selectedContactId);
-
-  useEffect(() => {
-    const syncSelectedContact = () => {
-      const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
-      const contactId = params.get('contact') ?? params.get('contactId');
-      if (contactId) {
-        setSelectedContactId(contactId);
-        setPanelOpen(true);
-      }
-    };
-
-    window.addEventListener('hashchange', syncSelectedContact);
-    syncSelectedContact();
-    return () => window.removeEventListener('hashchange', syncSelectedContact);
-  }, []);
-
-  useEffect(() => {
-    if (!selectedContactId?.startsWith('CTC-')) return;
-
-    void contactsService.getContactByReference(selectedContactId)
-      .then((contact) => {
-        if (contact) setSelectedContactId(contact.id);
-      })
-      .catch((lookupError) => {
-        setActionMessage(lookupError instanceof Error ? lookupError.message : 'Contact introuvable.');
-      });
-  }, [selectedContactId]);
 
   const contacts = useMemo(() => supabaseContacts.map(contactToView), [supabaseContacts]);
   const skeletonRowCount = Math.max(1, Math.min(contacts.length || 3, 6));
@@ -271,7 +228,7 @@ export function Contacts({ store }: ContactsProps) {
     ? contactToView(selectedContactDetails.contact)
     : selectedContactId
       ? contacts.find((contact) => contact.id === selectedContactId)
-      : filteredContacts[0] ?? contacts[0];
+      : undefined;
   const selectedRelations = selectedContactDetails.contact
       ? contactFullToRelations(
         selectedContactDetails.contact,
@@ -282,18 +239,15 @@ export function Contacts({ store }: ContactsProps) {
       ? relationsById.get(selectedContact.id)
       : undefined;
 
-  useEffect(() => {
-    if (!selectedContactId && filteredContacts[0]) {
-      setSelectedContactId(filteredContacts[0].id);
-    }
-  }, [filteredContacts, selectedContactId]);
-
   const handleSelectContact = (contactId: string) => {
-    const contact = supabaseContacts.find((item) => item.id === contactId);
     setSelectedContactId(contactId);
-    setPanelOpen(true);
     setActionMessage('');
-    openContactHash(contact?.reference ?? contactId);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setSelectedContactId(null);
+    setActionMessage('');
   };
 
   const handleCreateTask = () => {
@@ -342,8 +296,6 @@ export function Contacts({ store }: ContactsProps) {
       });
       setCreateModalOpen(false);
       setSelectedContactId(created.id);
-      setPanelOpen(true);
-      openContactHash(created.reference ?? created.id);
       setActionMessage(`Contact ${created.reference ?? ''} cree.`);
     } catch (createError) {
       setActionMessage(createError instanceof Error ? createError.message : 'Creation du contact impossible.');
@@ -362,7 +314,6 @@ export function Contacts({ store }: ContactsProps) {
     try {
       await deleteContact(selectedContact.id);
       setSelectedContactId(null);
-      setPanelOpen(false);
       setActionMessage('Contact supprime.');
     } catch (deleteError) {
       setActionMessage(deleteError instanceof Error ? deleteError.message : 'Suppression impossible.');
@@ -370,54 +321,57 @@ export function Contacts({ store }: ContactsProps) {
   };
 
   return (
-    <main className={`lv-contacts lv-page contacts-page ${panelOpen && selectedRelations ? 'has-panel' : 'is-panel-closed'}`}>
-      <header className="contacts-head">
+    <main className={`lv-contacts lv-page contacts-page ${selectedRelations ? 'has-panel' : 'is-panel-closed'}`}>
+      <header className="contacts-head" style={{ gridTemplateColumns: '1fr' }}>
         <div className="contacts-title">
           <h1 className="lv-title">Contacts</h1>
           <p>Gérez vos relations et suivez vos échanges.</p>
         </div>
-
-        <label className="contacts-search">
-          <Search size={16} />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="Rechercher un contact..." />
-        </label>
-
-        <div className="contacts-view-toggle" aria-label="Mode d'affichage">
-          <button type="button" title="Grille"><Grid2X2 size={15} /></button>
-          <button type="button" className="active" title="Liste"><List size={15} /></button>
-        </div>
-
-        <div className="contacts-export" aria-label="Export">
-          <button type="button" title="Exporter" onClick={() => setActionMessage('Export prepare.')}>
-            <Download size={15} />
-          </button>
-          <button type="button" title="Options"><ChevronDown size={13} /></button>
-        </div>
       </header>
+
+      <div className="lv-biens-toolbar" style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
+        <div className="lv-biens-search" style={{ flex: 1, position: 'relative' }}>
+          <Search
+            size={15}
+            style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-tertiary)' }}
+          />
+          <input
+            className="lv-biens-search-input"
+            type="search"
+            placeholder="Rechercher un contact, email, téléphone ou référence..."
+            aria-label="Rechercher des contacts"
+            value={search}
+            onChange={(event) => handleSearchChange(event.target.value)}
+            style={{
+              width: '100%',
+              height: 38,
+              paddingLeft: 36,
+              paddingRight: search ? 38 : 12,
+              border: '1px solid var(--color-border-default)',
+              borderRadius: 8,
+              background: 'var(--color-bg-surface)',
+              color: 'var(--color-text-primary)',
+              fontFamily: 'var(--notion-sans)',
+              fontSize: 13,
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+          {search && (
+            <button
+              type="button"
+              aria-label="Effacer la recherche"
+              onClick={() => handleSearchChange('')}
+              style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 26, height: 26, border: 0, borderRadius: 6, background: 'transparent', color: 'var(--color-text-tertiary)', display: 'grid', placeItems: 'center', cursor: 'pointer' }}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
 
       <section className="contacts-body-grid">
         <div className="contacts-left">
-          <div className="filters-row">
-            <div className="filters-active">
-              <Filter size={15} />
-              Filtres actifs
-            </div>
-            {ROLE_FILTERS.map((role) => (
-              <button
-                key={role}
-                className={`filter-pill ${roleFilters.includes(role) ? 'active' : ''}`}
-                type="button"
-                onClick={() => toggleRoleFilter(role)}
-              >
-                {role}
-              </button>
-            ))}
-            <button className="filter-pill" type="button">Source (Toutes)<ChevronDown size={13} /></button>
-            <button className="filter-pill" type="button">Propriétaire (Tous)<ChevronDown size={13} /></button>
-            <button className="reset-link" type="button" onClick={() => { setRoleFilters([]); setSearch(''); }}>Réinitialiser</button>
-            <button className="contacts-filter-square" type="button" title="Colonnes"><Grid2X2 size={16} /></button>
-          </div>
-
           <div className="contacts-table-shell">
             <div className="table-count"><strong>{filteredContacts.length}</strong>&nbsp; contacts</div>
             {(error || selectedContactDetails.error || actionMessage) && (
@@ -452,7 +406,7 @@ export function Contacts({ store }: ContactsProps) {
                     const status = contactStatus(relations);
                     const last = lastActivityLabel(relations);
                     const action = nextAction(relations.tasks);
-                    const selected = selectedContact?.id === contact.id && panelOpen;
+                    const selected = selectedContact?.id === contact.id;
 
                     return (
                       <tr key={contact.id} className={selected ? 'selected' : ''} onClick={() => handleSelectContact(contact.id)}>
@@ -496,7 +450,7 @@ export function Contacts({ store }: ContactsProps) {
           </div>
         </div>
 
-        {selectedRelations && panelOpen && (
+        {selectedRelations && (
           <ContactPanel
             relations={selectedRelations}
             actionMessage={actionMessage}
@@ -504,7 +458,10 @@ export function Contacts({ store }: ContactsProps) {
             taskDate={taskDate}
             taskTime={taskTime}
             taskPriority={taskPriority}
-            onClose={() => setPanelOpen(false)}
+            onClose={() => {
+              setSelectedContactId(null);
+              setActionMessage('');
+            }}
             onMockAction={handleMockAction}
             onTaskTitleChange={setTaskTitle}
             onTaskDateChange={setTaskDate}
@@ -780,7 +737,7 @@ function CreateContactModal({ onClose, onCreate }: CreateContactModalProps) {
           <div className="contact-modal-field-wide">
             <span>Roles</span>
             <div className="contact-role-chips">
-              {ROLE_FILTERS.map((role) => (
+              {CONTACT_ROLES.map((role) => (
                 <button key={role} className={`filter-pill ${roles.includes(role) ? 'active' : ''}`} type="button" onClick={() => toggleRole(role)}>
                   {role}
                 </button>
