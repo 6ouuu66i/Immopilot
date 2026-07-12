@@ -587,7 +587,7 @@
   height: calc(100vh - 58px);
   background: var(--color-bg-surface);
   border-left: 1px solid var(--color-border-default);
-  box-shadow: -10px 0 28px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+  box-shadow: var(--shadow-overlay);
   overflow-y: auto;
   z-index: 30;
   display: flex;
@@ -606,7 +606,7 @@
   border: 0;
   border-left: 1px solid var(--color-border-default);
   border-radius: 0;
-  box-shadow: -10px 0 28px color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+  box-shadow: var(--shadow-overlay);
   z-index: 30;
 }
 @keyframes fiche-in {
@@ -757,7 +757,7 @@
   border: 1px solid var(--color-border-default);
   border-radius: 12px;
   background: var(--color-bg-surface);
-  box-shadow: 0 18px 48px color-mix(in srgb, var(--color-text-primary) 16%, transparent);
+  box-shadow: var(--shadow-lg);
   padding: 16px;
 }
 

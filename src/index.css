@@ -2,24 +2,32 @@
 
 :root {
   --radius: 0;
-  /* Fond « papier chaud » : l'ancien #F6F7F5 était un gris teinté de vert,
-     froid à l'écran. Toute la gamme neutre (fond, surfaces douces, hovers,
-     filets) est réchauffée d'un cran pour coller à l'identité crème/serif. */
-  --bg-page: #F8F6F1;
+  /* B2B workspace foundations. Warm tones are reserved for accents. */
+  --app-background: #F7F7F5;
+  --app-background-subtle: #FAFAF8;
+  --surface-primary: #FFFFFF;
+  --surface-secondary: #F8F8F6;
+  --surface-hover: #F3F3F1;
+  --surface-selected: #F0F1EE;
+  --border-subtle: #E7E7E3;
+  --border-strong: #DCDDD8;
+  --accent-warm: #F6F1E8;
+  --accent-warm-border: #EAE0D1;
+  --bg-page: var(--app-background);
   --bg-surface: #FFFFFF;
-  --border-default: #E6E2D8;
-  --text-ink: #101613;
+  --border-default: var(--border-subtle);
+  --text-ink: #181A18;
   --accent-forest: #1E5A3A;
   --alert-brique: #B3402E;
   --alert-ocre: #8A6D1F;
   --lv-app-bg: var(--bg-page);
   --lv-surface: #FFFFFF;
-  --lv-surface-soft: #F2EFE8;
+  --lv-surface-soft: var(--surface-secondary);
   --lv-text: var(--text-ink);
-  --lv-muted: rgba(16, 22, 19, 0.62);
-  --lv-faint: rgba(16, 22, 19, 0.42);
+  --lv-muted: #62655F;
+  --lv-faint: #92958E;
   --lv-border: var(--border-default);
-  --lv-border-strong: #C8C3B5;
+  --lv-border-strong: var(--border-strong);
   --lv-green: var(--accent-forest);
   --lv-green-hover: #16442C;
   --lv-green-tint: #E8F0EB;
@@ -49,10 +57,10 @@
   --lv-space-4: 16px;
   --lv-space-5: 20px;
   --lv-space-6: 24px;
-  --lv-radius-xs: 0;
-  --lv-radius-sm: 0;
-  --lv-radius-md: 0;
-  --lv-radius-lg: 0;
+  --lv-radius-xs: 6px;
+  --lv-radius-sm: 8px;
+  --lv-radius-md: 12px;
+  --lv-radius-lg: 14px;
   --lv-shadow-card: none;
   --lv-shadow-hover: none;
   --lv-shadow-focus: 0 0 0 3px rgba(30, 90, 58, 0.22);
@@ -67,6 +75,328 @@
   --accent: var(--lv-green);
   --notion-sans: var(--lv-font-sans);
   --notion-mono: var(--lv-font-mono);
+}
+
+/* ============================================================
+   B2B SURFACE SYSTEM — authoritative global layer
+   ============================================================ */
+
+:root {
+  --app-background: #F7F7F5;
+  --app-background-subtle: #FAFAF8;
+  --surface-primary: #FFFFFF;
+  --surface-secondary: #F8F8F6;
+  --surface-hover: #F3F3F1;
+  --surface-selected: #F0F1EE;
+  --border-subtle: #E7E7E3;
+  --border-strong: #DCDDD8;
+  --text-primary: #181A18;
+  --text-secondary: #62655F;
+  --text-muted: #92958E;
+  --accent-warm: #F6F1E8;
+  --accent-warm-border: #EAE0D1;
+
+  --bg-page: var(--app-background);
+  --bg-surface: var(--surface-primary);
+  --border-default: var(--border-subtle);
+  --text-ink: var(--text-primary);
+  --lv-app-bg: var(--app-background);
+  --lv-surface: var(--surface-primary);
+  --lv-surface-soft: var(--surface-secondary);
+  --lv-text: var(--text-primary);
+  --lv-muted: var(--text-secondary);
+  --lv-faint: var(--text-muted);
+  --lv-border: var(--border-subtle);
+  --lv-border-strong: var(--border-strong);
+  --lv-radius-xs: 6px;
+  --lv-radius-sm: 8px;
+  --lv-radius-md: 12px;
+  --lv-radius-lg: 14px;
+  --lv-shadow-card: none;
+  --lv-shadow-hover: none;
+
+  --color-bg-page: var(--app-background);
+  --color-bg-surface: var(--surface-primary);
+  --color-bg-muted: var(--surface-secondary);
+  --color-bg-hover: var(--surface-hover);
+  --color-bg-selected: var(--surface-selected);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-muted);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-neutral-bg: var(--surface-secondary);
+  --color-neutral-text: var(--text-secondary);
+  --color-neutral-border: var(--border-subtle);
+
+  --ip-app-bg: var(--app-background);
+  --ip-bg: var(--app-background);
+  --ip-surface: var(--surface-primary);
+  --ip-surface-muted: var(--surface-secondary);
+  --ip-surface-hover: var(--surface-hover);
+  --ip-border: var(--border-subtle);
+  --ip-border-strong: var(--border-strong);
+  --ip-text: var(--text-primary);
+  --ip-text-primary: var(--text-primary);
+  --ip-text-secondary: var(--text-secondary);
+  --ip-text-tertiary: var(--text-muted);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.03);
+  --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.10);
+  --shadow-overlay: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.03);
+}
+
+html,
+body,
+#app,
+.app,
+.ip-shell,
+.ip-workspace,
+.ip-content,
+#app-content,
+.lv-page {
+  background: var(--app-background) !important;
+  color: var(--text-primary);
+}
+
+.ip-sidebar.lv-lovable-sidebar,
+.ip-topbar.lv-shell-topbar {
+  background: var(--surface-primary) !important;
+  border-color: var(--border-subtle) !important;
+  box-shadow: none !important;
+}
+
+.ip-sidebar.lv-lovable-sidebar {
+  border-right: 1px solid var(--border-subtle) !important;
+}
+
+.ip-topbar.lv-shell-topbar {
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.lv-surface,
+.lv-kpi-card,
+.lv-priority-panel,
+.lv-mini-panel,
+.lv-property-card,
+.lv-biens-table-shell,
+.lv-biens-filter-bar,
+.ip-kpi-card,
+.ip-panel,
+.ip-wow-table-card,
+.ip-side-panel,
+.mc,
+.skeleton-card,
+.agenda-card,
+.settings-card,
+.admin-card,
+.transfers-card,
+.commissions-card,
+.notifications-card {
+  background: var(--surface-primary) !important;
+  border-color: var(--border-subtle) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+.lv-record-panel,
+.fiche-panel,
+.lv-biens-dossier,
+.deal-transfer-modal,
+.ip-notification-dropdown,
+.ip-login-panel,
+.confirm-modal {
+  background: var(--surface-primary) !important;
+  border-color: var(--border-subtle) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.lv-record-panel-header,
+.lv-record-panel-footer,
+.ip-notification-dropdown-head,
+.ip-notification-dropdown-foot,
+.fiche-head,
+.fiche-actions {
+  background: var(--surface-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.lv-biens-table-head,
+.ip-wow-table-head,
+.lv-toolbar,
+.lv-empty-state,
+.task-empty,
+.ip-notification-empty,
+.ip-dashboard-empty,
+.column-empty {
+  background: var(--surface-secondary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.lv-biens-table-row,
+.ip-wow-table-row,
+.notifications-row,
+.lv-task-row,
+.lv-activity-row {
+  background: var(--surface-primary);
+  border-color: var(--border-subtle) !important;
+}
+
+.lv-biens-table-row:hover,
+.ip-wow-table-row:hover,
+.notifications-row:hover,
+.lv-task-row:hover,
+.lv-activity-row:hover,
+.ip-sidebar-link:hover,
+.ip-notification-item:hover,
+.lv-view-toggle-button:hover,
+.lv-tab:hover {
+  background: var(--surface-hover) !important;
+}
+
+.lv-biens-table-row.is-selected,
+.lv-property-card.is-selected,
+.notifications-row.is-selected,
+.ip-sidebar-link.is-active,
+.lv-view-toggle-button.is-active,
+.lv-tab.is-active {
+  background: var(--surface-selected) !important;
+  border-color: var(--border-strong) !important;
+}
+
+input,
+select,
+textarea,
+.lv-input,
+.lv-select,
+.ip-command-search,
+.lv-biens-search-input,
+.notes-input {
+  background: var(--surface-primary) !important;
+  border-color: var(--border-subtle) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+}
+
+input:hover,
+select:hover,
+textarea:hover,
+.lv-input:hover,
+.lv-select:hover,
+.ip-command-search:hover {
+  border-color: var(--border-strong) !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.lv-input:focus,
+.lv-select:focus,
+.ip-command-search:focus-within {
+  border-color: var(--color-border-focus) !important;
+  box-shadow: var(--shadow-focus) !important;
+}
+
+.lv-secondary-button,
+.lv-filter-button,
+.lv-reset-button,
+.btn-secondary,
+.ip-icon-button,
+.lv-icon-button {
+  background: var(--surface-primary) !important;
+  border-color: var(--border-subtle) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+.lv-secondary-button:hover,
+.lv-filter-button:hover,
+.lv-reset-button:hover,
+.btn-secondary:hover,
+.ip-icon-button:hover,
+.lv-icon-button:hover {
+  background: var(--surface-hover) !important;
+  border-color: var(--border-strong) !important;
+}
+
+.skeleton-box,
+.skeleton-avatar,
+.skeleton-text-line,
+.skeleton-badge,
+.skeleton-table-row {
+  background: linear-gradient(90deg, #ECEEF1 25%, #F7F8FA 50%, #ECEEF1 75%) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.lv-tip-card,
+.ip-tip-card,
+.ai-badge,
+.deal-transfer-banner {
+  background: var(--accent-warm) !important;
+  border-color: var(--accent-warm-border) !important;
+}
+
+/* Shared route/auth loading state. */
+.ip-page-loading,
+.ip-auth-loader {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  background: var(--color-bg-page);
+  color: var(--color-text-secondary);
+  font-family: var(--notion-sans);
+}
+
+.ip-auth-loader {
+  min-height: 100vh;
+}
+
+.ip-loading-state {
+  width: min(220px, calc(100vw - 48px));
+  display: grid;
+  gap: 10px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+.ip-loading-track {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-brand) 12%, var(--color-bg-muted));
+}
+
+.ip-loading-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-brand);
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: ip-loading-progress 1.25s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes ip-loading-progress {
+  0% { transform: scaleX(0); opacity: 0.72; }
+  72% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ip-loading-fill {
+    animation-duration: 2.4s;
+  }
 }
 
 /* Grande fiche bien — dossier responsive et composition La Cote. */
@@ -110,10 +440,210 @@
 
 .lv-biens-dossier-title {
   font-family: var(--lv-font-title, var(--font-title)) !important;
-  font-size: clamp(25px, 2.3vw, 32px) !important;
-  font-weight: 600 !important;
-  line-height: 1.08 !important;
+  font-size: clamp(21px, 1.75vw, 26px) !important;
+  font-weight: 550 !important;
+  line-height: 1.16 !important;
+  letter-spacing: -0.025em !important;
   text-wrap: balance;
+}
+
+.lv-biens-dossier-gallery-characteristics {
+  margin-top: 12px;
+}
+
+.lv-biens-dossier-gallery-signature {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: calc(100% - 92px);
+  padding: 7px 10px;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: var(--notion-mono);
+  font-size: 9.5px;
+  background: rgba(16, 22, 19, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+}
+
+.lv-biens-dossier-gallery-signature > span + span {
+  padding-left: 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.lv-biens-dossier-gallery-characteristics > section {
+  padding: 14px !important;
+}
+
+.lv-biens-dossier-characteristics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 18px;
+}
+
+.lv-biens-dossier-characteristics-grid > div {
+  min-width: 0;
+}
+
+.lv-biens-dossier-price-history-empty {
+  display: grid;
+  min-height: 124px;
+  place-content: center;
+  justify-items: center;
+  padding: 18px;
+  text-align: center;
+  background: var(--color-bg-page);
+  border: 1px dashed var(--color-border-default);
+}
+
+.lv-biens-dossier-price-history-empty > span {
+  width: 28px;
+  height: 18px;
+  margin-bottom: 12px;
+  border-left: 1px solid var(--color-border-strong);
+  border-bottom: 1px solid var(--color-border-strong);
+  transform: skewY(-18deg);
+  opacity: 0.55;
+}
+
+.lv-biens-dossier-price-history-empty > p {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lv-biens-dossier-price-history-empty > small {
+  max-width: 220px;
+  margin-top: 5px;
+  color: var(--color-text-tertiary);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.lv-biens-dossier-heading-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 24px;
+}
+
+.lv-biens-dossier-price {
+  min-width: 154px;
+  padding: 4px 0 10px 18px;
+  text-align: right;
+  border-left: 1px solid var(--color-border-default);
+  box-shadow: inset 3px 0 0 var(--color-brand);
+}
+
+.lv-biens-dossier-price > small {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--color-text-tertiary);
+  font-family: var(--notion-mono);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.lv-biens-dossier-price > small em {
+  color: var(--color-brand);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.lv-biens-dossier-price > span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lv-biens-dossier-price > strong {
+  color: var(--color-text-primary);
+  font-family: var(--notion-mono);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+
+.lv-biens-dossier-score-zone {
+  margin-top: 18px;
+  padding: 14px 0;
+  border-top: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.lv-biens-dossier-score-signature {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.lv-biens-dossier-score-signature > strong {
+  color: var(--color-brand);
+  font-family: var(--lv-font-title, var(--font-title));
+  font-size: 11px;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.lv-biens-dossier-signal-summary {
+  padding: 14px 0 0;
+}
+
+.lv-biens-dossier-score-reasons {
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.lv-biens-dossier-score-reasons > :last-child {
+  margin-top: 8px;
+}
+
+.lv-biens-dossier-signal-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.lv-biens-dossier-signal-heading > strong {
+  display: grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  color: var(--color-brand);
+  font-family: var(--notion-mono);
+  font-size: 10px;
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success-border);
+}
+
+.lv-biens-dossier-pair > section:only-child {
+  grid-column: 1 / -1;
 }
 
 .lv-biens-dossier-next-action {
@@ -169,12 +699,202 @@
 }
 
 .lv-biens-dossier-media-actions {
-  overflow-x: auto;
-  scrollbar-width: none;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px !important;
+  width: 100%;
 }
 
-.lv-biens-dossier-media-actions::-webkit-scrollbar {
-  display: none;
+.lv-biens-dossier-media-actions > button {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (min-width: 1181px) {
+  .lv-biens-dossier {
+    width: min(1360px, calc(100% - 24px)) !important;
+  }
+
+  .lv-biens-dossier-scroll {
+    padding: 18px !important;
+  }
+
+  .lv-biens-dossier-hero {
+    grid-template-columns: minmax(580px, 0.95fr) minmax(0, 1.05fr) !important;
+    gap: 32px !important;
+    padding: 0 6px 20px !important;
+  }
+
+  .lv-biens-dossier-gallery {
+    height: 400px !important;
+  }
+
+  .lv-biens-dossier-summary {
+    padding: 8px 20px 0 0 !important;
+  }
+
+.lv-biens-dossier-modules {
+    gap: 12px !important;
+    align-items: stretch !important;
+  }
+
+  .lv-biens-dossier-modules > article,
+  .lv-biens-dossier-pair > article,
+  .lv-biens-dossier-bottom-grid > article {
+    height: 100%;
+  }
+
+  .lv-biens-dossier-pair,
+  .lv-biens-dossier-bottom-grid {
+    gap: 12px !important;
+  }
+
+  .lv-biens-dossier-bottom-grid {
+    margin-top: 12px !important;
+  }
+}
+
+.lv-biens-dossier-modules > section,
+.lv-biens-dossier-bottom-grid > section,
+.lv-biens-dossier-pair > section {
+  border-color: var(--color-border-subtle) !important;
+  box-shadow: none !important;
+}
+
+.lv-biens-dossier-modules > section {
+  position: relative;
+  padding-top: 18px !important;
+}
+
+.lv-biens-dossier-modules > section::before {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 42px;
+  height: 2px;
+  content: '';
+  background: var(--color-brand);
+}
+
+.lv-biens-dossier-summary,
+.lv-biens-dossier-gallery-column,
+.lv-biens-dossier-modules,
+.lv-biens-dossier-bottom-grid {
+  --dossier-rhythm: 12px;
+}
+
+.lv-biens-dossier-thumbs button img,
+.lv-biens-dossier button,
+.lv-biens-dossier input,
+.lv-biens-dossier-modules > section {
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, opacity 180ms ease, transform 180ms ease;
+}
+
+.lv-biens-dossier-thumbs button:hover img {
+  transform: scale(1.025);
+}
+
+.lv-biens-dossier-media-actions > button:hover,
+.lv-biens-dossier-pair button:hover,
+.lv-biens-dossier-bottom-grid button:hover {
+  border-color: var(--color-border-strong) !important;
+  background: var(--color-bg-muted) !important;
+}
+
+.lv-biens-dossier button:active {
+  transform: none !important;
+}
+
+.lv-biens-dossier button:focus-visible,
+.lv-biens-dossier input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-brand) 50%, transparent) !important;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lv-biens-dossier *,
+  .lv-biens-dossier *::before,
+  .lv-biens-dossier *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.lv-biens-dossier-action-dock {
+  position: sticky;
+  z-index: 4;
+  bottom: -18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 14px -18px -18px;
+  padding: 12px 20px;
+  background: color-mix(in srgb, var(--color-bg-surface) 96%, transparent);
+  border-top: 1px solid var(--color-border-default);
+  box-shadow: 0 -10px 24px rgba(16, 22, 19, 0.06);
+  backdrop-filter: blur(12px);
+}
+
+.lv-biens-dossier-action-dock > div:first-child {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 5px 12px;
+  min-width: 0;
+}
+
+.lv-biens-dossier-action-dock span {
+  grid-column: 1 / -1;
+  color: var(--color-brand);
+  font-size: 9.5px;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.lv-biens-dossier-action-dock strong {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lv-biens-dossier-action-dock small {
+  color: var(--color-text-tertiary);
+  font-family: var(--notion-mono);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.lv-biens-dossier-action-dock-buttons {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.lv-biens-dossier-action-dock-buttons > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border-default);
+  cursor: pointer;
+}
+
+.lv-biens-dossier-action-dock-buttons > button:first-child {
+  color: var(--color-text-inverse);
+  background: var(--color-brand);
+  border-color: var(--color-brand);
 }
 
 @media (max-width: 1180px) {
@@ -888,8 +1608,8 @@
 @theme {
   --color-forest: #1E5A3A;
   --color-forest-soft: #CFE1D2;
-  --color-surface-tint: #F8F6F1;
-  --color-surface-tint-strong: #E6E4DF;
+  --color-surface-tint: #F8F8F6;
+  --color-surface-tint-strong: #E7E7E3;
   --color-bone: #FBF2ED;
   --color-ink: #1D1F1E;
   --color-stone: #6B6F6D;
@@ -900,8 +1620,8 @@
 :root {
   --forest: #1E5A3A;
   --forest-soft: #CFE1D2;
-  --surface-tint: #F8F6F1;
-  --surface-tint-strong: #E6E4DF;
+  --surface-tint: #F8F8F6;
+  --surface-tint-strong: #E7E7E3;
   --bone: #FBF2ED;
   --ink: #1D1F1E;
   --stone: #6B6F6D;
@@ -10871,8 +11591,8 @@ table.contacts-table {
   /* Fonds â€” palette originelle du design board */
   --color-bg-page:        var(--bg-page);
   --color-bg-surface:     var(--bg-surface);
-  --color-bg-muted:       #F2EFE8;
-  --color-bg-hover:       #EBE7DD;
+  --color-bg-muted:       #F8F8F6;
+  --color-bg-hover:       #F3F3F1;
   --color-bg-overlay:     rgba(29, 31, 30, 0.5);  /* modales */
 
   /* Textes */
@@ -10885,7 +11605,7 @@ table.contacts-table {
   /* Bordures */
   --color-border-subtle:  var(--border-default);
   --color-border-default: var(--border-default);
-  --color-border-strong:  #C8C3B5;
+  --color-border-strong:  #DCDDD8;
   --color-border-focus:   var(--accent-forest);
 
 
@@ -10939,7 +11659,7 @@ table.contacts-table {
   --color-info-dot:       #2D6CDF;
 
   /* Neutral â€” base attenuee */
-  --color-neutral-bg:     #F2EFE8;
+  --color-neutral-bg:     #F8F8F6;
   --color-neutral-text:   #5B625D;
   --color-neutral-border: var(--border-default);
   --color-neutral-dot:    #8A8781;
@@ -11251,36 +11971,39 @@ body {
   /* Fond « papier chaud » : l'ancien #F6F7F5 était un gris teinté de vert,
      froid à l'écran. Toute la gamme neutre (fond, surfaces douces, hovers,
      filets) est réchauffée d'un cran pour coller à l'identité crème/serif. */
-  --bg-page: #F8F6F1;
+  --bg-page: #F7F7F5;
   --bg-surface: #FFFFFF;
-  --border-default: #E6E2D8;
-  --text-ink: #101613;
+  --border-default: #E7E7E3;
+  --text-ink: #181A18;
   --accent-forest: #1E5A3A;
   --alert-brique: #B3402E;
   --alert-ocre: #8A6D1F;
   --lv-app-bg: var(--bg-page);
   --lv-surface: var(--bg-surface);
-  --lv-surface-soft: #F2EFE8;
+  --lv-surface-soft: #F8F8F6;
   --lv-text: var(--text-ink);
   --lv-border: var(--border-default);
-  --lv-border-strong: #C8C3B5;
+  --lv-border-strong: #DCDDD8;
   --lv-green: var(--accent-forest);
   --lv-green-tint: #E8F0EB;
   --lv-red: var(--alert-brique);
   --lv-ocre: var(--alert-ocre);
-  --lv-radius-xs: 0;
-  --lv-radius-sm: 0;
-  --lv-radius-md: 0;
-  --lv-radius-lg: 0;
+  --lv-radius-xs: 6px;
+  --lv-radius-sm: 8px;
+  --lv-radius-md: 12px;
+  --lv-radius-lg: 14px;
   --lv-shadow-card: none;
   --lv-shadow-hover: none;
   --color-bg-page: var(--bg-page);
   --color-bg-surface: var(--bg-surface);
-  --color-bg-muted: #F2EFE8;
-  --color-bg-hover: #EBE7DD;
+  --color-bg-muted: #F8F8F6;
+  --color-bg-hover: #F3F3F1;
+  --color-bg-selected: #F0F1EE;
+  --color-text-secondary: #62655F;
+  --color-text-tertiary: #92958E;
   --color-text-primary: var(--text-ink);
   --color-border-default: var(--border-default);
-  --color-border-strong: #C8C3B5;
+  --color-border-strong: #DCDDD8;
   --color-brand: var(--accent-forest);
   --color-brand-hover: #16442C;
   --color-brand-bg: #E8F0EB;
@@ -11317,12 +12040,6 @@ body {
   --paper: var(--bg-surface);
 }
 
-*,
-*::before,
-*::after {
-  border-radius: 0 !important;
-}
-
 html,
 body,
 #app,
@@ -11347,22 +12064,6 @@ body,
   box-shadow: none !important;
 }
 
-button,
-input,
-select,
-textarea,
-.lv-primary-button,
-.lv-secondary-button,
-.lv-badge,
-.lv-status-badge,
-.lv-signal-pill,
-.lv-biens-tab,
-.lv-filter-button,
-.lv-reset-button,
-.status {
-  border-radius: 0 !important;
-}
-
 .lv-biens .lv-primary-button,
 .lv-primary-button {
   background: var(--accent-forest) !important;
@@ -11380,13 +12081,6 @@ textarea,
   border-color: var(--accent-forest) !important;
   background: var(--accent-forest) !important;
   color: #FFFFFF !important;
-}
-
-.lv-biens-search-input,
-.ip-command-search,
-.ip-command-search input,
-.lv-toolbar-search input {
-  border-radius: 0 !important;
 }
 
 .lv-row-price,
@@ -11952,8 +12646,8 @@ code,
 /* Desktop workspace rhythm: shared PC/Mac alignment pass. */
 @media (min-width: 1021px) {
   :root {
-    --lv-desktop-gutter: 32px;
-    --lv-desktop-gutter-tight: 24px;
+    --lv-desktop-gutter: 12px;
+    --lv-desktop-gutter-tight: 12px;
     --lv-desktop-panel: 420px;
     --lv-desktop-panel-wide: 462px;
     --lv-toolbar-height: 38px;
@@ -12075,13 +12769,17 @@ code,
   }
 
   .lv-biens-grid {
-    grid-template-columns: repeat(auto-fill, minmax(252px, 1fr)) !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     align-items: start !important;
-    gap: 14px !important;
+    gap: 12px !important;
   }
 
   .lv-biens.has-panel .lv-biens-grid {
-    grid-template-columns: repeat(auto-fill, minmax(252px, 1fr)) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .lv-biens.has-panel .lv-biens-grid .lv-property-card.is-selected {
+    transform: none !important;
   }
 
   .lv-dashboard-kpis,
@@ -12287,4 +12985,185 @@ code,
     padding-left: var(--lv-desktop-gutter) !important;
     padding-right: var(--lv-desktop-gutter) !important;
   }
+}
+
+/* Final cascade guard: keep every legacy screen on the shared B2B surfaces. */
+:root {
+  --app-background: #F7F7F5;
+  --app-background-subtle: #FAFAF8;
+  --surface-primary: #FFFFFF;
+  --surface-secondary: #F8F8F6;
+  --surface-hover: #F3F3F1;
+  --surface-selected: #F0F1EE;
+  --border-subtle: #E7E7E3;
+  --border-strong: #DCDDD8;
+  --text-primary: #181A18;
+  --text-secondary: #62655F;
+  --text-muted: #92958E;
+  --accent-warm: #F6F1E8;
+  --accent-warm-border: #EAE0D1;
+  --bg-page: var(--app-background);
+  --bg-surface: var(--surface-primary);
+  --border-default: var(--border-subtle);
+  --text-ink: var(--text-primary);
+  --lv-app-bg: var(--app-background);
+  --lv-surface: var(--surface-primary);
+  --lv-surface-soft: var(--surface-secondary);
+  --lv-text: var(--text-primary);
+  --lv-muted: var(--text-secondary);
+  --lv-faint: var(--text-muted);
+  --lv-border: var(--border-subtle);
+  --lv-border-strong: var(--border-strong);
+  --color-bg-page: var(--app-background);
+  --color-bg-surface: var(--surface-primary);
+  --color-bg-muted: var(--surface-secondary);
+  --color-bg-hover: var(--surface-hover);
+  --color-bg-selected: var(--surface-selected);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-muted);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --ip-app-bg: var(--app-background);
+  --ip-bg: var(--app-background);
+  --ip-surface: var(--surface-primary);
+  --ip-surface-muted: var(--surface-secondary);
+  --ip-surface-hover: var(--surface-hover);
+  --ip-border: var(--border-subtle);
+  --ip-border-strong: var(--border-strong);
+  --ip-text: var(--text-primary);
+  --ip-text-secondary: var(--text-secondary);
+  --ip-text-tertiary: var(--text-muted);
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.03);
+  --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.10);
+  --shadow-overlay: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.03);
+}
+
+.ip-sidebar.lv-lovable-sidebar,
+.ip-topbar.lv-shell-topbar {
+  background: var(--surface-primary) !important;
+  border-color: var(--border-subtle) !important;
+  box-shadow: none !important;
+}
+
+.ip-sidebar.lv-lovable-sidebar { border-right: 1px solid var(--border-subtle) !important; }
+.ip-topbar.lv-shell-topbar { border-bottom: 1px solid var(--border-subtle) !important; }
+
+.lv-surface,
+.lv-kpi-card,
+.lv-priority-panel,
+.lv-mini-panel,
+.lv-property-card,
+.lv-biens-table-shell,
+.lv-biens-filter-bar,
+.ip-kpi-card,
+.ip-panel,
+.ip-wow-table-card,
+.ip-side-panel,
+.mc,
+.skeleton-card {
+  background: var(--surface-primary) !important;
+  border-color: var(--border-subtle) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+.lv-record-panel,
+.fiche-panel,
+.lv-biens-dossier,
+.deal-transfer-modal,
+.ip-notification-dropdown,
+.ip-login-panel {
+  background: var(--surface-primary) !important;
+  border-color: var(--border-subtle) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.lv-biens-table-head,
+.ip-wow-table-head,
+.lv-toolbar,
+.lv-empty-state,
+.task-empty,
+.ip-notification-empty,
+.ip-dashboard-empty,
+.column-empty {
+  background: var(--surface-secondary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.lv-biens-table-row:hover,
+.ip-wow-table-row:hover,
+.notifications-row:hover,
+.lv-task-row:hover,
+.lv-activity-row:hover,
+.ip-sidebar-link:hover,
+.ip-notification-item:hover {
+  background: var(--surface-hover) !important;
+}
+
+.lv-biens-table-row.is-selected,
+.lv-property-card.is-selected,
+.notifications-row.is-selected,
+.ip-sidebar-link.is-active,
+.lv-view-toggle-button.is-active {
+  background: var(--surface-selected) !important;
+  border-color: var(--border-strong) !important;
+}
+
+input,
+select,
+textarea,
+.lv-input,
+.lv-select,
+.ip-command-search,
+.lv-biens-search-input,
+.notes-input {
+  background: var(--surface-primary) !important;
+  border-color: var(--border-subtle) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  color: var(--text-primary) !important;
+}
+
+input:hover,
+select:hover,
+textarea:hover,
+.lv-input:hover,
+.lv-select:hover,
+.ip-command-search:hover {
+  border-color: var(--border-strong) !important;
+}
+
+.lv-secondary-button,
+.lv-filter-button,
+.lv-reset-button,
+.btn-secondary,
+.ip-icon-button,
+.lv-icon-button {
+  background: var(--surface-primary) !important;
+  border-color: var(--border-subtle) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+
+.lv-secondary-button:hover,
+.lv-filter-button:hover,
+.lv-reset-button:hover,
+.btn-secondary:hover,
+.ip-icon-button:hover,
+.lv-icon-button:hover {
+  background: var(--surface-hover) !important;
+  border-color: var(--border-strong) !important;
+}
+
+.lv-tip-card,
+.ip-tip-card,
+.ai-badge,
+.deal-transfer-banner {
+  background: var(--accent-warm) !important;
+  border-color: var(--accent-warm-border) !important;
 }

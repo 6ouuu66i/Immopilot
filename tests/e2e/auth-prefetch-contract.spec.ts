@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const rootDir = process.cwd();
 
-test('auth prefetch uses the same centralized query keys as Biens and Dashboard hooks', async () => {
+test('auth prefetch uses centralized query keys without blocking the authenticated shell', async () => {
   const authSource = await fs.readFile(path.join(rootDir, 'src/lib/auth.tsx'), 'utf8');
   const queryKeysSource = await fs.readFile(path.join(rootDir, 'src/lib/queryKeys.ts'), 'utf8');
   const propertiesSource = await fs.readFile(path.join(rootDir, 'src/lib/supabaseProperties.ts'), 'utf8');
@@ -28,6 +28,11 @@ test('auth prefetch uses the same centralized query keys as Biens and Dashboard 
   expect(authSource).toContain('queryKeys.listingScores(');
   expect(authSource).toContain('queryKeys.listingSignals(');
   expect(authSource).toContain('queryKeys.dashboardSnapshot(');
-  expect(authSource).toContain('Promise.race([');
-  expect(authSource).toContain('setTimeout(resolve, 2500)');
+  expect(authSource).toContain('const DEFAULT_BIENS_PAGE_SIZE = 20;');
+  expect(authSource).toContain('setIsLoading(false);');
+  expect(authSource).toContain('void prefetchInitialAppData(session.user.id).catch(() => undefined);');
+  expect(authSource).not.toContain('prefetchInitialAppDataWithTimeout');
+  expect(authSource.indexOf('setIsLoading(false);')).toBeLessThan(
+    authSource.indexOf('void prefetchInitialAppData(session.user.id).catch(() => undefined);'),
+  );
 });

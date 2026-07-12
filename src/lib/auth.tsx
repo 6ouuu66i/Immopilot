@@ -32,7 +32,7 @@ interface AuthProviderProps {
 }
 
 const DEFAULT_BIENS_PAGE = 1;
-const DEFAULT_BIENS_PAGE_SIZE = 16;
+const DEFAULT_BIENS_PAGE_SIZE = 20;
 const DEFAULT_DASHBOARD_LIMIT = 8;
 const EMPTY_PROPERTY_MARKS = { favorites: [], ignored: [] };
 
@@ -122,15 +122,6 @@ async function prefetchInitialAppData(userId: string): Promise<void> {
   ]);
 }
 
-async function prefetchInitialAppDataWithTimeout(userId: string): Promise<void> {
-  await Promise.race([
-    prefetchInitialAppData(userId).catch(() => undefined),
-    new Promise<void>((resolve) => {
-      setTimeout(resolve, 2500);
-    }),
-  ]);
-}
-
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AuthProfile | null>(null);
@@ -154,10 +145,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const next = await loadProfileAndAgency(session.user.id);
     setProfile(next.profile);
     setAgency(next.agency);
-    if (options?.prefetch ?? false) {
-      await prefetchInitialAppDataWithTimeout(session.user.id);
-    }
     setIsLoading(false);
+    if (options?.prefetch ?? false) {
+      void prefetchInitialAppData(session.user.id).catch(() => undefined);
+    }
   }, []);
 
   useEffect(() => {

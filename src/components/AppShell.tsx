@@ -250,9 +250,6 @@ export function AppShell({ activeRoute, children, store }: AppShellProps) {
 
       <div className="ip-workspace">
         <header className="ip-topbar lv-shell-topbar">
-          <div className="ip-topbar-left">
-            <span className="ip-breadcrumb">Workspace</span>
-          </div>
           <button
             type="button"
             className="ip-command-search ip-command-search-trigger"

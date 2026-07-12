@@ -24,7 +24,9 @@
     "noEmit": true
   },
   "exclude": [
+    ".tmp",
     "_external",
+    "graphify",
     "node_modules",
     "dist"
   ]

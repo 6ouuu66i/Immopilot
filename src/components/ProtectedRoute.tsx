@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { useAuth } from '../lib/auth';
+import { LoadingBar } from './ui/LoadingBar';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -9,7 +10,7 @@ interface ProtectedRouteProps {
 function AuthLoader() {
   return (
     <div className="ip-auth-loader">
-      <span>Chargement...</span>
+      <LoadingBar />
     </div>
   );
 }

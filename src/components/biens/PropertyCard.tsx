@@ -168,8 +168,8 @@ export function PropertyCard({
   const signalLabel = primarySignal ?? property.tag;
   const signal = signalBadge(signalLabel);
   const price = formatEuro(property.price);
-  const hoverShadow = '0 14px 34px -28px rgba(16, 22, 19, 0.58), 0 0 0 1px rgba(30, 90, 58, 0.1)';
-  const selectedShadow = 'inset 3px 0 0 var(--color-brand), 0 16px 34px -30px rgba(16, 22, 19, 0.62), 0 0 0 1px rgba(30, 90, 58, 0.16)';
+  const hoverShadow = 'none';
+  const selectedShadow = 'inset 3px 0 0 var(--color-brand)';
   const defaultShadow = 'none';
 
   return (
@@ -307,11 +307,13 @@ export function PropertyCard({
           </div>
         )}
 
-        {photos.length > 1 && (
-          <span className="lv-photo-counter" data-photo-nav aria-hidden="true">
-            {(carouselIndex % photos.length) + 1}/{photos.length}
-          </span>
-        )}
+        <span
+          className={`lv-photo-counter${photos.length === 1 ? ' is-single' : ''}`}
+          data-photo-nav
+          aria-label={photos.length === 1 ? 'Une seule photo disponible' : `Photo ${(carouselIndex % photos.length) + 1} sur ${photos.length}`}
+        >
+          {photos.length === 1 ? '1 photo' : `${(carouselIndex % photos.length) + 1}/${photos.length}`}
+        </span>
 
         <div
           style={{

@@ -19,6 +19,7 @@ import { renderInteractiveMap, hasValidKey } from './lib/maps';
 import { AppShell } from './components/AppShell';
 import { PostHogErrorBoundary } from './components/PostHogErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { LoadingBar } from './components/ui/LoadingBar';
 import { AuthProvider } from './lib/auth';
 import { initPostHog } from './lib/posthog';
 import { appQueryClient } from './lib/queryClient';
@@ -113,18 +114,8 @@ function LegacyPage({ route }: LegacyPageProps) {
 
 function PageLoading() {
   return (
-    <div
-      style={{
-        minHeight: '100%',
-        display: 'grid',
-        placeItems: 'center',
-        background: '#F7F6F3',
-        color: '#6B6B6B',
-        fontFamily: 'var(--notion-sans)',
-        fontSize: 13,
-      }}
-    >
-      Chargement...
+    <div className="ip-page-loading">
+      <LoadingBar />
     </div>
   );
 }

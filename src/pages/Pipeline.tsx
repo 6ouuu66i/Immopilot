@@ -229,6 +229,7 @@ export function Pipeline({ store }: PipelineProps) {
   const stagesState = usePipelineStages();
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
   const [selectedDealId, setSelectedDealId] = useState<string | null>(() => getDealParamFromHash());
+  const [moveError, setMoveError] = useState<string | null>(null);
   const scorePropertyIds = useMemo(
     () => Array.from(new Set(dealsState.deals.map((deal) => deal.property_id).filter(Boolean))),
     [dealsState.deals],
@@ -288,10 +289,19 @@ export function Pipeline({ store }: PipelineProps) {
     });
   };
 
-  const handleMoveDeal = (dealId: string, stageName: string) => {
+  const handleMoveDeal = async (dealId: string, stageName: string) => {
+    setMoveError(null);
     const stage = stagesState.stages.find((item) => item.name === stageName);
-    if (!stage) return;
-    void dealsState.updateDealStage(dealId, stage.id);
+    if (!stage) {
+      setMoveError('Impossible de déplacer le deal. Veuillez réessayer.');
+      return;
+    }
+
+    try {
+      await dealsState.updateDealStage(dealId, stage.id);
+    } catch {
+      setMoveError('Impossible de déplacer le deal. Veuillez réessayer.');
+    }
   };
 
   const handleUpdateDealLinks = (dealId: string, links: { contactId?: string; propertyId?: Property['id'] }) => {
@@ -325,7 +335,7 @@ export function Pipeline({ store }: PipelineProps) {
   };
 
   const isLoading = dealsState.isLoading || stagesState.isLoading;
-  const loadError = dealsState.error ?? stagesState.error;
+  const loadError = moveError ?? dealsState.error ?? stagesState.error;
 
   return (
     <div className={`lv-pipeline lv-page ${panelOpen ? 'has-panel' : ''}`} style={{

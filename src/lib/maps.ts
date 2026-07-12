@@ -57,7 +57,7 @@ export function loadGoogleMapsScript(): Promise<any> {
 
 export function getSplashHTML(): string {
   return `
-    <div class="gmp-splash" style="padding: 14px; font-family: 'Inter', system-ui, sans-serif; font-size: 11px; line-height: 1.45; color: #1D1F1E; background: #FFFDF9; border: 1.5px dashed #CFC8B7; border-radius: 8px; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; box-sizing: border-box; position: absolute; inset: 0; z-index: 10;">
+    <div class="gmp-splash" style="padding: 14px; font-family: 'Inter', system-ui, sans-serif; font-size: 11px; line-height: 1.45; color: #181A18; background: #F8F8F6; border: 1px solid #E7E7E3; border-radius: 8px; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; box-sizing: border-box; position: absolute; inset: 0; z-index: 10;">
       <p style="margin: 0 0 6px 0; font-weight: 800; font-family: 'Lora', Georgia, serif; font-size: 13px; color: #C0553D; display: flex; align-items: center; gap: 6px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
         Google Maps requis
@@ -88,7 +88,7 @@ export function renderInteractiveMap(elementId: string, city: string, fullAddres
 
   // 2. Clear element contents and show a loading state
   container.innerHTML = `
-    <div style="display:flex; align-items:center; justify-content:center; height:100%; background:#FAF7F2; font-family:monospace; font-size:11px; color:#5C5A53;">
+    <div style="display:flex; align-items:center; justify-content:center; height:100%; background:#F8F8F6; font-family:monospace; font-size:11px; color:#62655F;">
       Chargement de la carte...
     </div>
   `;

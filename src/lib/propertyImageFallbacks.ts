@@ -37,5 +37,6 @@ export function propertyImageFallbacks(propertyId: string | number): string[] {
 }
 
 export function resolvePropertyImages(propertyId: string | number, photos: string[]): string[] {
-  return photos.length > 0 ? photos : propertyImageFallbacks(propertyId);
+  const validPhotos = [...new Set(photos.filter((photo) => photo.trim().length > 0))];
+  return validPhotos.length > 0 ? validPhotos : propertyImageFallbacks(propertyId);
 }

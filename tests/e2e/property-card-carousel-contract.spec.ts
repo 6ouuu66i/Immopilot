@@ -14,8 +14,12 @@ test('property card carousel uses the rendered photo set and never selects the c
   const articleOpening = propertyCardSource.slice(articleStart, propertyCardSource.indexOf('>', articleStart));
 
   expect(imageSource).toContain('export function resolvePropertyImages');
+  expect(imageSource).toContain('return validPhotos.length > 0 ? validPhotos : propertyImageFallbacks(propertyId)');
+  expect(imageSource).not.toContain('[...validPhotos, ...propertyImageFallbacks(propertyId)]');
   expect(propertyCardSource).toContain('resolvePropertyImages(property.id, property.photos)');
   expect(biensSource).toContain('resolvePropertyImages(prop.id, prop.photos).length');
+  expect(biensSource.match(/resolvePropertyImages\(property\.id, property\.photos\)/g)).toHaveLength(3);
+  expect(biensSource).not.toContain('photos.slice(0, 6)');
 
   expect(articleOpening).not.toContain('onClick=');
   expect(propertyCardSource).toContain('className="lv-property-card-photo-button"');
@@ -31,6 +35,9 @@ test('property card carousel uses the rendered photo set and never selects the c
   expect(biensSource).not.toContain('galleryButtonStyle(');
   expect(biensSource).not.toContain('dossierGalleryButtonStyle(');
   expect(propertyCardSource).toContain('className="lv-property-card-photo"');
+  expect(propertyCardSource).toContain("photos.length === 1 ? '1 photo'");
+  expect(cssSource).toContain('.lv-biens.has-panel .lv-biens-grid {');
+  expect(cssSource).toContain('grid-template-columns: repeat(2, minmax(0, 1fr)) !important;');
   expect(cssSource).toContain('@keyframes ip-property-card-photo-in');
   expect(cssSource).toContain('.lv-property-card-photo-button {');
   expect(cssSource).toContain('top: 0;\n  bottom: 0;');

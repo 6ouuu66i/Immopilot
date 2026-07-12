@@ -1995,9 +1995,7 @@ function MiniFicheBien({
   isFavorite,
   onOpenFull,
 }: MiniFicheBienProps) {
-  const photos = property.photos.length > 0
-    ? property.photos
-    : propertyImageFallbacks(property.id);
+  const photos = resolvePropertyImages(property.id, property.photos);
   const currentPhoto = photos[photoIndex % photos.length];
   const price = formatEuro(property.price);
   const relatedSignals = store.getSignals().filter((signal) => signal.propertyId === property.id).slice(0, 4);
@@ -2370,9 +2368,7 @@ function LegacyMiniFicheBien({
   const [actionMessage, setActionMessage] = useState('');
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [transferRequestMessage, setTransferRequestMessage] = useState('');
-  const photos = property.photos.length > 0
-    ? property.photos
-    : propertyImageFallbacks(property.id);
+  const photos = resolvePropertyImages(property.id, property.photos);
   const currentPhoto = photos[photoIndex % photos.length];
   const price = formatEuro(property.price);
   const relatedDeal = store.getDeals().find((deal) => deal.propertyId === property.id);
@@ -2391,7 +2387,7 @@ function LegacyMiniFicheBien({
   const relatedSignals = store.getPropertySignals(property.id).slice(0, 4);
   const propertyTasks = useTasksFor({ propertyId: property.supabasePropertyId });
   const relatedTasks = propertyTasks.tasks.slice(0, 4).map(taskToView);
-  const { contacts } = useContacts();
+  const { contacts, isLoading: contactsLoading, error: contactsError } = useContacts();
   const [selectedContactId, setSelectedContactId] = useState(relatedContact?.id ?? '');
   const propertyStatus: PropertyInternalStatus = property.status ?? (property.reserved ? 'réservé' : 'disponible');
   const displaySeed = propertyDisplaySeed(property.id);
@@ -2412,9 +2408,9 @@ function LegacyMiniFicheBien({
   const deltaPercent = Math.round(((propPpm - cityAvg) / cityAvg) * 100);
   const barPercent = Math.max(8, Math.min(92, 50 + deltaPercent * 2));
   const vendorName = property.fsbo
-    ? 'Mme Sophie Dumont'
+    ? 'Contact vendeur à identifier'
     : property.source === 'Biddit'
-      ? 'Étude Notariale de Groote'
+      ? 'Étude notariale à identifier'
       : ownerAgent?.name ?? currentAgentName;
   const vendorType = property.fsbo
     ? 'Particulier FSBO'
@@ -2443,8 +2439,7 @@ function LegacyMiniFicheBien({
           ? `Traiter le signal: ${primarySignal.heading}.`
           : 'Qualifier le bien et programmer une prochaine action.';
   const opportunityReason = getOpportunityReason(property, store);
-  const visibleThumbs = photos.length > 6 ? photos.slice(0, 6) : photos;
-  const hiddenPhotoCount = Math.max(0, photos.length - 5);
+  const visibleThumbs = photos;
   const headerScore = score?.score ?? property.score;
   const headerTone = priorityToneFromScore(score, property.score);
 
@@ -2476,16 +2471,6 @@ function LegacyMiniFicheBien({
     setActionMessage(`Statut mis à jour : ${status}`);
   };
 
-  const handleLinkContact = () => {
-    if (!selectedContactId) {
-      setActionMessage('Choisis un contact à lier.');
-      return;
-    }
-
-    const contact = store.linkPropertyToContact(property.id, selectedContactId);
-    setActionMessage(contact ? `Contact lié : ${contact.name}` : 'Contact introuvable.');
-  };
-
   const handleLinkSupabaseContact = () => {
     if (!selectedContactId) {
       setActionMessage('Choisis un contact a lier.');
@@ -2512,9 +2497,13 @@ function LegacyMiniFicheBien({
       return;
     }
 
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 1);
+    dueDate.setHours(9, 0, 0, 0);
+
     void propertyTasks.createTask({
       title,
-      due_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      due_date: dueDate.toISOString(),
       priority: 'moyenne',
     })
       .then(() => {
@@ -2783,16 +2772,14 @@ function LegacyMiniFicheBien({
               </>
             )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 7, padding: '10px 16px 12px', borderBottom: '1px solid var(--color-border-subtle)' }}>
+          <div style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'calc((100% - 35px) / 6)', gap: 7, padding: '10px 16px 12px', overflowX: 'auto', borderBottom: '1px solid var(--color-border-subtle)' }}>
             {visibleThumbs.map((url, index) => {
-              const isMoreThumb = photos.length > 6 && index === 5;
-              const targetIndex = isMoreThumb ? 5 : index;
               return (
               <button
                 key={`${url}-${index}`}
                 type="button"
-                onClick={() => setPhotoIndex(targetIndex)}
-                style={legacyThumbStyle(targetIndex === photoIndex % photos.length, isMoreThumb)}
+                onClick={() => setPhotoIndex(index)}
+                style={legacyThumbStyle(index === photoIndex % photos.length)}
               >
                 <img
                   src={url}
@@ -2801,11 +2788,6 @@ function LegacyMiniFicheBien({
                   decoding="async"
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
-                {isMoreThumb && (
-                  <span style={legacyMoreThumbOverlayStyle}>
-                    +{hiddenPhotoCount}
-                  </span>
-                )}
               </button>
               );
             })}
@@ -2824,7 +2806,7 @@ function LegacyMiniFicheBien({
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {!relatedContact && (
-                <button type="button" onClick={() => setActionMessage('Choisis un contact dans Actions CRM, puis clique sur Lier.')} style={smallSecondaryButtonStyle}>
+                <button type="button" onClick={() => setActionMessage('Choisis un contact ci-dessous, puis clique sur Lier.')} style={smallSecondaryButtonStyle}>
                   Lier un contact
                 </button>
               )}
@@ -2836,6 +2818,45 @@ function LegacyMiniFicheBien({
               <button type="button" onClick={handleCreateDeal} style={smallPrimaryButtonStyle}>
                 {relatedDeal ? 'Voir le deal' : 'Créer un deal'}
               </button>
+            </div>
+            <div style={{ display: 'grid', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--color-border-subtle)' }}>
+              <label style={{ display: 'grid', gap: 5, color: 'var(--color-text-secondary)', fontSize: 11.5, fontWeight: 650 }}>
+                Contact à associer
+                <select
+                  aria-label="Contact à associer"
+                  value={selectedContactId}
+                  onChange={(event) => setSelectedContactId(event.target.value)}
+                  disabled={contactsLoading || contacts.length === 0}
+                  style={{ height: 36, padding: '0 10px', border: '1px solid var(--color-border-default)', background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)' }}
+                >
+                  <option value="">{contactsLoading ? 'Chargement des contacts...' : 'Choisir un contact'}</option>
+                  {contacts.map((contact) => <option key={contact.id} value={contact.id}>{contact.full_name}</option>)}
+                </select>
+              </label>
+              <button type="button" onClick={handleLinkSupabaseContact} disabled={!selectedContactId || contactsLoading} style={smallSecondaryButtonStyle}>
+                Lier le contact sélectionné
+              </button>
+              {contacts.length === 0 && !contactsLoading && (
+                <a href="#contacts" style={{ color: 'var(--color-brand)', fontSize: 11.5, fontWeight: 650 }}>Créer un contact dans Contacts</a>
+              )}
+              <label style={{ display: 'grid', gap: 5, color: 'var(--color-text-secondary)', fontSize: 11.5, fontWeight: 650 }}>
+                Prochaine tâche
+                <input
+                  aria-label="Prochaine tâche"
+                  value={taskTitle}
+                  onChange={(event) => setTaskTitle(event.target.value)}
+                  placeholder="Ex : Appeler le propriétaire"
+                  style={{ height: 36, padding: '0 10px', border: '1px solid var(--color-border-default)', background: 'var(--color-bg-surface)', color: 'var(--color-text-primary)' }}
+                />
+              </label>
+              <button type="button" onClick={handleCreateTask} disabled={!taskTitle.trim()} style={smallSecondaryButtonStyle}>
+                Créer la tâche pour demain
+              </button>
+              {(actionMessage || contactsError) && (
+                <p role="status" style={{ margin: 0, color: contactsError ? 'var(--color-danger-text)' : 'var(--color-text-secondary)', fontSize: 11.5, lineHeight: 1.4 }}>
+                  {contactsError ?? actionMessage}
+                </p>
+              )}
             </div>
           </section>
 
@@ -2948,7 +2969,7 @@ function LegacyMiniFicheBien({
                 <div style={{ color: 'var(--color-text-primary)', fontSize: 13.5, fontWeight: 750 }}>{vendorName}</div>
                 <div style={{ color: 'var(--color-text-secondary)', fontSize: 12, marginTop: 2 }}>{vendorType}</div>
                 <div style={{ color: 'var(--color-text-tertiary)', fontSize: 11.5, marginTop: 5 }}>
-                  {relatedContact ? `${relatedContact.phone} · ${relatedContact.email}` : '+32 2 345 67 89 · contact@immopilot.be'}
+                  {relatedContact ? `${relatedContact.phone} · ${relatedContact.email}` : 'Coordonnées non renseignées'}
                 </div>
               </div>
               <div style={{ width: 44, height: 44, borderRadius: 999, background: 'var(--color-neutral-bg)', display: 'grid', placeItems: 'center', color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 750 }}>
@@ -3115,9 +3136,7 @@ function GrandeFicheBien({
 }: GrandeFicheBienProps) {
   const [photoIndex, setPhotoIndex] = useState(0);
   const [noteDraft, setNoteDraft] = useState('');
-  const photos = property.photos.length > 0
-    ? property.photos
-    : propertyImageFallbacks(property.id);
+  const photos = resolvePropertyImages(property.id, property.photos);
   const currentPhoto = photos[photoIndex % photos.length];
   const relatedDeal = store.getPropertyDeal(property.id);
   const relatedContact = relatedDeal ? store.getContact(relatedDeal.contactId) : store.getPropertyContact(property.id);
@@ -3126,6 +3145,9 @@ function GrandeFicheBien({
   const relatedTasks = propertyTasks.tasks.map(taskToView);
   const activities = store.getPropertyActivities(property.id).slice(0, 5);
   const price = formatEuro(property.price);
+  const initialPriceValue = property.priceHistory?.[0]?.price;
+  const hasInitialPrice = typeof initialPriceValue === 'number' && initialPriceValue !== property.price;
+  const priceDelta = hasInitialPrice ? Math.round(((property.price - initialPriceValue) / initialPriceValue) * 100) : 0;
   const displaySeed = propertyDisplaySeed(property.id);
   const propType = property.title.toLowerCase().includes('appartement')
     ? 'Appartement'
@@ -3209,32 +3231,6 @@ function GrandeFicheBien({
         </button>
 
         <div className="lv-biens-dossier-scroll" style={{ overflowY: 'auto', minHeight: 0, flex: 1, padding: 14, background: 'var(--color-bg-surface)' }}>
-          <div
-            className="lv-biens-dossier-header"
-            style={{
-              position: 'sticky',
-              top: -14,
-              zIndex: 3,
-              margin: '-14px -14px 14px',
-              padding: '10px 54px 10px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 16,
-              background: 'color-mix(in srgb, var(--color-bg-surface) 94%, transparent)',
-              borderBottom: '1px solid var(--color-border-default)',
-              backdropFilter: 'blur(8px)',
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <div style={{ color: 'var(--color-text-tertiary)', fontSize: 10.5, fontWeight: 700, letterSpacing: 0, textTransform: 'uppercase' }}>
-                Dossier bien
-              </div>
-              <div style={{ color: 'var(--color-text-primary)', fontSize: 13.5, fontWeight: 750, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {property.city} · {property.source}
-              </div>
-            </div>
-          </div>
           <div className="lv-biens-dossier-hero" style={{ display: 'grid', gridTemplateColumns: '570px minmax(0, 1fr)', gap: 24, padding: '2px 2px 16px' }}>
             <div className="lv-biens-dossier-gallery-column">
               <div className="lv-biens-dossier-gallery" style={{ position: 'relative', height: 326, borderRadius: 7, background: 'var(--color-border-default)', overflow: 'hidden', border: '1px solid var(--color-border-default)' }}>
@@ -3257,10 +3253,15 @@ function GrandeFicheBien({
                 <span style={{ position: 'absolute', right: 14, bottom: 14, padding: '4px 8px', borderRadius: 6, background: 'rgba(29,31,30,0.78)', color: 'var(--color-text-inverse)', fontFamily: 'var(--notion-mono)', fontSize: 10.5, fontWeight: 700 }}>
                   {(photoIndex % photos.length) + 1} / {photos.length}
                 </span>
+                <div className="lv-biens-dossier-gallery-signature">
+                  <span>{property.source.slice(0, 3).toUpperCase()}-{displaySeed * 83712}</span>
+                  <span>{property.source}</span>
+                  <span>Détecté il y a {property.publishedDays} j</span>
+                </div>
               </div>
 
-              <div className="lv-biens-dossier-thumbs" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6, marginTop: 8 }}>
-                {photos.slice(0, 6).map((url, index) => (
+              <div className="lv-biens-dossier-thumbs" style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'calc((100% - 30px) / 6)', gap: 6, marginTop: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                {photos.map((url, index) => (
                   <button key={`${url}-${index}`} type="button" onClick={() => setPhotoIndex(index)} style={dossierThumbStyle(index === photoIndex % photos.length)}>
                     <img
                       src={url}
@@ -3269,11 +3270,6 @@ function GrandeFicheBien({
                       decoding="async"
                       style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                     />
-                    {index === 5 && photos.length > 6 && (
-                      <span style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'rgba(29,31,30,0.52)', color: 'var(--color-text-inverse)', fontWeight: 800, fontSize: 13 }}>
-                        +{photos.length - 5}
-                      </span>
-                    )}
                   </button>
                 ))}
               </div>
@@ -3283,12 +3279,40 @@ function GrandeFicheBien({
                 <DossierActionButton icon={<Plus size={13} />}>Partager</DossierActionButton>
                 <DossierActionButton onClick={onToggleIgnored}>Ignorer</DossierActionButton>
               </div>
+
+              <div className="lv-biens-dossier-gallery-characteristics">
+                <DossierCard title="Caractéristiques" icon={<Square size={14} />}>
+                  <div className="lv-biens-dossier-characteristics-grid">
+                    <DossierLine label="Surface habitable" value={`${property.surface} m²`} />
+                    <DossierLine label="Surface terrain" value={`${Math.round(property.surface * 3.2)} m²`} />
+                    <DossierLine label="Façades" value={String(Math.max(2, property.bedrooms + 1))} />
+                    <DossierLine label="Étages" value={String(displaySeed % 3 + 1)} />
+                    <DossierLine label="Chambres" value={String(property.bedrooms)} />
+                    <DossierLine label="Salles de bain" value={String(property.bathrooms)} />
+                    <DossierLine label="Garages" value={displaySeed % 2 ? '1' : '2'} />
+                    <DossierLine label="PEB" value={property.peb} badge />
+                    <DossierLine label="Charges" value="--" />
+                  </div>
+                </DossierCard>
+              </div>
             </div>
 
             <aside className="lv-biens-dossier-summary" style={{ padding: '10px 14px 0 8px' }}>
-              <h2 className="lv-biens-dossier-title" style={{ margin: '4px 34px 8px 0', color: 'var(--color-text-primary)', fontFamily: 'var(--font-serif, var(--notion-serif))', fontSize: 34, lineHeight: 1.05, fontWeight: 400, letterSpacing: '-0.02em' }}>
-                {property.title}
-              </h2>
+              <div className="lv-biens-dossier-heading-row">
+                <h2 className="lv-biens-dossier-title" style={{ margin: '4px 0 8px', color: 'var(--color-text-primary)', fontFamily: 'var(--font-serif, var(--notion-serif))', fontSize: 34, lineHeight: 1.05, fontWeight: 400, letterSpacing: '-0.02em' }}>
+                  {property.title}
+                </h2>
+                <div className="lv-biens-dossier-price">
+                  <span>Prix demandé</span>
+                  <strong>{price}</strong>
+                  {hasInitialPrice && (
+                    <small>
+                      <s>{formatEuro(initialPriceValue)}</s>
+                      <em>{priceDelta > 0 ? '+' : ''}{priceDelta}%</em>
+                    </small>
+                  )}
+                </div>
+              </div>
               <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 6, height: 6, borderRadius: 99, background: 'var(--color-brand)' }} />
                 Avenue Brugmann 379, 1180 {property.city}
@@ -3309,15 +3333,11 @@ function GrandeFicheBien({
                 <small>{nextTask ? `${nextTask.date} · ${nextTask.time}` : 'Aucune action planifiée'}</small>
               </div>
 
-              <div className="lv-biens-dossier-metrics" style={{ display: 'grid', gridTemplateColumns: '1.2fr repeat(4, 1fr)', borderTop: '1px solid var(--color-border-subtle)', borderBottom: '1px solid var(--color-border-subtle)', marginTop: 18, padding: '13px 0' }}>
-                <DossierTopMetric label="Prix demandé" value={price} strong />
-                <DossierTopMetric label="Surface" value={`${property.surface} m²`} />
-                <DossierTopMetric label="Chambres" value={String(property.bedrooms)} />
-                <DossierTopMetric label="Salle(s) de bain" value={String(property.bathrooms)} />
-                <DossierTopMetric label="PEB" value={property.peb} badge />
-              </div>
-
-              <div style={{ marginTop: 16, padding: '14px 0', borderBottom: '1px solid var(--color-border-subtle)' }}>
+              <div className="lv-biens-dossier-score-zone">
+                <div className="lv-biens-dossier-score-signature">
+                  <span>{segment === 'agence' ? 'Statut mandat' : 'Indice vendeur'}</span>
+                  <strong>ImmoPilot</strong>
+                </div>
                 <PropertyInsightDisplay
                   property={property}
                   score={score}
@@ -3325,6 +3345,31 @@ function GrandeFicheBien({
                   size="panel"
                   signals={liveSignals}
                   isInactive={property.reserved || property.status?.startsWith('archiv')}
+                />
+              </div>
+
+              <div className="lv-biens-dossier-signal-summary">
+                <div className="lv-biens-dossier-signal-heading">
+                  <span>Signaux actifs</span>
+                  <strong>{relatedSignals.length}</strong>
+                </div>
+                {relatedSignals.length > 0 ? relatedSignals.slice(0, 2).map((signal) => (
+                  <DossierSignal key={signal.id} title={signal.heading} meta={signal.info || signal.time} tone={signal.type === 'drop' ? 'orange' : 'green'} />
+                )) : (
+                  <p style={emptyMiniTextStyle}>Aucun signal actif lié à ce bien.</p>
+                )}
+              </div>
+
+              <div className="lv-biens-dossier-score-reasons">
+                <div className="lv-biens-dossier-signal-heading">
+                  <span>{segment === 'agence' ? 'Contexte du mandat' : 'Pourquoi cet indice'}</span>
+                </div>
+                <PropertyInsightExplanation
+                  score={score}
+                  property={property}
+                  segment={segment}
+                  signals={liveSignals}
+                  surface="full_dossier"
                 />
               </div>
 
@@ -3340,27 +3385,7 @@ function GrandeFicheBien({
               alignItems: 'start',
             }}
           >
-            <DossierCard title="Caractéristiques" icon={<Square size={14} />} style={{ gridColumn: 'span 4', order: 2 }}>
-              <DossierLine label="Surface habitable" value={`${property.surface} m²`} />
-              <DossierLine label="Surface terrain" value={`${Math.round(property.surface * 3.2)} m²`} />
-              <DossierLine label="Façades" value={String(Math.max(2, property.bedrooms + 1))} />
-              <DossierLine label="Étages" value={String(displaySeed % 3 + 1)} />
-              <DossierLine label="Chambres" value={String(property.bedrooms)} />
-              <DossierLine label="Salles de bain" value={String(property.bathrooms)} />
-              <DossierLine label="Garages" value={displaySeed % 2 ? '1' : '2'} />
-              <DossierLine label="PEB" value={property.peb} badge />
-              <DossierLine label="Charges" value="--" />
-            </DossierCard>
-
-            {property.priceHistory && property.priceHistory.length > 1 && (
-              <DossierCard title="Historique de prix" icon={<Clock size={14} />} style={{ gridColumn: '1 / -1', order: 4 }}>
-                {property.priceHistory.slice(-4).reverse().map((entry) => (
-                  <DossierLine key={`${entry.date}-${entry.price}`} label={entry.date} value={formatEuro(entry.price)} />
-                ))}
-              </DossierCard>
-            )}
-
-            <DossierCard title="Description de l'annonce" icon={<FileText size={14} />} style={{ gridColumn: 'span 8', order: 1 }}>
+            <DossierCard title="Description de l'annonce" icon={<FileText size={14} />} style={{ gridColumn: 'span 8', order: 0 }}>
               <p style={{ margin: 0, color: 'var(--color-text-primary)', fontSize: 12.5, lineHeight: 1.58, maxHeight: 128, overflowY: 'auto', paddingRight: 4 }}>
                 {property.description || `Annonce publiée sur ${property.source}. La description source sera affichée ici dès qu'elle est disponible.`}
               </p>
@@ -3368,6 +3393,14 @@ function GrandeFicheBien({
                 <span><strong>{property.source}</strong> · Il y a {property.publishedDays} j</span>
                 <span>{property.source.slice(0, 3).toUpperCase()}-{displaySeed * 83712}</span>
                 <button type="button" style={dossierLinkButtonStyle}>Ouvrir l'annonce source</button>
+              </div>
+            </DossierCard>
+
+            <DossierCard title="Historique de prix" icon={<Clock size={14} />} style={{ gridColumn: 'span 4', order: 0 }}>
+              <div className="lv-biens-dossier-price-history-empty">
+                <span aria-hidden="true" />
+                <p>Aucune variation enregistrée</p>
+                <small>Les prochaines évolutions de prix apparaîtront ici.</small>
               </div>
             </DossierCard>
 
@@ -3390,17 +3423,7 @@ function GrandeFicheBien({
               </div>
             </DossierCard>
 
-            <DossierCard title={segment === 'agence' ? 'Contexte du mandat' : 'Pourquoi cet indice'} icon={<FileText size={14} />} style={{ gridColumn: '1 / -1', order: 3 }}>
-              <PropertyInsightExplanation
-                score={score}
-                property={property}
-                segment={segment}
-                signals={liveSignals}
-                surface="full_dossier"
-              />
-            </DossierCard>
-
-            <DossierCard title="Contact / Pipeline" avatar={vendorName.slice(0, 2).toUpperCase()} style={{ gridColumn: 'span 4', order: 1 }}>
+            <DossierCard title="Contact / Pipeline" avatar={vendorName.slice(0, 2).toUpperCase()} style={{ gridColumn: 'span 4', order: 2 }}>
               <div style={{ color: 'var(--color-text-primary)', fontSize: 14, fontWeight: 750 }}>{vendorName}</div>
               <div style={{ color: 'var(--color-text-secondary)', fontSize: 11.5, marginBottom: 8 }}>{relatedContact ? 'Propriétaire' : vendorMeta}</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 9 }}>
@@ -3413,22 +3436,13 @@ function GrandeFicheBien({
                 <DossierInfo label="Prochaine action" value={nextTask ? `${nextTask.date} à ${nextTask.time}` : 'Créer une tâche'} />
               </div>
               <div style={{ marginTop: 9 }}>
-                <DossierLine label="Téléphone" value={relatedContact?.phone ?? '+32 475 44 22 11'} />
-                <DossierLine label="Email" value={relatedContact?.email ?? 'contact@immopilot.be'} />
+                <DossierLine label="Téléphone" value={relatedContact?.phone ?? 'Non renseigné'} />
+                <DossierLine label="Email" value={relatedContact?.email ?? 'Non renseigné'} />
                 <DossierLine label="Adresse" value={`1180 ${property.city}`} />
               </div>
             </DossierCard>
 
             <div className="lv-biens-dossier-pair" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridColumn: '1 / -1', gap: 16, order: 5 }}>
-              <DossierCard title="Signaux liés" icon={<Clock size={14} />}>
-                {relatedSignals.length > 0 ? relatedSignals.slice(0, 3).map((signal) => (
-                  <DossierSignal key={signal.id} title={signal.heading} meta={signal.info || signal.time} tone={signal.type === 'drop' ? 'orange' : 'green'} />
-                )) : (
-                  <p style={emptyMiniTextStyle}>Aucun signal actif lié à ce bien.</p>
-                )}
-                <button type="button" style={dossierLinkButtonStyle}>Voir tous les signaux</button>
-              </DossierCard>
-
               <DossierCard title="Tâches liées" icon={<FileText size={14} />}>
                 {relatedTasks.length > 0 ? relatedTasks.slice(0, 3).map((task) => (
                   <button key={task.id} type="button" onClick={() => { void propertyTasks.toggleTask(task.id); }} style={dossierTaskButtonStyle}>
@@ -3482,6 +3496,21 @@ function GrandeFicheBien({
                 />
               </div>
             </DossierCard>
+          </div>
+
+          <div className="lv-biens-dossier-action-dock">
+            <div>
+              <span>Prochaine action</span>
+              <strong>{nextTask?.title ?? (relatedContact ? 'Planifier la prochaine action' : 'Identifier le contact vendeur')}</strong>
+              <small>{nextTask ? `${nextTask.date} · ${nextTask.time}` : 'À organiser'}</small>
+            </div>
+            <div className="lv-biens-dossier-action-dock-buttons">
+              <button type="button" onClick={onToggleFavorite} aria-pressed={isFavorite}>
+                <Star size={14} fill={isFavorite ? 'currentColor' : 'none'} />
+                {isFavorite ? 'Dans les favoris' : 'Ajouter aux favoris'}
+              </button>
+              <button type="button" onClick={onToggleIgnored}>Ignorer ce bien</button>
+            </div>
           </div>
         </div>
       </section>
@@ -3792,7 +3821,7 @@ const legacyGalleryCounterStyle: React.CSSProperties = {
   boxShadow: '2px 2px 0 rgba(29,31,30,0.3)',
 };
 
-function legacyThumbStyle(active: boolean, isMoreThumb = false): React.CSSProperties {
+function legacyThumbStyle(active: boolean): React.CSSProperties {
   return {
     position: 'relative',
     aspectRatio: '1 / 1',
@@ -3804,23 +3833,10 @@ function legacyThumbStyle(active: boolean, isMoreThumb = false): React.CSSProper
     background: 'var(--color-border-subtle)',
     cursor: 'pointer',
     isolation: 'isolate',
-    opacity: isMoreThumb ? 0.98 : 1,
+    opacity: 1,
   };
 }
 
-const legacyMoreThumbOverlayStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  display: 'grid',
-  placeItems: 'center',
-  background: 'rgba(29,31,30,0.62)',
-  color: 'var(--color-text-inverse)',
-  fontSize: 15,
-  fontWeight: 800,
-  fontFamily: 'var(--notion-sans)',
-  letterSpacing: '0.01em',
-  zIndex: 2,
-};
 function PropertyInsightDisplay({
   isInactive,
   property,
