@@ -66,7 +66,7 @@
       "remediationStatus": "verified-on-remote",
       "remediation": {
         "date": "2026-07-12",
-        "migration": "supabase/migrations/20260712050000_create_accept_invitation_function.sql",
+        "migration": "supabase/migrations/20260712050248_create_accept_invitation_function.sql",
         "test": "supabase/tests/f002_accept_invitation.test.sql",
         "frontendFiles": [
           "src/main.tsx",
@@ -83,7 +83,7 @@
           "method": "Supabase MCP apply_migration (single migration only; no db push, no matview migrations)",
           "recordedName": "create_accept_invitation_function",
           "recordedVersion": "20260712050248",
-          "localFileNote": "Local file timestamp is 20260712050000; remote recorded version is 20260712050248 (MCP-generated at apply time). Same name/content. Not yet reconciled (same minor divergence pattern as F-001; can be renamed later following the same procedure)."
+          "localFileNote": "Resolved 2026-07-12: local file renamed to supabase/migrations/20260712050248_create_accept_invitation_function.sql to match the remote-recorded version, after confirming via pg_get_functiondef/routine_privileges that the deployed function is strictly equivalent to the local file content (body, SECURITY DEFINER, search_path, grants). No migration repair needed; remote untouched by the rename. Full invitation flow also manually re-verified end-to-end through the real UI by the user."
         },
         "verificationRun": {
           "tsc_noEmit": "PASS (exit 0)",
