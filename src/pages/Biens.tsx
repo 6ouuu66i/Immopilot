@@ -54,6 +54,7 @@ import { dealsService } from '../lib/services/dealsService';
 import type { ListingScore } from '../lib/services/listingScoresService';
 import { propertyImageFallbacks, resolvePropertyImages } from '../lib/propertyImageFallbacks';
 import { formatEuro } from '../lib/formatCurrency';
+import { buildPropertyReasons, type PropertyReasonKind } from '../lib/propertyReasons';
 import type { Property, PropertyInternalStatus, PropertyKey } from '../types';
 
 type Store = typeof appStore;
@@ -132,6 +133,15 @@ function getSellerType(property: Property): SellerFilter {
   if (property.fsbo) return 'Particulier';
   if (property.source === 'Biddit') return 'Notaire';
   return 'Agence';
+}
+
+function propertyReasonSymbol(kind: PropertyReasonKind): string {
+  if (kind === 'price') return '↓';
+  if (kind === 'seller') return '👤';
+  if (kind === 'longevity') return '⌛';
+  if (kind === 'market') return '↔';
+  if (kind === 'competition') return '◫';
+  return '★';
 }
 
 function minValue(option: string): number | null {
@@ -2438,7 +2448,7 @@ function LegacyMiniFicheBien({
         : primarySignal
           ? `Traiter le signal: ${primarySignal.heading}.`
           : 'Qualifier le bien et programmer une prochaine action.';
-  const opportunityReason = getOpportunityReason(property, store);
+  const propertyReasons = buildPropertyReasons({ property, signals: liveSignals, score });
   const visibleThumbs = photos;
   const headerScore = score?.score ?? property.score;
   const headerTone = priorityToneFromScore(score, property.score);
@@ -2797,9 +2807,25 @@ function LegacyMiniFicheBien({
         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <section style={{ ...legacyModuleStyle, borderColor: 'var(--color-success-border)', background: 'var(--color-success-bg)' }}>
             <div style={legacyLabelStyle}>POURQUOI CE BIEN ?</div>
-            <p style={{ margin: '5px 0 12px', color: 'var(--color-brand)', fontSize: 13, lineHeight: 1.45, fontWeight: 750 }}>
-              {opportunityReason}
-            </p>
+            {propertyReasons.length > 0 ? (
+              <div style={{ display: 'grid', gap: 9, margin: '8px 0 12px' }}>
+                {propertyReasons.map((reason) => (
+                  <div key={reason.kind} style={{ display: 'grid', gridTemplateColumns: '18px minmax(0, 1fr)', gap: 8, alignItems: 'start' }}>
+                    <span aria-hidden="true" style={{ color: 'var(--color-brand)', fontSize: 14, lineHeight: 1.3, fontWeight: 750 }}>
+                      {propertyReasonSymbol(reason.kind)}
+                    </span>
+                    <div>
+                      <p style={{ margin: 0, color: 'var(--color-text-primary)', fontSize: 12.5, lineHeight: 1.35, fontWeight: 750 }}>{reason.title}</p>
+                      <p style={{ margin: '2px 0 0', color: 'var(--color-text-secondary)', fontSize: 11.5, lineHeight: 1.4 }}>{reason.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ margin: '7px 0 12px', color: 'var(--color-text-secondary)', fontSize: 12, lineHeight: 1.45 }}>
+                Aucun signal déterminant détecté pour le moment.
+              </p>
+            )}
             <div style={legacyLabelStyle}>ACTION RECOMMANDÉE</div>
             <p style={{ margin: '5px 0 10px', color: 'var(--color-text-primary)', fontSize: 13, lineHeight: 1.45, fontWeight: 650 }}>
               {recommendedAction}
