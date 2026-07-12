@@ -3,7 +3,7 @@
   "generated": "2026-07-11",
   "status": "complete",
   "readOnly": true,
-  "severityCounts": { "Critical": 1, "High": 5, "Medium": 10, "Low": 7, "Informational": 4 },
+  "severityCounts": { "Critical": 2, "High": 5, "Medium": 9, "Low": 7, "Informational": 4 },
   "findings": [
     {
       "id": "F-001",
@@ -98,22 +98,47 @@
     },
     {
       "id": "F-003",
-      "title": "transfer_requests UPDATE policy lacks agency scoping (defense-in-depth gap)",
-      "category": "security/authorization",
-      "severity": "Medium",
-      "confidence": "Medium",
-      "files": ["supabase/migrations/20260629182636_create_crm_remaining_schema_rls.sql:452-453"],
-      "evidence": "Policy \"From agent can resolve transfer\" is FOR UPDATE USING (from_agent_id = auth.uid() OR public.is_admin()) with no agency_id = current_agency_id() clause and no WITH CHECK. Trigger handle_transfer_notification moves deal ownership on accept.",
-      "currentBehavior": "App layer enforces same-agency (transfersService.requestTransfer checks deal/owner agency), but the DB policy would let an admin update a transfer row of another agency if its id were known; SELECT visibility is agency-scoped so discovery is hard.",
-      "expectedBehavior": "UPDATE gated by agency_id = current_agency_id() in addition to actor checks.",
-      "businessImpact": "Low likelihood but a hole in tenant isolation should not depend on app-layer checks alone.",
-      "technicalImpact": "Authorization enforced app-side, not at RLS; bypassable by a raw client.",
-      "recommendedFix": "Add agency_id = current_agency_id() to the USING clause and add a matching WITH CHECK. Add a same-agency validation to the accept path (verify deal.agency_id = transfer.agency_id via trigger).",
-      "effort": "S",
-      "dependencies": [],
-      "regressionRisk": "Low; verify accept/refuse still work for legitimate same-agency transfers.",
-      "verification": "Attempt cross-agency transfer resolution via raw client → rejected.",
-      "phase": "Phase 1"
+      "title": "transfer_requests UPDATE policy allows deal-ownership hijack (reclassified Critical, confirmed exploitable)",
+      "category": "security/authorization/tenant-isolation",
+      "severity": "Critical",
+      "confidence": "High",
+      "reclassification": {
+        "date": "2026-07-12",
+        "originalSeverity": "Medium",
+        "reason": "Live re-verification during remediation showed the gap is not merely a defense-in-depth/discovery-hardness issue: since the UPDATE policy's USING doubles as WITH CHECK with no column restriction, any agent who is from_agent_id on at least one pending transfer_requests row (a normal state reached whenever a teammate has ever asked to take over one of their deals) can rewrite deal_id and to_agent_id in the same UPDATE that sets status='accepted'. The SECURITY DEFINER handle_transfer_notification trigger then reassigns deals.owner_id for whatever deal_id now sits in the row, bypassing deals' own UPDATE policy entirely. This is a directly exploitable, low-prerequisite deal-ownership takeover, not a theoretical/hard-to-discover one -- reclassified Critical to match F-001's severity band."
+      },
+      "files": ["supabase/migrations/20260629182636_create_crm_remaining_schema_rls.sql:452-453", "supabase/migrations/20260713000000_secure_transfer_requests_state_machine.sql"],
+      "evidence": "Policy \"From agent can resolve transfer\" is FOR UPDATE USING (from_agent_id = auth.uid() OR public.is_admin()) with no agency_id = current_agency_id() clause and no WITH CHECK. No table constraint ties deal_id/to_agent_id to the row's own agency_id (same_agency_transfer only checks from_agent_id <> to_agent_id). handle_transfer_notification is SECURITY DEFINER and unconditionally reassigns deals.owner_id on any transition to 'accepted'. There was also no protection against directly INSERTing a row already in a terminal status, or against a client choosing its own resolved_at/refusal_reason.",
+      "currentBehavior": "(pre-fix) An agent who is from_agent_id on any pending transfer_requests row could, in one UPDATE call, rewrite deal_id to an unrelated deal and to_agent_id to an arbitrary profile while setting status='accepted', hijacking that deal's ownership.",
+      "expectedBehavior": "UPDATE gated by agency_id = current_agency_id(); all identity columns (deal_id, agency_id, from_agent_id, to_agent_id, requested_by, id, created_at) immutable after creation; status transitions validated against a strict state machine with per-transition actor authorization enforced in a trigger (not just RLS); resolved_at server-authoritative; refusal_reason controlled per transition; the deal-ownership reassignment revalidates live ground truth (deal exists, same agency, still owned by from_agent_id, both agents still in that agency, recipient active) before touching deals.owner_id, with a restrictive WHERE clause + ROW_COUNT check for atomicity.",
+      "businessImpact": "Full deal-ownership hijack achievable by any non-admin agent with a normal, easily-attained prerequisite (having received one transfer request). Directly threatens commission integrity and tenant trust.",
+      "technicalImpact": "Cross-tenant/cross-user data integrity loss; deals.owner_id reassigned by a SECURITY DEFINER trigger with no server-side revalidation.",
+      "recommendedFix": "BEFORE UPDATE trigger enforcing column immutability + full state-machine (status transitions, actor authorization, resolved_at/refusal_reason control); agency-scoped UPDATE policy with WITH CHECK; INSERT policy WITH CHECK enforcing terminal-status/resolved_at/refusal_reason cannot be pre-set and that deal_id/from_agent_id/to_agent_id are internally consistent; AFTER trigger ground-truth revalidation before any deals.owner_id UPDATE, with a restrictive WHERE clause and ROW_COUNT check.",
+      "effort": "M",
+      "dependencies": ["F-001"],
+      "regressionRisk": "Low; cancelTransfer() was previously broken for non-admin requesters (requested_by was never covered by the UPDATE policy's USING clause) -- the fix incidentally makes it work, a behavior change flagged explicitly, not a regression.",
+      "verification": "Attempt cross-agency transfer resolution via raw client -> rejected. Attempt the deal_id/to_agent_id rewrite exploit -> rejected. Direct INSERT into a terminal status, or with resolved_at/refusal_reason pre-set -> rejected.",
+      "phase": "Phase 0",
+      "remediationStatus": "verified-on-remote",
+      "remediation": {
+        "date": "2026-07-12",
+        "migration": "supabase/migrations/20260713000000_secure_transfer_requests_state_machine.sql",
+        "test": "supabase/tests/f003_transfer_requests_state_machine.test.sql",
+        "approach": "BEFORE UPDATE trigger enforce_transfer_request_update_rules(): immutable id/deal_id/agency_id/from_agent_id/to_agent_id/requested_by/created_at; terminal statuses never revisited; pending->pending cannot sneak a resolved_at/refusal_reason change; per-transition actor authorization (from_agent_id for accept/refuse, requested_by for cancel, agency-scoped admin override for all three) enforced in the trigger, not just RLS; resolved_at forced to now() server-side on every valid transition (client value silently overridden, no frontend change needed); refusal_reason required NULL on accept/cancel, left as sent on refuse. UPDATE policy rewritten to agency-scoped USING (adding requested_by, which fixes a pre-existing bug where cancelTransfer could never match its own row) + WITH CHECK (agency_id=current_agency_id()). INSERT policy WITH CHECK extended: status='pending', resolved_at/refusal_reason NULL, EXISTS check that the deal belongs to the row's agency and is still owned by from_agent_id and open, EXISTS check that to_agent_id is active. handle_transfer_notification rewritten to revalidate live deal/profile state (agency match, current ownership, both agents' agency membership, recipient active) before reassigning deals.owner_id via a restrictive UPDATE ... WHERE id/agency_id/owner_id with GET DIAGNOSTICS ROW_COUNT check; INSERT-branch and refused-branch notification behavior byte-for-byte unchanged (diffed against the live pre-fix function body).",
+        "appliedToRemote": {
+          "project": "ImmoPilot Pre-Alpha (vzibrlgszzyvgbkasasz)",
+          "method": "Supabase MCP apply_migration (single migration only; no db push, no matview migrations)",
+          "recordedName": "secure_transfer_requests_state_machine"
+        },
+        "verificationRun": {
+          "tsc_noEmit": "PASS (exit 0) -- no frontend file touched",
+          "vite_build": "PASS (exit 0)",
+          "remote_object_checks": "PASS -- enforce_transfer_request_update_rules() exists and trigger active; total triggers on transfer_requests = 2 (new BEFORE + pre-existing AFTER notification trigger); handle_transfer_notification still SECURITY DEFINER; F-001 guard function/trigger still present and active; F-002 accept_invitation still present.",
+          "remote_behavioral_test": "PASS across three DO-block rollback-transaction runs on Pre-Alpha covering all 33 required assertions (immutability x5, F-003 exploit rejection + sanity check, cross-agency admin RLS-filtered to 0 rows, terminal-state lock x2, legitimate accept/refuse/cancel with correct notifications, deal ownership correctly transferred, 5 malicious direct-INSERT rejections, resolved_at/refusal_reason control x5, resolved_at server-override, cross-agency-recipient rejection, inactive-recipient rejection, exactly-one-row deal update). Two test-script actor-assignment bugs in the first run (test authoring only, not migration defects) were identified via diff-level review and corrected in a follow-up run; all 33 scenarios ultimately confirmed PASS. Zero residual test data (all agencies/users/profiles/deals/transfers with the test-run prefix confirmed count=0 after every run); two unrelated notifications from 2026-06-30 pre-existing data incidentally matched an overly broad cleanup filter and were confirmed, by timestamp, unrelated to this session's testing.",
+          "pgtap_test_file": "Authored for CI/local `supabase test db` (33 assertions); not the path used for remote verification."
+        },
+        "residualRisk": "None identified beyond the general known limitations already documented for F-001/F-002 (is_active not re-checked on every RLS read; PITR/backup confirmation still outstanding). Admin override on cancellation is a new, currently-unexercised capability (no frontend path calls it) kept for symmetry with accept/refuse -- worth a product decision if it should ever be surfaced in the Admin UI."
+      }
     },
     {
       "id": "F-004",

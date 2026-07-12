@@ -19,9 +19,24 @@ CREATE POLICY "Users can update own profile" ON public.profiles
   - `update({ agency_id: '<other-agency-uuid>' })` → join another tenant and read/write its CRM data via `current_agency_id()`.
 - **Fix:** trigger rejecting `role`/`agency_id` self-changes (allow only via `is_admin()` / a controlled `accept_invitation`), or `REVOKE UPDATE(role, agency_id, is_active) … FROM authenticated`. Add an RLS regression test. **Phase 0.**
 
+## 5.1b F-003 — transfer_requests deal-ownership hijack (reclassified Critical 2026-07-12)
+
+> **Remediation status (2026-07-12): FIXED — applied and verified on ImmoPilot Pre-Alpha.** Migration [`20260713000000_secure_transfer_requests_state_machine.sql`](../../supabase/migrations/20260713000000_secure_transfer_requests_state_machine.sql) adds a `BEFORE UPDATE` trigger (`enforce_transfer_request_update_rules`) enforcing full column immutability (`id/deal_id/agency_id/from_agent_id/to_agent_id/requested_by/created_at`), a strict `pending → {accepted|refused|cancelled}` state machine with per-transition actor authorization checked **in the trigger** (not just RLS), server-authoritative `resolved_at`, and controlled `refusal_reason`. The `UPDATE` policy is now agency-scoped (`agency_id = current_agency_id()`, `WITH CHECK` floor); the `INSERT` policy now requires `status='pending'`, `resolved_at`/`refusal_reason` `NULL`, and an `EXISTS` check that the deal truly belongs to the row's agency and is still owned by `from_agent_id`, plus that `to_agent_id` is active. `handle_transfer_notification()` was rewritten to revalidate live ground truth (deal exists, same agency, still owned by `from_agent_id`, both agents still in that agency, recipient active) before reassigning `deals.owner_id`, via a restrictive `UPDATE ... WHERE id/agency_id/owner_id` with a `ROW_COUNT` check; notification behavior for creation/accept/refuse was diffed byte-for-byte against the live pre-fix function and is unchanged (no cancellation notification existed before or after). Applied via Supabase MCP `apply_migration` (this migration only). Remote object checks passed (function/trigger present and active; F-001/F-002 confirmed still active). Remote behavioral verification: **33/33 assertions passed** across rolled-back transactions, including a direct demonstration that the original exploit (rewriting `deal_id`+`to_agent_id` alongside `status='accepted'` on a legitimately-owned pending row) is now rejected, 5 distinct malicious direct-`INSERT` attempts rejected, and cross-agency/inactive-recipient acceptance rejected. Zero residual test data. **Known limitation:** admin override on cancellation is a new, currently-unexercised capability (no frontend path calls it) kept symmetric with accept/refuse.
+>
+> Original finding (superseded by the fix above, kept for record):
+
+[20260629182636…:452-453](../../supabase/migrations/20260629182636_create_crm_remaining_schema_rls.sql):
+```sql
+CREATE POLICY "From agent can resolve transfer" ON public.transfer_requests
+  FOR UPDATE TO authenticated USING (from_agent_id = auth.uid() OR is_admin());
+```
+- No `WITH CHECK` → the only constraint on the new row is that `from_agent_id` (unchanged) still equals `auth.uid()` — nothing restricts `deal_id`, `agency_id`, `to_agent_id`, `requested_by`, `status`, `resolved_at`, or `refusal_reason`.
+- `is_admin()` was **not agency-scoped** in this policy (unlike every other admin-gated policy in the schema) — any admin, of any agency, satisfied `USING`.
+- **Confirmed exploitable, not merely theoretical:** any agent who is `from_agent_id` on at least one `pending` `transfer_requests` row (a normal state reached whenever a teammate has ever asked to take over one of their deals) could, in one `UPDATE`, rewrite `deal_id` to an unrelated deal and `to_agent_id` to an arbitrary profile while setting `status='accepted'`. The `SECURITY DEFINER` `handle_transfer_notification` trigger then reassigned `deals.owner_id` unconditionally, bypassing `deals`' own `UPDATE` policy entirely. **Reclassified Medium → Critical** on 2026-07-12 after this was confirmed via live re-verification.
+- **Side finding:** the original policy also never covered `requested_by`, meaning `cancelTransfer()` (called by `requested_by`, never `from_agent_id`) could not actually match its own row for a non-admin caller — a pre-existing functional bug, fixed incidentally by the agency-scoped rewrite.
+
 ## 5.2 Other authorization findings
 
-- **F-003 (Medium)** — `transfer_requests` UPDATE policy `USING (from_agent_id = auth.uid() OR is_admin())` has **no `agency_id` scoping** and no `WITH CHECK`. App-layer `transfersService` enforces same-agency, but RLS shouldn’t depend on that. Add `agency_id = current_agency_id()`. **Phase 1.**
 - **Positive:** contacts/deals/tasks/notes/commissions/activities/audit_logs/pipeline_stages/contact_properties/agency_invitations are all correctly scoped by `current_agency_id()` (+ `is_admin()`/`owner_id`/`author_id` where appropriate). Admin-only mutations (delete contact/deal, manage commissions/stages/invitations, insert audit logs) require `is_admin()`. Storage policies scope by folder to `auth.uid()`/`current_agency_id()`.
 - **Global-read tables** (`properties/listings/price_history/listing_signals/listing_scores/listing_score_history/listing_outcomes`) use `USING (true)` for all authenticated — **intentional shared market**. Acceptable, but document it: any authenticated user sees all prospecting data, scores, and signals for every listing (no per-agency market carve-out). This is fine for the product model but should be a conscious, written decision, since it means a churned/rogue account retains full market visibility until deactivated.
 
@@ -57,14 +72,14 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 
 ## 5.7 IDOR / object references
 
-- Object ids are UUIDs; access is mediated by RLS on every table, so guessing an id does not grant access (except the F-001/F-003 policy gaps). No predictable integer ids in CRM tables (`deals`/`contacts` also have human-readable `reference`s generated by trigger, but reads are still RLS-scoped).
+- Object ids are UUIDs; access is mediated by RLS on every table, so guessing an id does not grant access. No predictable integer ids in CRM tables (`deals`/`contacts` also have human-readable `reference`s generated by trigger, but reads are still RLS-scoped).
 
 ## 5.8 Security scorecard
 
 | Area | State |
 |---|---|
-| Tenant isolation (CRM) | Correct **except** F-001 (critical) + F-003 (medium) |
-| Auth/session | Solid primitives; onboarding broken (F-002); open signup (F-006) |
+| Tenant isolation (CRM) | **F-001 and F-003 (both Critical) — FIXED and verified on remote 2026-07-12.** No other gaps found. |
+| Auth/session | Solid primitives; onboarding — **F-002 FIXED and verified 2026-07-12**; open signup (F-006) still open |
 | Secrets | Clean (no service-role client-side); minor F-005 |
 | XSS/injection | Clean live paths; dead bridge F-004; hardening F-027 |
 | Privacy/GDPR | No retention/erasure story yet (Phase 3) |
@@ -72,8 +87,8 @@ CREATE POLICY "Users can update own profile" ON public.profiles
 
 ## 5.9 Immediate (Phase 0/1) security actions
 
-1. **F-001** — block `profiles` self-update of `role`/`agency_id` (Phase 0).
-2. **F-002** — implement `accept_invitation` + `#invite` route (Phase 1).
-3. **F-003** — agency-scope the transfer UPDATE policy (Phase 1).
-4. **F-006** — gate/throttle signup for beta (Phase 1).
-5. Add RLS regression tests proving cross-agency denial and self-update restriction (F-021, Phase 1).
+1. ~~**F-001** — block `profiles` self-update of `role`/`agency_id`.~~ **DONE (2026-07-12).**
+2. ~~**F-002** — implement `accept_invitation` + `#invite` route.~~ **DONE (2026-07-12).**
+3. ~~**F-003** — close the `transfer_requests` deal-ownership hijack (reclassified Critical).~~ **DONE (2026-07-12).**
+4. **F-006** — gate/throttle signup for beta (Phase 1). Still open.
+5. Add RLS regression tests proving cross-agency denial and self-update restriction (F-021, Phase 1) — pgTAP files authored for F-001/F-002/F-003 but not yet wired into CI (no local Docker stack available in this environment).

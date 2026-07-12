@@ -20,24 +20,24 @@ Mode: READ-ONLY audit. Only `docs/audit/**` was written. No application code, de
 - [x] 08-reliability-testing-audit.md
 - [x] 09-cleanup-candidates.md
 - [x] 10-prioritized-roadmap.md
-- [x] findings.json (27 findings: 1 Critical, 5 High, 10 Medium, 7 Low, 4 Info)
+- [x] findings.json (27 findings: 2 Critical [F-001, F-003 reclassified], 5 High, 9 Medium, 7 Low, 4 Info)
 - [x] AUDIT_STATUS.md
 
 ## Findings severity counts
 
-- Critical: 1 (F-001)
+- Critical: 2 (F-001, F-003 — reclassified Medium→Critical 2026-07-12 during remediation)
 - High: 5 (F-002, F-008, F-015, F-021 + F-002 group)
-- Medium: 10
+- Medium: 9
 - Low: 7
 - Informational: 4
 
-## Top 5 most urgent
+## Top 5 most urgent (original audit ranking; F-001/F-002/F-003 since fixed — see Remediation log)
 
-1. **F-001 (Critical)** — profiles UPDATE policy lets any user self-set `role='admin'`/`agency_id` → tenant breach.
-2. **F-002 (High)** — invitation acceptance unimplemented → can't onboard agents.
-3. **F-015 (High)** — Biens card badges/filters read the mock store, not Supabase → wrong associations on the core screen.
-4. **F-021 (High)** — tests mostly grep source; no RLS/auth/behavioral coverage; no CI (F-022).
-5. **F-008 (High)** — dashboard RPC recomputes the live view instead of the matview → market-sized latency.
+1. **F-001 (Critical)** — ~~profiles UPDATE policy lets any user self-set `role='admin'`/`agency_id` → tenant breach.~~ **FIXED 2026-07-12.**
+2. **F-003 (Critical, reclassified)** — ~~transfer_requests UPDATE policy allows deal-ownership hijack via a legitimately-owned pending row.~~ **FIXED 2026-07-12.**
+3. **F-002 (High)** — ~~invitation acceptance unimplemented → can't onboard agents.~~ **FIXED 2026-07-12.**
+4. **F-015 (High)** — Biens card badges/filters read the mock store, not Supabase → wrong associations on the core screen. Still open.
+5. **F-021 (High)** — tests mostly grep source; no RLS/auth/behavioral coverage; no CI (F-022). Still open.
 
 ## Files / modules inspected (full or targeted)
 
@@ -84,9 +84,21 @@ Mode: READ-ONLY audit. Only `docs/audit/**` was written. No application code, de
   - **Known, honestly-disclosed limitation:** true concurrent-session acceptance was not empirically tested (not expressible via a single DO block or sequential MCP calls); the guarantee rests on `SELECT ... FOR UPDATE`, verified by code review only. Sequential reuse of the same token WAS tested and correctly rejected.
   - Committed in isolated commit (see hash below); Contacts.tsx/useContacts.ts (modified by a separate, concurrent agent session) explicitly excluded via pathspec.
 
+- **2026-07-12 — F-003 (reclassified Medium→Critical) fix APPLIED + VERIFIED on remote (ImmoPilot Pre-Alpha).**
+  - Reconstructed the exact transfer_requests state machine without assumption, from the live schema/policies and a fresh re-read of `transfersService.ts`: `status` CHECK is exactly `pending|accepted|refused|cancelled`; single resolution column `resolved_at` (no separate `accepted_at`); `pending→accepted`/`refused` actor is `from_agent_id`, `pending→cancelled` actor is `requested_by`. **Side discovery:** the original policy never covered `requested_by`, meaning `cancelTransfer()` could not actually match its own row for a non-admin caller — a pre-existing functional bug, fixed incidentally.
+  - Added migration `supabase/migrations/20260713000000_secure_transfer_requests_state_machine.sql`: `BEFORE UPDATE` trigger `enforce_transfer_request_update_rules` (column immutability for `id/deal_id/agency_id/from_agent_id/to_agent_id/requested_by/created_at`; terminal-status lock; per-transition actor authorization enforced in the trigger, not just RLS; server-authoritative `resolved_at`; controlled `refusal_reason`); agency-scoped `UPDATE` policy with `WITH CHECK`; `INSERT` policy `WITH CHECK` extended to block direct creation in a terminal status or with `resolved_at`/`refusal_reason` prefilled, plus an `EXISTS` check tying `deal_id`/`from_agent_id` to real current deal ownership and agency, plus an `EXISTS` check that `to_agent_id` is active; `handle_transfer_notification()` rewritten to revalidate live ground truth (deal exists, same agency, still owned by `from_agent_id`, both agents still in that agency, recipient active) before reassigning `deals.owner_id`, via a restrictive `UPDATE ... WHERE id/agency_id/owner_id` + `ROW_COUNT` check. Notification behavior for creation/accept/refuse verified byte-for-byte unchanged via diff against the live pre-fix function body before writing the migration.
+  - Rollback block is **fully self-contained**: the complete original `CREATE OR REPLACE FUNCTION public.handle_transfer_notification()` body (captured live via `pg_get_functiondef` before this migration) is embedded verbatim, not referenced — confirmed on explicit request before authorization.
+  - Added pgTAP test `supabase/tests/f003_transfer_requests_state_machine.test.sql` (33 assertions) for CI/local `supabase test db`.
+  - Local checks: `npm run lint` PASS, `npm run build` PASS — no frontend file touched (confirmed no `transfersService.ts` change is required: it already sends `resolved_at`, which the trigger now silently overrides server-side).
+  - **Applied to Pre-Alpha via Supabase MCP `apply_migration`** (single migration only — NOT `db push`; zero matview migrations touched). Recorded name `secure_transfer_requests_state_machine`.
+  - **Object/permission verification (read-only, all PASS):** new trigger function exists and active; exactly 2 triggers total on `transfer_requests` (new BEFORE + pre-existing AFTER notification trigger); `handle_transfer_notification` still `SECURITY DEFINER`; F-001 guard and F-002 `accept_invitation` both confirmed still present/active.
+  - **Remote behavioral verification: 33/33 PASS**, across three rolled-back `DO`-block transactions on Pre-Alpha (first run surfaced 2 test-authoring bugs — wrong acting session for some INSERTs — identified and fixed in follow-up runs; the migration itself was correct throughout). Covered: 5 immutability checks, direct demonstration that the **original F-003 exploit is rejected** (`deal_id`+`to_agent_id` rewrite alongside `status='accepted'` → `TRQ01`), cross-agency admin correctly RLS-filtered to 0 rows, terminal-state lock (2 cases), legitimate accept/refuse/cancel with correct deal-ownership transfer and notifications, 5 distinct malicious direct-`INSERT` rejections (terminal statuses ×3, prefilled `resolved_at`, prefilled `refusal_reason`), `resolved_at`/`refusal_reason` control (5 cases), server-forced `resolved_at` override of a bogus client value, cross-agency-recipient rejection, inactive-recipient rejection, exactly-one-row deal update. Zero residual test data confirmed after every run (2 unrelated pre-existing notifications from 2026-06-30 incidentally matched an overly broad cleanup filter — confirmed by timestamp to be unrelated to this session).
+  - Severity reclassified Medium → Critical in `findings.json`/`05-security-privacy-audit.md`: the gap was directly exploitable by any non-admin agent with a normal prerequisite (having received one transfer request), not merely a hard-to-discover defense-in-depth issue.
+  - Committed in isolated commit (see hash below); `Contacts.tsx`, `useContacts.ts`, `Biens.tsx`, `propertyReasons.ts`, and Codex's test file explicitly excluded via pathspec.
+
 ## Next recommended action
 
-Both Phase 0 (F-001) and the primary Phase 1 blocker (F-002) are now applied and verified on Pre-Alpha. Remaining Phase 1 items per [10-prioritized-roadmap.md](10-prioritized-roadmap.md): **F-015** (Biens card associations reading the mock store instead of Supabase), **F-003** (transfer_requests UPDATE policy agency-scoping), **F-009/F-010** (pipeline observability/freshness), **F-021/F-022** (real test coverage + CI). Separately unresolved: local/remote migration-file timestamp divergence for F-002 (same reconciliation procedure as done for F-001, not yet run), 9 remote-only migrations with no local file, 3 local-only matview migrations not yet applied to remote, and the invitation flow's deferred 'expired' auto-transition.
+Phase 0 (F-001) and both confirmed-Critical Phase-1 items (F-002, F-003) are now applied and verified on Pre-Alpha. Remaining Phase 1 items per [10-prioritized-roadmap.md](10-prioritized-roadmap.md): **F-015** (Biens card associations reading the mock store instead of Supabase), **F-009/F-010** (pipeline observability/freshness), **F-021/F-022** (real test coverage + CI — three pgTAP files now exist for F-001/F-002/F-003 but are not yet wired into CI, no local Docker stack available in this environment). Separately unresolved: 9 remote-only migrations with no local file, 3 local-only matview migrations not yet applied to remote, and the invitation flow's deferred 'expired' auto-transition.
 
 ## Confirmation
 
