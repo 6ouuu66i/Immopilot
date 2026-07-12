@@ -29,6 +29,70 @@ function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
 }
 
+// F-002: outcome codes for accept_invitation(). Never carries the raw token or the raw
+// Postgres error text -- messages are static, mapped strings only, so no server-side
+// detail (including the invitation's own SQLSTATE text) can leak into the UI verbatim.
+export type AcceptInvitationErrorCode =
+  | 'not_authenticated'
+  | 'invalid_token'
+  | 'not_found'
+  | 'already_used'
+  | 'expired'
+  | 'email_mismatch'
+  | 'profile_not_found'
+  | 'already_in_agency'
+  | 'integrity_error'
+  | 'unknown';
+
+export class AcceptInvitationError extends Error {
+  code: AcceptInvitationErrorCode;
+
+  constructor(code: AcceptInvitationErrorCode, message: string) {
+    super(message);
+    this.name = 'AcceptInvitationError';
+    this.code = code;
+  }
+}
+
+// Maps the SQLSTATE codes raised by public.accept_invitation() (see supabase/migrations/
+// 20260712050000_create_accept_invitation_function.sql) to a stable outcome code.
+const ACCEPT_INVITATION_SQLSTATE_MAP: Record<string, AcceptInvitationErrorCode> = {
+  '42501': 'not_authenticated',
+  IPV01: 'invalid_token',
+  IPV02: 'not_found',
+  IPV03: 'already_used',
+  IPV04: 'expired',
+  IPV05: 'email_mismatch',
+  IPV06: 'profile_not_found',
+  IPV07: 'already_in_agency',
+  IPV08: 'integrity_error',
+};
+
+function acceptInvitationMessageForCode(code: AcceptInvitationErrorCode): string {
+  switch (code) {
+    case 'not_authenticated':
+      return 'Vous devez être connecté pour accepter cette invitation.';
+    case 'invalid_token':
+      return "Ce lien d'invitation n'est pas valide.";
+    case 'not_found':
+      return 'Cette invitation est introuvable ou a été annulée.';
+    case 'already_used':
+      return 'Cette invitation a déjà été utilisée.';
+    case 'expired':
+      return "Cette invitation a expiré. Demandez à votre administrateur d'en générer une nouvelle.";
+    case 'email_mismatch':
+      return 'Cette invitation a été envoyée à une autre adresse e-mail. Connectez-vous avec le compte correspondant.';
+    case 'profile_not_found':
+      return 'Profil introuvable pour ce compte.';
+    case 'already_in_agency':
+      return 'Ce compte est déjà rattaché à une agence.';
+    case 'integrity_error':
+    case 'unknown':
+    default:
+      return "Une erreur est survenue lors de l'acceptation de l'invitation. Réessayez ou contactez votre administrateur.";
+  }
+}
+
 async function logAdminAction(action: string, targetType: string, targetId: string, payload?: Record<string, unknown>) {
   const client = assertSupabase();
   const profile = await getCurrentAdminProfile();
@@ -152,5 +216,32 @@ export const agentsService = {
       invitation,
       link: `${baseUrl}#invite?token=${encodeURIComponent(invitation.token)}`,
     };
+  },
+
+  // F-002: consumed by src/pages/InviteAccept.tsx. Requires an authenticated session
+  // (the RPC itself enforces auth.uid() IS NOT NULL); the token is passed through as a
+  // plain RPC argument -- it is never logged, never included in an error message here,
+  // and never persisted beyond this call.
+  async acceptInvitation(token: string): Promise<void> {
+    const client = assertSupabase();
+    const trimmedToken = token.trim();
+    if (!trimmedToken) {
+      throw new AcceptInvitationError('invalid_token', acceptInvitationMessageForCode('invalid_token'));
+    }
+
+    // accept_invitation is not yet present in the generated Supabase types
+    // (src/lib/database.types.ts) since it is applied after this file is written;
+    // regenerate types once the migration lands. These `as never` casts only bypass the
+    // literal RPC-name/args union check -- they do not affect runtime behavior.
+    const { error } = await client.rpc(
+      'accept_invitation' as never,
+      { p_token: trimmedToken } as never,
+    );
+
+    if (error) {
+      const rawCode = (error as { code?: string }).code ?? '';
+      const code = ACCEPT_INVITATION_SQLSTATE_MAP[rawCode] ?? 'unknown';
+      throw new AcceptInvitationError(code, acceptInvitationMessageForCode(code));
+    }
   },
 };

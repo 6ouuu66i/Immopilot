@@ -62,7 +62,39 @@
       "dependencies": ["F-001"],
       "regressionRisk": "Low (new surface).",
       "verification": "E2E: admin invites X; X signs up; visits link; gets agency_id+role; invitation accepted; reuse fails; expired fails.",
-      "phase": "Phase 1"
+      "phase": "Phase 1",
+      "remediationStatus": "verified-on-remote",
+      "remediation": {
+        "date": "2026-07-12",
+        "migration": "supabase/migrations/20260712050000_create_accept_invitation_function.sql",
+        "test": "supabase/tests/f002_accept_invitation.test.sql",
+        "frontendFiles": [
+          "src/main.tsx",
+          "src/pages/InviteAccept.tsx",
+          "src/lib/inviteToken.ts",
+          "src/lib/postHogRedaction.ts",
+          "src/lib/posthog.ts",
+          "src/lib/services/agentsService.ts",
+          "src/index.css"
+        ],
+        "approach": "public.accept_invitation(p_token text): SECURITY DEFINER, SET search_path=public, EXECUTE revoked from PUBLIC/anon, granted to authenticated only. Validates auth.uid(), token format (64 hex chars), locks invitation FOR UPDATE (must be pending, unexpired), strict lower(trim(email)) match against auth.users, locks profile FOR UPDATE (must have agency_id IS NULL, rejecting even same-agency re-acceptance), atomically assigns agency_id/role then marks the invitation accepted with accepted_at, verifying exactly one row updated at each step via GET DIAGNOSTICS. Expired invitations are rejected without being mutated (no status write before the raise). Returns void; never logs or returns the token. Frontend: new #invite route rendered outside ProtectedRoute; self-contained InviteAccept page handling both unauthenticated (inline sign-in/up) and authenticated (accept) states without navigating to #login, so the token never needs persisted storage; captured only in an in-memory module variable (src/lib/inviteToken.ts) and stripped from window.location before initPostHog() runs. PostHog sanitize_properties (src/lib/postHogRedaction.ts) redacts any token pattern from all captured properties as a second, independent layer.",
+        "appliedToRemote": {
+          "project": "ImmoPilot Pre-Alpha (vzibrlgszzyvgbkasasz)",
+          "method": "Supabase MCP apply_migration (single migration only; no db push, no matview migrations)",
+          "recordedName": "create_accept_invitation_function",
+          "recordedVersion": "20260712050248",
+          "localFileNote": "Local file timestamp is 20260712050000; remote recorded version is 20260712050248 (MCP-generated at apply time). Same name/content. Not yet reconciled (same minor divergence pattern as F-001; can be renamed later following the same procedure)."
+        },
+        "verificationRun": {
+          "tsc_noEmit": "PASS (exit 0)",
+          "vite_build": "PASS (exit 0)",
+          "targeted_playwright_tests": "PASS (8/8) -- tests/e2e/invite-token-analytics-redaction.spec.ts (PostHog redaction, capture-before-init ordering, no persisted storage, no token interpolation in error messages)",
+          "full_playwright_suite": "26/27 PASS -- sole failure is tests/e2e/seller-score-regression.spec.ts, pre-existing and unrelated (requires E2E_EMAIL/E2E_PASSWORD not set in this environment; file untouched by this work)",
+          "remote_behavioral_test": "PASS (14/14) -- executed against Pre-Alpha in a DO-block/RAISE rollback transaction, no persisted data: happy path succeeds with correct agency_id/role/status/accepted_at; mismatched email/expired/already-used/unknown/malformed-token/already-in-agency all rejected with the expected distinct SQLSTATE (IPV01-IPV07); F-001 guard confirmed still blocking a direct role/agency_id self-change immediately after acceptance (42501). Object/permission checks: accept_invitation() exists, SECURITY DEFINER=true, search_path=public, authenticated has EXECUTE, anon/PUBLIC do not, F-001 trigger still present and active.",
+          "pgtap_test_file": "Authored for CI/local `supabase test db` (9 assertions covering scenarios 1-6 and 8); not the path used for remote verification."
+        },
+        "residualRisk": "True concurrent-session acceptance of the same token was not empirically tested -- not expressible via a single DO block or sequential MCP calls (each call is its own connection/transaction). The safety guarantee rests on the SELECT ... FOR UPDATE row lock inside accept_invitation(), verified by code review, not by execution; a sequential reuse of the same token WAS tested and correctly rejected (IPV03). If Supabase email-confirmation is enabled for new signups, the in-memory captured token does not survive the full-page redirect through the confirmation link -- the user would need to re-open the original invitation link after confirming. The 'expired' status auto-transition is deliberately not implemented (expired invitations are rejected but left in 'pending' status); deferred as a separate, smaller follow-up."
+      }
     },
     {
       "id": "F-003",

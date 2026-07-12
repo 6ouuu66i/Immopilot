@@ -1,4 +1,5 @@
 import posthog from 'posthog-js';
+import { sanitizeCapturedProperties } from './postHogRedaction';
 
 type PostHogProperties = Record<string, string | number | boolean | null | undefined>;
 
@@ -7,6 +8,15 @@ const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST;
 
 export const posthogEnvironment = import.meta.env.MODE;
 export const posthogRelease = import.meta.env.VITE_APP_VERSION ?? 'dev';
+
+// F-002: redact any invitation token before it reaches PostHog. sanitize_properties (see
+// src/lib/postHogRedaction.ts) runs on every captured payload -- autocapture, pageview,
+// exceptions, manual events -- before it is queued for sending, including the automatic
+// initial pageview fired synchronously inside posthog.init() below, which is the
+// earliest possible interception point for that event. src/main.tsx additionally strips
+// the token from window.location itself via captureAndStripInviteToken() before
+// initPostHog() runs, so $current_url never even contains it; this redaction is a
+// second, independent layer in case the token resurfaces in any other captured property.
 
 export function initPostHog() {
   if (!POSTHOG_KEY) return;
@@ -35,6 +45,7 @@ export function initPostHog() {
       capture_unhandled_rejections: true,
       capture_console_errors: false,
     },
+    sanitize_properties: (properties) => sanitizeCapturedProperties(properties),
     loaded: (client) => {
       client.register({
         environment: posthogEnvironment,
