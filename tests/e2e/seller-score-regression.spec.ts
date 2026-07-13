@@ -46,7 +46,7 @@ async function expectDisplayedPropertyTotal(page: Page, expectedTotal: number) {
   expect(displayedTotal).toBe(expectedTotal);
 }
 
-test('seller score remains visible on Biens and Pipeline without console errors', async ({ page }) => {
+test('@auth seller score remains visible on Biens and Pipeline without console errors', async ({ page }) => {
   const consoleErrors: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text());
