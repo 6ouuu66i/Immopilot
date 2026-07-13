@@ -1,3 +1,4 @@
+import type { Activity } from '../types';
 import type { DealFull } from './services/dealsService';
 import type {
   PropertyContactLink,
@@ -44,6 +45,14 @@ export interface BiensAssociationCounts {
 export interface BiensAssociationPropertyIdFilter {
   includePropertyIds?: string[];
   excludePropertyIds?: string[];
+}
+
+export type BiensActivityDataState = 'loading' | 'error' | 'empty' | 'ready';
+
+export interface BiensActivityTimeline {
+  activities: Activity[];
+  state: BiensActivityDataState;
+  usingCachedData: boolean;
 }
 
 interface SupabasePropertyReference {
@@ -96,6 +105,74 @@ function compareContactLinks(left: PropertyContactLink, right: PropertyContactLi
   const created = compareIsoDescending(left.created_at, right.created_at);
   if (created !== 0) return created;
   return left.id.localeCompare(right.id);
+}
+
+function activityText(activity: DealFull['activities'][number]): string {
+  const payload = activity.payload;
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    const candidate = payload.text ?? payload.message ?? payload.title;
+    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+  }
+
+  const labels: Record<string, string> = {
+    deal_created: 'Deal créé',
+    deal_lost: 'Deal perdu',
+    deal_reopened: 'Deal rouvert',
+    deal_won: 'Deal gagné',
+    stage_changed: 'Changement d’étape',
+  };
+  return labels[activity.type] ?? activity.type;
+}
+
+export function buildBiensActivityTimeline(
+  association: BiensPropertyAssociation | undefined,
+  associationState: BiensAssociationState,
+  limit = 5,
+): BiensActivityTimeline {
+  const seen = new Set<string>();
+  const activities = (association?.deals ?? [])
+    .flatMap((deal) => deal.activities.map((activity) => ({ activity, deal })))
+    .filter(({ activity, deal }) => (
+      deal.property_id === association?.propertyId
+      && activity.property_id === association.propertyId
+      && activity.deal_id === deal.id
+      && activity.agency_id === deal.agency_id
+    ))
+    .sort((left, right) => right.activity.created_at.localeCompare(left.activity.created_at))
+    .filter(({ activity }) => {
+      if (seen.has(activity.id)) return false;
+      seen.add(activity.id);
+      return true;
+    })
+    .slice(0, Math.max(0, limit))
+    .map(({ activity }) => ({
+      id: activity.id,
+      type: activity.type,
+      text: activityText(activity),
+      date: activity.created_at.slice(0, 10),
+      agentId: activity.actor_id ?? '',
+      agentName: activity.actor?.full_name ?? activity.actor?.email ?? 'Auteur indisponible',
+      entityType: 'property' as const,
+      entityId: activity.property_id ?? undefined,
+    }));
+
+  if (activities.length > 0) {
+    return {
+      activities,
+      state: 'ready',
+      usingCachedData: associationState !== 'ready',
+    };
+  }
+
+  return {
+    activities,
+    state: associationState === 'loading'
+      ? 'loading'
+      : associationState === 'error'
+        ? 'error'
+        : 'empty',
+    usingCachedData: false,
+  };
 }
 
 export function listingSignalLabel(signal: ListingSignal): string {

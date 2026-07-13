@@ -17,7 +17,7 @@ import {
   Star,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { PropertyCard } from '../components/biens/PropertyCard';
 import { SellerTensionScoreZone } from '../components/biens/SellerTensionScoreZone';
@@ -29,7 +29,6 @@ import {
 import { CarouselNavButton, ImageLightbox, NotesList } from '../components/ui';
 import { DeferredImage } from '../components/ui/DeferredImage';
 import { SkeletonBox, SkeletonText } from '../components/ui/Skeleton';
-import type { store as appStore } from '../lib/store';
 import { isSupabaseConfigured } from '../lib/supabase';
 import {
   fetchPropertyDetail,
@@ -60,6 +59,7 @@ import { buildPropertyReasons, type PropertyReasonKind } from '../lib/propertyRe
 import {
   buildBiensAssociationIndex,
   buildBiensAssociationPropertyIdFilter,
+  buildBiensActivityTimeline,
   filterPropertiesByAssociations,
   getBiensPropertyAssociation,
   listingSignalLabel,
@@ -67,13 +67,10 @@ import {
   type BiensAssociationState,
   type BiensPropertyAssociation,
 } from '../lib/biensAssociations';
-import type { Property, PropertyInternalStatus, PropertyKey } from '../types';
-
-type Store = typeof appStore;
+import type { Property, PropertyKey } from '../types';
 
 interface BiensProps {
   segment: PropertySellerSegment;
-  store: Store;
 }
 
 type ViewMode = 'table' | 'grid';
@@ -266,11 +263,6 @@ function propertyKeyFromHashParam(value: string | null): PropertyKey | null {
   return Number.isFinite(numeric) && String(numeric) === value ? numeric : value;
 }
 
-function currentBiensHref(): '#biens' | '#biens-agence' {
-  return window.location.hash.startsWith('#biens-agence') ? '#biens-agence' : '#biens';
-}
-
-
 function propertyDisplaySeed(value: PropertyKey): number {
   if (typeof value === 'number') return (Math.abs(Math.trunc(value)) % 97) + 1;
   let hash = 0;
@@ -286,9 +278,8 @@ function supportsServerPagination(_params: {
   return true;
 }
 
-export function Biens({ segment, store }: BiensProps) {
-  const [, forceUpdate] = useState(0);
-  const { user } = useAuth();
+export function Biens({ segment }: BiensProps) {
+  const { user, profile, isLoading: authLoading } = useAuth();
   const propertyMarks = usePropertyMarks();
   const [search, setSearch] = useState(() => {
     // La recherche globale du header (Ctrl+K puis Entrée) atterrit ici.
@@ -342,9 +333,18 @@ export function Biens({ segment, store }: BiensProps) {
   const [noteDraft, setNoteDraft] = useState('');
   const [propertyDetailsById, setPropertyDetailsById] = useState<Record<string, PropertyDetail>>({});
   const [detailLoadingIds, setDetailLoadingIds] = useState<Record<string, boolean>>({});
+  const [uiMessage, setUiMessage] = useState<string | null>(null);
+  const showUiMessage = useCallback((title: string, detail?: string | null) => {
+    setUiMessage(detail ? `${title} : ${detail}` : title);
+  }, []);
 
   useEffect(() => {
-    const handler = () => forceUpdate((n) => n + 1);
+    if (!uiMessage) return undefined;
+    const timeout = window.setTimeout(() => setUiMessage(null), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [uiMessage]);
+
+  useEffect(() => {
     const syncSelectedProperty = () => {
       const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
       const propertyId = propertyKeyFromHashParam(params.get('propertyId'));
@@ -354,11 +354,9 @@ export function Biens({ segment, store }: BiensProps) {
         setNoteDraft('');
       }
     };
-    window.addEventListener('ip-state-changed', handler);
     window.addEventListener('hashchange', syncSelectedProperty);
     syncSelectedProperty();
     return () => {
-      window.removeEventListener('ip-state-changed', handler);
       window.removeEventListener('hashchange', syncSelectedProperty);
     };
   }, []);
@@ -504,13 +502,15 @@ export function Biens({ segment, store }: BiensProps) {
       signalsByProperty,
     ],
   );
-  const currentAgent = store.getCurrentAgent();
+  const currentAgentName = profile?.full_name
+    ?? profile?.email
+    ?? (authLoading ? 'Profil en cours de chargement' : 'Profil agent indisponible');
   const allTasks = useTasks({ scope: 'all' });
 
   useEffect(() => {
     if (!propertyMarks.error) return;
-    store.addNotification('property_mark_error', 'Synchronisation favoris impossible', propertyMarks.error, currentBiensHref());
-  }, [propertyMarks.error, store]);
+    showUiMessage('Synchronisation favoris impossible', propertyMarks.error);
+  }, [propertyMarks.error, showUiMessage]);
 
 
   const communes = useMemo(() => {
@@ -649,11 +649,9 @@ export function Biens({ segment, store }: BiensProps) {
         })
         .catch((error: unknown) => {
           if (cancelled) return;
-          store.addNotification(
-            `property_detail_error_${listingId}`,
+          showUiMessage(
             'Chargement de la fiche impossible',
             error instanceof Error ? error.message : 'Le detail du bien est indisponible.',
-            currentBiensHref(),
           );
         })
         .finally(() => {
@@ -669,7 +667,7 @@ export function Biens({ segment, store }: BiensProps) {
     return () => {
       cancelled = true;
     };
-  }, [detailLoadingIds, fullPropertyBase, propertyDetailsById, selectedPropertyBase, store]);
+  }, [detailLoadingIds, fullPropertyBase, propertyDetailsById, selectedPropertyBase, showUiMessage]);
   const openTasksByPropertyId = useMemo(() => {
     const map = new Map<string, ReturnType<typeof taskToView>[]>();
     allTasks.tasks.forEach((task) => {
@@ -870,11 +868,9 @@ export function Biens({ segment, store }: BiensProps) {
           }));
         })
         .catch((error: unknown) => {
-          store.addNotification(
-            `property_detail_error_${property.supabaseListingId}`,
+          showUiMessage(
             'Chargement de la fiche impossible',
             error instanceof Error ? error.message : 'Le detail du bien est indisponible.',
-            currentBiensHref(),
           );
         })
         .finally(() => {
@@ -969,12 +965,6 @@ export function Biens({ segment, store }: BiensProps) {
     });
   };
 
-  const savePanelNote = () => {
-    if (!selectedProperty || !noteDraft.trim()) return;
-    store.registerNoteToProperty(selectedProperty.id, noteDraft.trim());
-    setNoteDraft('');
-  };
-
   return (
     <div
       className={`lv-biens lv-page ${selectedProperty ? 'has-panel' : ''}`}
@@ -1050,6 +1040,11 @@ export function Biens({ segment, store }: BiensProps) {
                   ? 'Synchronisation des données...'
                   : 'Source de données non configurée'}
             </div>
+            {uiMessage && (
+              <p role="status" aria-live="polite" style={{ margin: '8px 0 0', color: 'var(--color-danger-text)', fontSize: 11.5, lineHeight: 1.4 }}>
+                {uiMessage}
+              </p>
+            )}
           </div>
         </div>
 
@@ -1637,7 +1632,6 @@ export function Biens({ segment, store }: BiensProps) {
         <LegacyMiniFicheBien
           property={selectedProperty}
           segment={segment}
-          store={store}
           association={getBiensPropertyAssociation(associationIndex, selectedProperty.supabasePropertyId)}
           associationState={associationState}
           contacts={contactsState.contacts}
@@ -1650,12 +1644,11 @@ export function Biens({ segment, store }: BiensProps) {
           onCreateDeal={dealsState.createDeal}
           score={selectedProperty.supabasePropertyId ? scoresByProperty[selectedProperty.supabasePropertyId] : undefined}
           liveSignals={selectedProperty.supabasePropertyId ? signalsByProperty[selectedProperty.supabasePropertyId] ?? [] : []}
-          currentAgentName={currentAgent.name}
+          currentAgentName={currentAgentName}
           photoIndex={panelPhotoIndex}
           setPhotoIndex={setPanelPhotoIndex}
           noteDraft={noteDraft}
           setNoteDraft={setNoteDraft}
-          onSaveNote={savePanelNote}
           onClose={closePanelWithMorph}
           onToggleFavorite={handleFav(selectedProperty.id)}
           onToggleIgnored={handleIgnored(selectedProperty.id)}
@@ -1667,12 +1660,11 @@ export function Biens({ segment, store }: BiensProps) {
         <GrandeFicheBien
           property={fullProperty}
           segment={segment}
-          store={store}
           association={getBiensPropertyAssociation(associationIndex, fullProperty.supabasePropertyId)}
           associationState={associationState}
           score={fullProperty.supabasePropertyId ? scoresByProperty[fullProperty.supabasePropertyId] : undefined}
           liveSignals={fullProperty.supabasePropertyId ? signalsByProperty[fullProperty.supabasePropertyId] ?? [] : []}
-          currentAgentName={currentAgent.name}
+          currentAgentName={currentAgentName}
           isFavorite={propertyMarks.isFavorite(getMarkId(fullProperty))}
           onToggleFavorite={() => void propertyMarks.toggleFavorite(getMarkId(fullProperty))}
           onToggleIgnored={() => void propertyMarks.toggleIgnored(getMarkId(fullProperty))}
@@ -1922,7 +1914,6 @@ function FilterChip({ label, options, value, onChange }: FilterChipProps) {
 interface MiniFicheBienProps {
   property: Property;
   segment: PropertySellerSegment;
-  store: Store;
   association?: BiensPropertyAssociation;
   associationState: BiensAssociationState;
   contacts: SupabaseContact[];
@@ -1937,7 +1928,6 @@ interface MiniFicheBienProps {
   setPhotoIndex: React.Dispatch<React.SetStateAction<number>>;
   noteDraft: string;
   setNoteDraft: (value: string) => void;
-  onSaveNote: () => void;
   onClose: () => void;
   onToggleFavorite: (e: React.MouseEvent) => void;
   onToggleIgnored: (e: React.MouseEvent) => void;
@@ -2090,7 +2080,6 @@ function WhyThisScorePanel({
 function MiniFicheBien({
   property,
   segment,
-  store,
   association,
   associationState,
   score,
@@ -2100,7 +2089,6 @@ function MiniFicheBien({
   setPhotoIndex,
   noteDraft,
   setNoteDraft,
-  onSaveNote,
   onClose,
   onToggleFavorite,
   onToggleIgnored,
@@ -2120,7 +2108,7 @@ function MiniFicheBien({
       : null;
   const propertyTasks = useTasksFor({ propertyId: property.supabasePropertyId });
   const relatedTasks = propertyTasks.tasks.slice(0, 4).map(taskToView);
-  const ownerAgent = property.ownerId ? store.getAgents().find((agent) => agent.id === property.ownerId) : undefined;
+  const ownerAgentName = relatedDeal?.owner?.full_name ?? relatedDeal?.owner?.email ?? null;
   const priceHistory = property.priceHistory?.slice(-3) ?? [];
   const latestDrop = priceHistory.length > 1
     ? priceHistory[priceHistory.length - 2].price - priceHistory[priceHistory.length - 1].price
@@ -2128,11 +2116,6 @@ function MiniFicheBien({
   const propertyNotes = useNotes({ propertyId: property.supabasePropertyId });
   const headerScore = score?.score ?? property.score;
   const headerTone = priorityToneFromScore(score, property.score);
-
-  useEffect(() => {
-    if (!propertyNotes.error) return;
-    store.addNotification('notes_error', 'Synchronisation notes impossible', propertyNotes.error, currentBiensHref());
-  }, [propertyNotes.error, store]);
 
   const goToPhoto = (direction: 1 | -1) => {
     setPhotoIndex((currentIndex) => (currentIndex + direction + photos.length) % photos.length);
@@ -2335,7 +2318,7 @@ function MiniFicheBien({
               <MiniTag label={property.tag || 'Nouveau'} tone="warm" />
               {property.fsbo && <MiniTag label="FSBO" tone="green" />}
               {latestDrop > 0 && <MiniTag label={`Baisse ${formatEuro(latestDrop)}`} tone="red" />}
-              <MiniTag label={`Suivi par ${ownerAgent?.name ?? currentAgentName}`} tone="neutral" />
+              <MiniTag label={`Suivi par ${ownerAgentName ?? currentAgentName}`} tone="neutral" />
             </div>
           </section>
 
@@ -2426,15 +2409,22 @@ function MiniFicheBien({
               </button>
             </div>
             <div style={{ marginTop: 10 }}>
-              <NotesList
-                notes={propertyNotes.notes.slice(0, 3)}
-                isLoading={propertyNotes.isLoading}
-                canEditNote={propertyNotes.canEditNote}
-                onUpdate={propertyNotes.updateNote}
-                onDelete={propertyNotes.deleteNote}
-                emptyText="Aucune note pour ce bien."
-                compact
-              />
+              {propertyNotes.error && (
+                <p role="alert" style={{ margin: '0 0 8px', color: 'var(--color-danger-text)', fontSize: 12 }}>
+                  Notes indisponibles : {propertyNotes.error}
+                </p>
+              )}
+              {(!propertyNotes.error || propertyNotes.notes.length > 0) && (
+                <NotesList
+                  notes={propertyNotes.notes.slice(0, 3)}
+                  isLoading={propertyNotes.isLoading && propertyNotes.notes.length === 0}
+                  canEditNote={propertyNotes.canEditNote}
+                  onUpdate={propertyNotes.updateNote}
+                  onDelete={propertyNotes.deleteNote}
+                  emptyText="Aucune note pour ce bien."
+                  compact
+                />
+              )}
             </div>
           </section>
         </div>
@@ -2465,7 +2455,6 @@ function MiniFicheBien({
 function LegacyMiniFicheBien({
   property,
   segment,
-  store,
   association,
   associationState,
   contacts,
@@ -2480,7 +2469,6 @@ function LegacyMiniFicheBien({
   setPhotoIndex,
   noteDraft,
   setNoteDraft,
-  onSaveNote,
   onClose,
   onToggleFavorite,
   onToggleIgnored,
@@ -2509,9 +2497,8 @@ function LegacyMiniFicheBien({
   const propertyTasks = useTasksFor({ propertyId: property.supabasePropertyId });
   const relatedTasks = propertyTasks.tasks.slice(0, 4).map(taskToView);
   const [selectedContactId, setSelectedContactId] = useState(relatedContact?.id ?? '');
-  const propertyStatus: PropertyInternalStatus = property.status ?? (property.reserved ? 'réservé' : 'disponible');
   const displaySeed = propertyDisplaySeed(property.id);
-  const ownerAgent = property.ownerId ? store.getAgents().find((agent) => agent.id === property.ownerId) : undefined;
+  const ownerAgentName = dealForActions?.owner?.full_name ?? dealForActions?.owner?.email ?? null;
   const priceHistory = property.priceHistory?.slice(-3) ?? [];
   const propType = property.title.toLowerCase().includes('appartement')
     ? 'Appartement'
@@ -2533,7 +2520,7 @@ function LegacyMiniFicheBien({
     ? 'Contact vendeur à identifier'
     : property.source === 'Biddit'
       ? 'Étude notariale à identifier'
-      : relatedContact?.full_name ?? ownerAgent?.name ?? currentAgentName;
+      : relatedContact?.full_name ?? ownerAgentName ?? currentAgentName;
   const vendorType = !associationsReady
     ? 'État neutre, aucune absence déduite'
     : property.fsbo
@@ -2569,11 +2556,6 @@ function LegacyMiniFicheBien({
   const headerScore = score?.score ?? property.score;
   const headerTone = priorityToneFromScore(score, property.score);
 
-  useEffect(() => {
-    if (!propertyNotes.error) return;
-    store.addNotification('notes_error', 'Synchronisation notes impossible', propertyNotes.error, currentBiensHref());
-  }, [propertyNotes.error, store]);
-
   const goToPhoto = (direction: 1 | -1) => {
     setPhotoIndex((currentIndex) => (currentIndex + direction + photos.length) % photos.length);
   };
@@ -2591,11 +2573,6 @@ function LegacyMiniFicheBien({
     setTransferModalOpen(false);
     setTransferRequestMessage('');
   }, [property.id, relatedContact?.id]);
-
-  const handleStatusChange = (status: PropertyInternalStatus) => {
-    store.updatePropertyStatus(property.id, status);
-    setActionMessage(`Statut mis à jour : ${status}`);
-  };
 
   const handleLinkSupabaseContact = () => {
     if (!selectedContactId) {
@@ -3137,15 +3114,22 @@ function LegacyMiniFicheBien({
                   <FileText size={14} />
                 </button>
               </div>
-              <NotesList
-                notes={propertyNotes.notes.slice(0, 3)}
-                isLoading={propertyNotes.isLoading}
-                canEditNote={propertyNotes.canEditNote}
-                onUpdate={propertyNotes.updateNote}
-                onDelete={propertyNotes.deleteNote}
-                emptyText="Aucune note pour ce bien."
-                compact
-              />
+              {propertyNotes.error && (
+                <p role="alert" style={{ margin: '0 0 8px', color: 'var(--color-danger-text)', fontSize: 12 }}>
+                  Notes indisponibles : {propertyNotes.error}
+                </p>
+              )}
+              {(!propertyNotes.error || propertyNotes.notes.length > 0) && (
+                <NotesList
+                  notes={propertyNotes.notes.slice(0, 3)}
+                  isLoading={propertyNotes.isLoading && propertyNotes.notes.length === 0}
+                  canEditNote={propertyNotes.canEditNote}
+                  onUpdate={propertyNotes.updateNote}
+                  onDelete={propertyNotes.deleteNote}
+                  emptyText="Aucune note pour ce bien."
+                  compact
+                />
+              )}
             </div>
           </section>
 
@@ -3254,7 +3238,6 @@ function LegacyMiniFicheBien({
 interface GrandeFicheBienProps {
   property: Property;
   segment: PropertySellerSegment;
-  store: Store;
   association?: BiensPropertyAssociation;
   associationState: BiensAssociationState;
   score?: ListingScore;
@@ -3269,7 +3252,6 @@ interface GrandeFicheBienProps {
 function GrandeFicheBien({
   property,
   segment,
-  store,
   association,
   associationState,
   score,
@@ -3290,7 +3272,7 @@ function GrandeFicheBien({
   const relatedSignals = liveSignals;
   const propertyTasks = useTasksFor({ propertyId: property.supabasePropertyId });
   const relatedTasks = propertyTasks.tasks.map(taskToView);
-  const activities = store.getPropertyActivities(property.id).slice(0, 5);
+  const activityTimeline = buildBiensActivityTimeline(association, associationState, 5);
   const price = formatEuro(property.price);
   const initialPriceValue = property.priceHistory?.[0]?.price;
   const hasInitialPrice = typeof initialPriceValue === 'number' && initialPriceValue !== property.price;
@@ -3306,10 +3288,10 @@ function GrandeFicheBien({
   const propPpm = Math.round(property.price / Math.max(property.surface, 1));
   const cityAvg = Math.round(propPpm * (0.9 + ((displaySeed * 7) % 22) / 100));
   const deltaPercent = Math.round(((propPpm - cityAvg) / cityAvg) * 100);
-  const ownerAgent = property.ownerId ? store.getAgents().find((agent) => agent.id === property.ownerId) : undefined;
+  const ownerAgentName = relatedDeal?.owner?.full_name ?? relatedDeal?.owner?.email ?? null;
   const vendorName = relatedContact?.full_name
     ?? (associationsReady
-      ? ownerAgent?.name ?? (property.fsbo ? 'Propriétaire particulier' : currentAgentName)
+      ? ownerAgentName ?? (property.fsbo ? 'Propriétaire particulier' : currentAgentName)
       : associationState === 'loading' ? 'Associations en cours de synchronisation' : 'Associations indisponibles');
   const vendorMeta = !associationsReady
     ? 'Association non déterminée'
@@ -3320,11 +3302,6 @@ function GrandeFicheBien({
       : 'Conseiller responsable';
   const nextTask = relatedTasks.find((task) => !task.done) ?? relatedTasks[0];
   const propertyNotes = useNotes({ propertyId: property.supabasePropertyId });
-
-  useEffect(() => {
-    if (!propertyNotes.error) return;
-    store.addNotification('notes_error', 'Synchronisation notes impossible', propertyNotes.error, currentBiensHref());
-  }, [propertyNotes.error, store]);
 
   const goToPhoto = (direction: 1 | -1) => {
     setPhotoIndex((currentIndex) => (currentIndex + direction + photos.length) % photos.length);
@@ -3615,7 +3592,16 @@ function GrandeFicheBien({
 
           <div className="lv-biens-dossier-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
             <DossierCard title="Activité récente" action="Voir toute l'activité">
-              {activities.length > 0 ? activities.slice(0, 3).map((activity) => (
+              {activityTimeline.usingCachedData && (
+                <p role="status" style={{ margin: '0 0 6px', color: 'var(--color-warning-text)', fontSize: 11.5 }}>
+                  Dernières activités connues affichées. Actualisation impossible.
+                </p>
+              )}
+              {activityTimeline.state === 'loading' ? (
+                <p style={emptyMiniTextStyle}>Chargement des activités...</p>
+              ) : activityTimeline.state === 'error' ? (
+                <p role="alert" style={{ ...emptyMiniTextStyle, color: 'var(--color-danger-text)' }}>Activités indisponibles.</p>
+              ) : activityTimeline.activities.length > 0 ? activityTimeline.activities.slice(0, 3).map((activity) => (
                 <div key={activity.id} style={{ display: 'grid', gridTemplateColumns: '70px minmax(0, 1fr)', gap: 10, padding: '6px 0', color: 'var(--color-text-secondary)', fontSize: 11.5 }}>
                   <span style={{ color: 'var(--color-text-tertiary)' }}>{activity.date}</span>
                   <span><strong style={{ color: 'var(--color-text-primary)' }}>{activity.agentName}</strong> · {activity.text}</span>
@@ -3637,15 +3623,22 @@ function GrandeFicheBien({
                 <button type="button" onClick={saveNote} style={{ ...smallPrimaryButtonStyle, height: 32 }}>Ajouter</button>
               </div>
               <div style={{ padding: 11, borderRadius: 8, background: 'var(--color-warning-bg)', border: '1px solid var(--color-warning-border)', color: 'var(--color-text-secondary)', fontSize: 12, lineHeight: 1.5 }}>
-                <NotesList
-                  notes={propertyNotes.notes}
-                  isLoading={propertyNotes.isLoading}
-                  canEditNote={propertyNotes.canEditNote}
-                  onUpdate={propertyNotes.updateNote}
-                  onDelete={propertyNotes.deleteNote}
-                  emptyText="Aucune note pour ce bien."
-                  compact
-                />
+                {propertyNotes.error && (
+                  <p role="alert" style={{ margin: '0 0 8px', color: 'var(--color-danger-text)', fontSize: 12 }}>
+                    Notes indisponibles : {propertyNotes.error}
+                  </p>
+                )}
+                {(!propertyNotes.error || propertyNotes.notes.length > 0) && (
+                  <NotesList
+                    notes={propertyNotes.notes}
+                    isLoading={propertyNotes.isLoading && propertyNotes.notes.length === 0}
+                    canEditNote={propertyNotes.canEditNote}
+                    onUpdate={propertyNotes.updateNote}
+                    onDelete={propertyNotes.deleteNote}
+                    emptyText="Aucune note pour ce bien."
+                    compact
+                  />
+                )}
               </div>
             </DossierCard>
           </div>

@@ -10,8 +10,9 @@ test('Biens segments share one component and filter server-side before paginatio
   const dataSource = await fs.readFile(path.join(rootDir, 'src/lib/supabaseProperties.ts'), 'utf8');
   const queryKeysSource = await fs.readFile(path.join(rootDir, 'src/lib/queryKeys.ts'), 'utf8');
 
-  expect(mainSource).toContain('<Biens key="particulier" segment="particulier" store={store} />');
-  expect(mainSource).toContain('<Biens key="agence" segment="agence" store={store} />');
+  expect(mainSource).toContain('<Biens key="particulier" segment="particulier" />');
+  expect(mainSource).toContain('<Biens key="agence" segment="agence" />');
+  expect(biensSource).not.toContain('store: Store');
   expect(biensSource).toContain('segment: PropertySellerSegment');
   expect(dataSource.indexOf("query.eq('seller_segment', options.segment)")).toBeLessThan(
     dataSource.indexOf('.range(from, to)'),

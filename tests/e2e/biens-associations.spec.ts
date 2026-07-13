@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import {
+  buildBiensActivityTimeline,
   buildBiensAssociationIndex,
   buildBiensAssociationPropertyIdFilter,
   countBiensAssociations,
@@ -8,8 +11,10 @@ import {
   type BiensAssociationState,
 } from '../../src/lib/biensAssociations';
 import type { SupabaseContact, PropertyContactLink } from '../../src/lib/services/contactsService';
-import type { DealFull } from '../../src/lib/services/dealsService';
+import type { DealActivity, DealFull } from '../../src/lib/services/dealsService';
 import type { ListingSignal, SignalsByProperty } from '../../src/lib/services/listingSignalsService';
+
+const rootDir = process.cwd();
 
 interface PropertyReference {
   id: string;
@@ -113,6 +118,37 @@ function signal(propertyId = 'property-real'): ListingSignal {
     metadata: {},
     detected_at: '2026-07-01T10:00:00.000Z',
     is_active: true,
+  };
+}
+
+function activity({
+  id,
+  dealId = 'active',
+  propertyId = 'property-real',
+  agencyId = 'agency-1',
+  createdAt = '2026-07-01T10:00:00.000Z',
+  actorName = 'Agent Réel',
+  payload = null,
+}: {
+  id: string;
+  dealId?: string;
+  propertyId?: string;
+  agencyId?: string;
+  createdAt?: string;
+  actorName?: string | null;
+  payload?: DealActivity['payload'];
+}): DealActivity {
+  return {
+    id,
+    actor_id: actorName ? 'profile-real' : null,
+    agency_id: agencyId,
+    contact_id: null,
+    created_at: createdAt,
+    deal_id: dealId,
+    payload,
+    property_id: propertyId,
+    type: 'stage_changed',
+    actor: actorName ? { id: 'profile-real', full_name: actorName, email: 'agent@example.test' } : null,
   };
 }
 
@@ -290,4 +326,74 @@ test('17. les helpers n’appellent jamais un store mock transporté par un obje
     },
   };
   expect(filterPropertiesByAssociations([propertyWithPoisonedLegacyStore], index, 'Avec contact', 'Tous', 'ready')).toEqual([propertyWithPoisonedLegacyStore]);
+});
+
+test('18. les activités Supabase déjà chargées en batch sont filtrées, triées et dédupliquées par bien', () => {
+  const active = deal({ id: 'active' });
+  active.activities = [
+    activity({ id: 'older', createdAt: '2026-07-01T10:00:00.000Z' }),
+    activity({ id: 'newer', createdAt: '2026-07-03T10:00:00.000Z', payload: { text: 'Appel vendeur effectué' } }),
+    activity({ id: 'newer', createdAt: '2026-07-03T10:00:00.000Z' }),
+    activity({ id: 'other-property', propertyId: 'property-other' }),
+    activity({ id: 'other-agency', agencyId: 'agency-other' }),
+  ];
+  const association = getBiensPropertyAssociation(buildIndex({ deals: [active] }), 'property-real');
+  const timeline = buildBiensActivityTimeline(association, 'ready', 5);
+
+  expect(timeline).toMatchObject({ state: 'ready', usingCachedData: false });
+  expect(timeline.activities.map(({ id }) => id)).toEqual(['newer', 'older']);
+  expect(timeline.activities[0]).toMatchObject({
+    agentName: 'Agent Réel',
+    entityId: 'property-real',
+    text: 'Appel vendeur effectué',
+  });
+});
+
+test('19. loading, error et vide restent trois états distincts pour les activités', () => {
+  const association = getBiensPropertyAssociation(buildIndex(), 'property-real');
+  expect(buildBiensActivityTimeline(association, 'loading')).toMatchObject({ state: 'loading', activities: [] });
+  expect(buildBiensActivityTimeline(association, 'error')).toMatchObject({ state: 'error', activities: [] });
+  expect(buildBiensActivityTimeline(association, 'ready')).toMatchObject({ state: 'empty', activities: [] });
+});
+
+test('20. un refetch en erreur conserve les dernières activités valides', () => {
+  const active = deal({ id: 'active' });
+  active.activities = [activity({ id: 'cached' })];
+  const association = getBiensPropertyAssociation(buildIndex({ deals: [active] }), 'property-real');
+  const timeline = buildBiensActivityTimeline(association, 'error');
+
+  expect(timeline).toMatchObject({ state: 'ready', usingCachedData: true });
+  expect(timeline.activities.map(({ id }) => id)).toEqual(['cached']);
+});
+
+test('21. un acteur absent reste explicitement indisponible sans fallback mock', () => {
+  const active = deal({ id: 'active' });
+  active.activities = [activity({ id: 'without-actor', actorName: null })];
+  const association = getBiensPropertyAssociation(buildIndex({ deals: [active] }), 'property-real');
+
+  expect(buildBiensActivityTimeline(association, 'ready').activities[0]?.agentName).toBe('Auteur indisponible');
+});
+
+test('22. Biens réutilise les batchs Supabase et ne déclenche aucune requête activité par carte', async () => {
+  const [biensSource, dealsServiceSource, notesServiceSource, propertiesSource, rlsSource] = await Promise.all([
+    fs.readFile(path.join(rootDir, 'src/pages/Biens.tsx'), 'utf8'),
+    fs.readFile(path.join(rootDir, 'src/lib/services/dealsService.ts'), 'utf8'),
+    fs.readFile(path.join(rootDir, 'src/lib/services/notesService.ts'), 'utf8'),
+    fs.readFile(path.join(rootDir, 'src/lib/supabaseProperties.ts'), 'utf8'),
+    fs.readFile(path.join(rootDir, 'supabase/migrations/20260629182636_create_crm_remaining_schema_rls.sql'), 'utf8'),
+  ]);
+
+  expect(biensSource.match(/useDeals\(/g)).toHaveLength(1);
+  expect(biensSource).toContain('buildBiensActivityTimeline(association, associationState, 5)');
+  expect(biensSource).not.toContain(".from('activities')");
+  expect(biensSource).not.toContain('addNotification');
+  expect(biensSource).not.toContain('getCurrentAgent');
+  expect(biensSource).toContain('profile?.full_name');
+  expect(dealsServiceSource).toContain(".in('deal_id', ids)");
+  expect(dealsServiceSource).toContain('actor:profiles!activities_actor_id_fkey');
+  expect(notesServiceSource).toContain("getNotesByForeignKey('property_id', propertyId)");
+  expect(notesServiceSource).toContain(".from('notes')");
+  expect(propertiesSource).toContain("status: row.status === 'active' ? 'disponible' : 'archivé'");
+  expect(rlsSource).toContain('"Agency users see agency activities"');
+  expect(rlsSource).toContain('"Agency users see agency notes"');
 });

@@ -180,9 +180,9 @@ function App() {
           ) : route === 'score-test' ? (
             <ScoreTest />
           ) : route === 'biens' ? (
-            <Biens key="particulier" segment="particulier" store={store} />
+            <Biens key="particulier" segment="particulier" />
           ) : route === 'biens-agence' ? (
-            <Biens key="agence" segment="agence" store={store} />
+            <Biens key="agence" segment="agence" />
           ) : route === 'pipeline' ? (
             <Pipeline />
           ) : route === 'agenda' ? (
