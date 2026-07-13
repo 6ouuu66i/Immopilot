@@ -9,6 +9,7 @@ import { listingScoresService } from './services/listingScoresService';
 import { listingSignalsService } from './services/listingSignalsService';
 import { fetchSupabasePropertiesPage, type SupabasePropertyListFilters } from './supabaseProperties';
 import { supabase } from './supabase';
+import { invitationSignUpMetadata, INVITATION_ONLY_MESSAGE } from './invitationSignUp';
 
 export type AuthProfile = Tables<'profiles'>;
 export type AuthAgency = Tables<'agencies'>;
@@ -19,9 +20,12 @@ interface AuthContextValue {
   agency: AuthAgency | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isPasswordRecovery: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUpWithInvitation: (email: string, password: string, invitationToken: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -127,6 +131,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [profile, setProfile] = useState<AuthProfile | null>(null);
   const [agency, setAgency] = useState<AuthAgency | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(
+    () => new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery',
+  );
   const currentUserIdRef = useRef<string | null>(null);
   const hasInitializedSessionRef = useRef(false);
 
@@ -146,7 +153,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setProfile(next.profile);
     setAgency(next.agency);
     setIsLoading(false);
-    if (options?.prefetch ?? false) {
+    if ((options?.prefetch ?? false) && next.profile?.is_active && next.profile.agency_id && next.agency) {
       void prefetchInitialAppData(session.user.id).catch(() => undefined);
     }
   }, []);
@@ -175,12 +182,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
-      await applySession(data.session, { prefetch: true });
+      try {
+        await applySession(data.session, { prefetch: true });
+      } catch {
+        if (!active) return;
+        currentUserIdRef.current = data.session?.user.id ?? null;
+        hasInitializedSessionRef.current = true;
+        setUser(data.session?.user ?? null);
+        setProfile(null);
+        setAgency(null);
+        setIsLoading(false);
+      }
     }
 
     void initializeSession();
 
     const subscription = supabase?.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
+      if (event === 'SIGNED_OUT') setIsPasswordRecovery(false);
       const previousUserId = currentUserIdRef.current;
       const nextUserId = session?.user?.id ?? null;
       const sameUserSession = Boolean(previousUserId && nextUserId && previousUserId === nextUserId);
@@ -223,11 +242,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (error) throw new Error(error.message);
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string) => {
+  const signUpWithInvitation = useCallback(async (email: string, password: string, invitationToken: string) => {
     if (!supabase) throw new Error("Supabase n'est pas configure.");
 
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) throw new Error(error.message);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: invitationSignUpMetadata(invitationToken) },
+    });
+    if (error) throw new Error(INVITATION_ONLY_MESSAGE);
+  }, []);
+
+  const requestPasswordReset = useCallback(async (email: string) => {
+    if (!supabase) throw new Error("Supabase n'est pas configure.");
+
+    const redirectTo = `${window.location.origin}${window.location.pathname}#reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) throw new Error("Impossible d'envoyer l'e-mail de récupération. Réessayez plus tard.");
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    if (!supabase) throw new Error("Supabase n'est pas configure.");
+
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw new Error('Impossible de mettre à jour le mot de passe.');
+    setIsPasswordRecovery(false);
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -245,12 +284,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       agency,
       isLoading,
       isAuthenticated: Boolean(user),
+      isPasswordRecovery,
       signIn,
       signOut,
-      signUp,
+      signUpWithInvitation,
+      requestPasswordReset,
+      updatePassword,
       refreshProfile,
     }),
-    [agency, isLoading, profile, refreshProfile, signIn, signOut, signUp, user],
+    [agency, isLoading, isPasswordRecovery, profile, refreshProfile, requestPasswordReset, signIn, signOut, signUpWithInvitation, updatePassword, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

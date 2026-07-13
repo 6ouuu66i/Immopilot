@@ -35,7 +35,7 @@ function redirectToDashboard() {
 }
 
 export function InviteAccept() {
-  const { isAuthenticated, isLoading, signIn, signUp, signOut, refreshProfile } = useAuth();
+  const { isAuthenticated, isLoading, signIn, signUpWithInvitation, signOut, refreshProfile } = useAuth();
   const [token] = useState<string | null>(() => getCapturedInviteToken());
   const [flow, setFlow] = useState<FlowState>(() => (token ? { kind: 'loading' } : { kind: 'missing-token' }));
   const [authMode, setAuthMode] = useState<AuthMode>('sign-in');
@@ -44,6 +44,7 @@ export function InviteAccept() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
   const hasAttemptedAcceptRef = useRef(false);
+  const authSubmissionRef = useRef(false);
 
   useEffect(() => {
     if (!token) {
@@ -88,6 +89,8 @@ export function InviteAccept() {
 
   async function handleAuthSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (authSubmissionRef.current) return;
+    authSubmissionRef.current = true;
     setAuthError(null);
     setIsSubmittingAuth(true);
 
@@ -95,7 +98,7 @@ export function InviteAccept() {
       if (authMode === 'sign-in') {
         await signIn(email.trim(), password);
       } else {
-        await signUp(email.trim(), password);
+        await signUpWithInvitation(email.trim(), password, token);
       }
       // On success, isAuthenticated flips via onAuthStateChange and the effect above
       // re-runs to attempt acceptance. If email confirmation is required for new
@@ -103,6 +106,7 @@ export function InviteAccept() {
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : 'Authentification impossible.');
     } finally {
+      authSubmissionRef.current = false;
       setIsSubmittingAuth(false);
     }
   }
@@ -130,6 +134,7 @@ export function InviteAccept() {
         {flow.kind === 'missing-token' && (
           <div className="ip-login-heading">
             <h1 id="invite-title">Lien d'invitation invalide</h1>
+            <p>ImmoPilot est actuellement accessible sur invitation.</p>
             <p>Ce lien ne contient pas de jeton d'invitation valide. Demandez à votre administrateur de vous renvoyer une invitation.</p>
           </div>
         )}

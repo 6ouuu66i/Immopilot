@@ -119,7 +119,7 @@ const PROPERTY_TYPE_FILTERS = Object.entries(TYPE_LABELS).reduce<Record<string, 
   return acc;
 }, {});
 
-const ACTIVE_PROPERTIES_CANONICAL_VIEW = 'active_properties_canonical_mat';
+const ACTIVE_PROPERTIES_CANONICAL_VIEW = 'active_properties_canonical';
 
 export const ACTIVE_PROPERTIES_CANONICAL_SELECT = `
   listing_id,

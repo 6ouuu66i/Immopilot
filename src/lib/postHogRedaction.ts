@@ -8,9 +8,12 @@
 // '&token=' followed by 16+ hex characters anywhere in a string -- deliberately broader
 // than the exact 64-char format so any related/partial value is also caught.
 const INVITE_TOKEN_PATTERN = /([?&]token=)[0-9a-f]{16,}/gi;
+const AUTH_SECRET_PATTERN = /([?&#](?:access_token|refresh_token|token_hash|code)=)[^&#\s]+/gi;
 
 export function redactInviteTokens(value: string): string {
-  return value.replace(INVITE_TOKEN_PATTERN, '$1[redacted]');
+  return value
+    .replace(INVITE_TOKEN_PATTERN, '$1[redacted]')
+    .replace(AUTH_SECRET_PATTERN, '$1[redacted]');
 }
 
 export function sanitizeCapturedProperties<T extends Record<string, unknown>>(properties: T): T {

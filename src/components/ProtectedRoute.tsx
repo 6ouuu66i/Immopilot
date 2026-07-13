@@ -16,7 +16,7 @@ function AuthLoader() {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, profile, signOut } = useAuth();
+  const { agency, isAuthenticated, isLoading, profile, signOut } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -25,17 +25,18 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }, [isAuthenticated, isLoading]);
 
   useEffect(() => {
-    if (!isLoading && profile && !profile.is_active) {
+    if (!isLoading && isAuthenticated && (!profile || !profile.is_active || !profile.agency_id || !agency)) {
       void signOut().finally(() => {
         window.location.hash = '#login';
       });
     }
-  }, [isLoading, profile, signOut]);
+  }, [agency, isAuthenticated, isLoading, profile, signOut]);
 
   if (isLoading) return <AuthLoader />;
   if (!isAuthenticated) return <AuthLoader />;
   if (!profile) return <AuthLoader />;
   if (!profile.is_active) return <AuthLoader />;
+  if (!profile.agency_id || !agency) return <AuthLoader />;
 
   return <>{children}</>;
 }

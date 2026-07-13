@@ -29,6 +29,18 @@ test('redactInviteTokens leaves ordinary strings untouched', async () => {
   expect(redactInviteTokens(value)).toBe(value);
 });
 
+test('redactInviteTokens strips Supabase recovery parameters', async () => {
+  const { redactInviteTokens } = await import('../../src/lib/postHogRedaction');
+  const value = 'https://app.immopilot.example/#access_token=access-secret&refresh_token=refresh-secret&type=recovery&token_hash=hash-secret&code=exchange-secret';
+  const redacted = redactInviteTokens(value);
+
+  expect(redacted).not.toContain('access-secret');
+  expect(redacted).not.toContain('refresh-secret');
+  expect(redacted).not.toContain('hash-secret');
+  expect(redacted).not.toContain('exchange-secret');
+  expect(redacted.match(/\[redacted\]/g)).toHaveLength(4);
+});
+
 test('sanitizeCapturedProperties redacts $current_url and other string properties, leaves non-strings alone', async () => {
   const { sanitizeCapturedProperties } = await import('../../src/lib/postHogRedaction');
   const properties = {

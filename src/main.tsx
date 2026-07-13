@@ -19,7 +19,7 @@ import { AppShell } from './components/AppShell';
 import { PostHogErrorBoundary } from './components/PostHogErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoadingBar } from './components/ui/LoadingBar';
-import { AuthProvider } from './lib/auth';
+import { AuthProvider, useAuth } from './lib/auth';
 import { initPostHog } from './lib/posthog';
 import { appQueryClient } from './lib/queryClient';
 import { captureAndStripInviteToken } from './lib/inviteToken';
@@ -38,6 +38,7 @@ type RouteKey =
   | 'notifications'
   | 'score-test'
   | 'invite'
+  | 'reset-password'
   | 'login';
 
 const DEFAULT_ROUTE: RouteKey = 'dashboard';
@@ -55,6 +56,7 @@ const Admin = lazy(() => import('./pages/Admin').then((module) => ({ default: mo
 const Login = lazy(() => import('./pages/Login').then((module) => ({ default: module.Login })));
 const ScoreTest = lazy(() => import('./pages/ScoreTest').then((module) => ({ default: module.ScoreTest })));
 const InviteAccept = lazy(() => import('./pages/InviteAccept').then((module) => ({ default: module.InviteAccept })));
+const PasswordReset = lazy(() => import('./pages/PasswordReset').then((module) => ({ default: module.PasswordReset })));
 
 const legacyRouteLoaders: Partial<Record<RouteKey, () => Promise<{ default: string }>>> = {};
 
@@ -62,7 +64,7 @@ function getRouteFromHash(): RouteKey {
   if (window.location.pathname === '/login') return 'login';
   const rawHash = window.location.hash.replace(/^#/, '') || DEFAULT_ROUTE;
   const routeName = rawHash.split('?')[0] as RouteKey;
-  if (routeName === 'login' || routeName === 'dashboard' || routeName === 'biens' || routeName === 'biens-agence' || routeName === 'pipeline' || routeName === 'agenda' || routeName === 'contacts' || routeName === 'transfers' || routeName === 'commissions' || routeName === 'notifications' || routeName === 'settings' || routeName === 'admin' || routeName === 'score-test' || routeName === 'invite' || legacyRouteLoaders[routeName]) return routeName;
+  if (routeName === 'login' || routeName === 'dashboard' || routeName === 'biens' || routeName === 'biens-agence' || routeName === 'pipeline' || routeName === 'agenda' || routeName === 'contacts' || routeName === 'transfers' || routeName === 'commissions' || routeName === 'notifications' || routeName === 'settings' || routeName === 'admin' || routeName === 'score-test' || routeName === 'invite' || routeName === 'reset-password' || legacyRouteLoaders[routeName]) return routeName;
   return DEFAULT_ROUTE;
 }
 
@@ -124,6 +126,7 @@ function PageLoading() {
 
 function App() {
   const [route, setRoute] = useState<RouteKey>(() => getRouteFromHash());
+  const { isPasswordRecovery } = useAuth();
 
   useEffect(() => {
     (window as Window & { renderInteractiveMap?: typeof renderInteractiveMap }).renderInteractiveMap = renderInteractiveMap;
@@ -165,6 +168,14 @@ function App() {
     return (
       <Suspense fallback={<PageLoading />}>
         <InviteAccept />
+      </Suspense>
+    );
+  }
+
+  if (route === 'reset-password' || isPasswordRecovery) {
+    return (
+      <Suspense fallback={<PageLoading />}>
+        <PasswordReset />
       </Suspense>
     );
   }

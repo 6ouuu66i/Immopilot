@@ -47,6 +47,7 @@ export function Login() {
 
         <div className="ip-login-heading">
           <h1 id="login-title">Connexion</h1>
+          <p>ImmoPilot est actuellement accessible sur invitation.</p>
           <p>Accédez à votre espace de prospection et de suivi commercial.</p>
         </div>
 
@@ -84,6 +85,14 @@ export function Login() {
             {isSubmitting ? 'Connexion...' : 'Se connecter'}
           </button>
         </form>
+
+        <button
+          className="ip-login-switch"
+          onClick={() => { window.location.hash = '#reset-password'; }}
+          type="button"
+        >
+          Mot de passe oublié ?
+        </button>
       </section>
     </main>
   );
