@@ -14,7 +14,8 @@
     "test:contracts": "playwright test --grep-invert @auth",
     "test:e2e:local": "playwright test --grep-invert @auth",
     "test:e2e:auth": "playwright test --grep @auth",
-    "test:ci": "playwright test --grep-invert @auth"
+    "test:ci": "playwright test --grep-invert @auth",
+    "ci:validate": "node scripts/validate-workflows.mjs"
   },
   "dependencies": {
     "@fontsource/archivo": "^5.2.8",
@@ -39,6 +40,7 @@
     "@types/react-dom": "^19.2.3",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "yaml": "^2.9.0"
   }
 }
