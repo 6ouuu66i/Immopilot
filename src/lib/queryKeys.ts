@@ -13,6 +13,8 @@ export function normalizePropertyListFilters(filters: SupabasePropertyListFilter
     ageMinDays: filters.ageMinDays ?? null,
     city: filters.city ?? null,
     favoritePropertyIds: normalizeStringArray(filters.favoritePropertyIds),
+    includeAssociationPropertyIds: normalizeStringArray(filters.includeAssociationPropertyIds),
+    excludeAssociationPropertyIds: normalizeStringArray(filters.excludeAssociationPropertyIds),
     fsboOnly: filters.fsboOnly ?? false,
     ignoredPropertyIds: normalizeStringArray(filters.ignoredPropertyIds),
     maxPrice: filters.maxPrice ?? null,
@@ -56,6 +58,9 @@ export const queryKeys = {
   },
   listingSignals(userId: string | null | undefined, propertyIds: string[]) {
     return ['listing-signals', userId ?? 'anonymous', createPropertyIdsKey(propertyIds)] as const;
+  },
+  propertyContactLinks(userId: string | null | undefined, propertyIds: string[]) {
+    return ['property-contact-links', userId ?? 'anonymous', createPropertyIdsKey(propertyIds)] as const;
   },
   dashboardSnapshot(userId: string | null | undefined, limit = 8) {
     return ['dashboard-snapshot', userId ?? 'anonymous', limit] as const;

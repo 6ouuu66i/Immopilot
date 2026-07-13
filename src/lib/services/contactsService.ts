@@ -6,6 +6,7 @@ type ProfileRow = Tables<'profiles'>;
 export type SupabaseContact = Tables<'contacts'>;
 export type SupabaseDeal = Tables<'deals'>;
 type ContactPropertyRow = Tables<'contact_properties'>;
+export type PropertyContactLink = ContactPropertyRow;
 type PropertyRow = Tables<'properties'>;
 type ListingRow = Tables<'listings'>;
 
@@ -165,6 +166,25 @@ async function getLatestActiveListings(propertyIds: string[]): Promise<ListingBy
 }
 
 export const contactsService = {
+  async listPropertyContactLinks(propertyIds?: string[]): Promise<PropertyContactLink[]> {
+    const client = assertSupabase();
+    let query = client
+      .from('contact_properties')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (propertyIds !== undefined) {
+      const ids = Array.from(new Set(propertyIds.filter(Boolean)));
+      if (ids.length === 0) return [];
+      query = query.in('property_id', ids);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw new Error(error.message);
+    return (data ?? []) as PropertyContactLink[];
+  },
+
   async listContacts({ search, role }: ListContactsParams = {}): Promise<SupabaseContact[]> {
     const client = assertSupabase();
     let query = client

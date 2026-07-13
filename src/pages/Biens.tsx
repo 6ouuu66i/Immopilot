@@ -47,14 +47,26 @@ import { taskToView, useTasks, useTasksFor } from '../lib/useTasks';
 import { useContacts } from '../lib/useContacts';
 import { useAuth } from '../lib/auth';
 import { useDeals } from '../lib/useDeals';
+import { usePropertyContactLinks } from '../lib/usePropertyContactLinks';
 import { useMyTransfers } from '../lib/useTransfers';
 import { capturePostHogEvent } from '../lib/posthog';
 import { contactsService } from '../lib/services/contactsService';
-import { dealsService } from '../lib/services/dealsService';
+import type { SupabaseContact } from '../lib/services/contactsService';
+import type { CreateDealInput, DealFull } from '../lib/services/dealsService';
 import type { ListingScore } from '../lib/services/listingScoresService';
 import { propertyImageFallbacks, resolvePropertyImages } from '../lib/propertyImageFallbacks';
 import { formatEuro } from '../lib/formatCurrency';
 import { buildPropertyReasons, type PropertyReasonKind } from '../lib/propertyReasons';
+import {
+  buildBiensAssociationIndex,
+  buildBiensAssociationPropertyIdFilter,
+  filterPropertiesByAssociations,
+  getBiensPropertyAssociation,
+  listingSignalLabel,
+  listingSignalMeta,
+  type BiensAssociationState,
+  type BiensPropertyAssociation,
+} from '../lib/biensAssociations';
 import type { Property, PropertyInternalStatus, PropertyKey } from '../types';
 
 type Store = typeof appStore;
@@ -156,19 +168,25 @@ function priceRangeLabel(min: string, max: string): string {
   return `< ${Number(max).toLocaleString('fr-BE')} €`;
 }
 
-function getOpportunityReason(property: Property, store: Store): string {
+function getOpportunityReason(
+  property: Property,
+  association: BiensPropertyAssociation | undefined,
+  associationState: BiensAssociationState,
+): string {
+  if (associationState === 'loading') return 'Associations en cours de synchronisation';
+  if (associationState === 'error') return 'Associations temporairement indisponibles';
 
-  const contact = store.getPropertyContact(property.id);
-  const deal = store.getPropertyDeal(property.id);
-  const firstSignal = store.getPropertySignals(property.id)[0];
+  const contact = association?.primaryContact;
+  const deal = association?.activeDeal;
+  const firstSignal = association?.signals[0];
 
   if (property.fsbo && !contact) return 'Particulier détecté, contact à qualifier';
   if (!contact) return 'Aucun contact lié, enrichissement prioritaire';
   if (property.tag === 'Baisse de prix') return 'Baisse de prix à exploiter maintenant';
   if (property.publishedDays >= 60) return 'Annonce ancienne, vendeur potentiellement ouvert';
   if (property.score >= 80 && !deal) return 'Score élevé, potentiel mandat';
-  if (deal) return `Déjà en pipeline: ${deal.stage}`;
-  if (firstSignal) return firstSignal.heading;
+  if (deal) return `Déjà en pipeline: ${deal.stage?.name ?? deal.reference ?? 'Deal actif'}`;
+  if (firstSignal) return listingSignalLabel(firstSignal);
 
   return 'Bien à qualifier pour une prochaine action';
 }
@@ -187,9 +205,9 @@ function getSignalPriority(label: string): number {
   return SIGNAL_PRIORITY.length;
 }
 
-function getCardSignals(property: Property, store: Store): { primarySignal: string; secondarySignalCount: number } {
+function getCardSignals(property: Property, signals: ListingSignal[]): { primarySignal: string; secondarySignalCount: number } {
   const labels = [
-    ...store.getPropertySignals(property.id).map((signal) => signal.heading),
+    ...signals.map(listingSignalLabel),
     property.tag,
     property.fsbo ? 'FSBO' : '',
   ].filter(Boolean);
@@ -364,6 +382,37 @@ export function Biens({ segment, store }: BiensProps) {
     return () => window.clearTimeout(timeout);
   }, [search]);
 
+  const contactsState = useContacts();
+  const dealsState = useDeals({ includeClosed: true });
+  const contactLinksState = usePropertyContactLinks();
+  const crmAssociationError = contactsState.error ?? dealsState.error ?? contactLinksState.error;
+  const crmAssociationState: BiensAssociationState = crmAssociationError
+    ? 'error'
+    : contactsState.isLoading || dealsState.isLoading || contactLinksState.isLoading
+      ? 'loading'
+      : 'ready';
+  const contactPropertyIds = useMemo(() => {
+    const ids = new Set(contactLinksState.links.map((link) => link.property_id));
+    dealsState.deals.forEach((deal) => {
+      if (deal.contact_id) ids.add(deal.property_id);
+    });
+    return ids;
+  }, [contactLinksState.links, dealsState.deals]);
+  const pipelinePropertyIds = useMemo(
+    () => new Set(dealsState.deals.filter((deal) => deal.closed_at === null).map((deal) => deal.property_id)),
+    [dealsState.deals],
+  );
+  const associationPropertyIdFilter = useMemo(
+    () => buildBiensAssociationPropertyIdFilter(
+      contactFilter,
+      pipelineFilter,
+      contactPropertyIds,
+      pipelinePropertyIds,
+      crmAssociationState,
+    ),
+    [contactFilter, contactPropertyIds, crmAssociationState, pipelineFilter, pipelinePropertyIds],
+  );
+
   const serverFilters = useMemo<SupabasePropertyListFilters>(() => ({
     city: filterCommune !== 'Toutes' ? filterCommune : null,
     source: filterSource !== 'Toutes' ? filterSource : null,
@@ -378,6 +427,8 @@ export function Biens({ segment, store }: BiensProps) {
     ageMinDays: ageFloor,
     favoritePropertyIds: favoritesOnly || savedView === 'favoris' ? propertyMarks.favorites : undefined,
     ignoredPropertyIds: propertyMarks.ignored,
+    includeAssociationPropertyIds: associationPropertyIdFilter.includePropertyIds,
+    excludeAssociationPropertyIds: associationPropertyIdFilter.excludePropertyIds,
   }), [
     ageFloor,
     bedroomFloor,
@@ -387,6 +438,8 @@ export function Biens({ segment, store }: BiensProps) {
     filterSignal,
     filterSource,
     filterType,
+    associationPropertyIdFilter.excludePropertyIds,
+    associationPropertyIdFilter.includePropertyIds,
     maxPrice,
     minPrice,
     propertyMarks.favorites,
@@ -407,13 +460,50 @@ export function Biens({ segment, store }: BiensProps) {
   const activePropertiesQuery = pagedPropertiesQuery;
   const liveProperties = pagedPropertiesQuery.data?.properties ?? [];
   const liveTotalCount = pagedPropertiesQuery.data?.totalCount ?? 0;
-  const liveLoading = activePropertiesQuery.isLoading;
+  const liveLoading = activePropertiesQuery.isLoading || activePropertiesQuery.isFetching;
   const liveError = activePropertiesQuery.error instanceof Error
     ? activePropertiesQuery.error.message
     : null;
   const usingLiveData = liveProperties.length > 0;
   const isInitialLiveLoading = isSupabaseConfigured && liveLoading && liveProperties.length === 0;
   const allProps = isSupabaseConfigured ? liveProperties : [];
+  const associationPropertyIds = useMemo(
+    () => allProps
+      .map((property) => property.supabasePropertyId)
+      .filter((id): id is string => Boolean(id)),
+    [allProps],
+  );
+  const {
+    signalsByProperty,
+    isLoading: signalsLoading,
+    error: signalsError,
+  } = useListingSignals(associationPropertyIds);
+  const { scoresByProperty } = useListingScores(associationPropertyIds);
+  const associationError = crmAssociationError ?? signalsError;
+  const associationState: BiensAssociationState = associationError
+    ? 'error'
+    : crmAssociationState === 'loading' || signalsLoading
+      ? 'loading'
+      : 'ready';
+  const dataError = liveError ?? associationError;
+  const dataLoading = liveLoading || associationState === 'loading';
+  const dataReady = usingLiveData && associationState === 'ready';
+  const associationIndex = useMemo(
+    () => buildBiensAssociationIndex({
+      propertyIds: associationPropertyIds,
+      contacts: contactsState.contacts,
+      contactLinks: contactLinksState.links,
+      deals: dealsState.deals,
+      signalsByProperty,
+    }),
+    [
+      associationPropertyIds,
+      contactLinksState.links,
+      contactsState.contacts,
+      dealsState.deals,
+      signalsByProperty,
+    ],
+  );
   const currentAgent = store.getCurrentAgent();
   const allTasks = useTasks({ scope: 'all' });
 
@@ -479,10 +569,13 @@ export function Biens({ segment, store }: BiensProps) {
       }
     }
 
-    if (contactFilter === 'Sans contact') list = list.filter((p) => !store.getPropertyContact(p.id));
-    if (contactFilter === 'Avec contact') list = list.filter((p) => Boolean(store.getPropertyContact(p.id)));
-    if (pipelineFilter === 'En pipeline') list = list.filter((p) => Boolean(store.getPropertyDeal(p.id)));
-    if (pipelineFilter === 'Hors pipeline') list = list.filter((p) => !store.getPropertyDeal(p.id));
+    list = filterPropertiesByAssociations(
+      list,
+      associationIndex,
+      contactFilter,
+      pipelineFilter,
+      associationState,
+    );
     if (taskFilter === 'Avec tâche ouverte') list = list.filter((p) => getOpenPropertyTasks(p).length > 0);
     if (taskFilter === 'Sans tâche ouverte') list = list.filter((p) => getOpenPropertyTasks(p).length === 0);
     if (statusFilter === 'Disponible') list = list.filter((p) => !p.reserved && p.status !== 'archivé');
@@ -493,6 +586,8 @@ export function Biens({ segment, store }: BiensProps) {
   }, [
     ageFloor,
     allProps,
+    associationIndex,
+    associationState,
     bedroomFloor,
     contactFilter,
     filterCommune,
@@ -508,7 +603,6 @@ export function Biens({ segment, store }: BiensProps) {
     search,
     sort,
     statusFilter,
-    store,
     surfaceFloor,
     taskFilter,
     useServerPagination,
@@ -521,10 +615,6 @@ export function Biens({ segment, store }: BiensProps) {
       setPage(totalPages);
     }
   }, [page, totalPages]);
-  const visiblePropertyIds = useMemo(
-    () => pageItems.map((property) => property.supabasePropertyId).filter((id): id is string => Boolean(id)),
-    [pageItems],
-  );
   const selectedPropertyBase = selectedPropertyId ? allProps.find((property) => property.id === selectedPropertyId) : undefined;
   const fullPropertyBase = fullPropertyId ? allProps.find((property) => property.id === fullPropertyId) : undefined;
   const selectedProperty = selectedPropertyBase?.supabaseListingId
@@ -533,14 +623,6 @@ export function Biens({ segment, store }: BiensProps) {
   const fullProperty = fullPropertyBase?.supabaseListingId
     ? propertyDetailsById[fullPropertyBase.supabaseListingId] ?? fullPropertyBase
     : fullPropertyBase;
-  const scorePropertyIds = useMemo(() => {
-    const extraIds = [selectedProperty?.supabasePropertyId, fullProperty?.supabasePropertyId]
-      .filter((id): id is string => Boolean(id));
-    return Array.from(new Set([...visiblePropertyIds, ...extraIds]));
-  }, [fullProperty?.supabasePropertyId, selectedProperty?.supabasePropertyId, visiblePropertyIds]);
-  const { signalsByProperty } = useListingSignals(scorePropertyIds);
-  const { scoresByProperty } = useListingScores(scorePropertyIds);
-
   useEffect(() => {
     let cancelled = false;
     const targets = [selectedPropertyBase, fullPropertyBase]
@@ -603,9 +685,6 @@ export function Biens({ segment, store }: BiensProps) {
     property.supabasePropertyId ? openTasksByPropertyId.get(property.supabasePropertyId) ?? [] : []
   );
 
-  const highPotentialVisible = filtered.filter((p) => p.score >= 80).length;
-  const noContactVisible = filtered.filter((p) => !store.getPropertyContact(p.id)).length;
-  const recentDropVisible = filtered.filter((p) => p.tag === 'Baisse de prix').length;
   const activeViewLabel = SAVED_VIEWS.find((view) => view.key === savedView)?.label ?? 'Tous';
   const activeFilterCount = [
     filterCommune !== 'Toutes',
@@ -938,7 +1017,7 @@ export function Biens({ segment, store }: BiensProps) {
               Base de données des propriétés prospectées
             </p>
             <div
-              className={`lv-biens-sync ${usingLiveData ? 'is-live' : liveError ? 'is-error' : ''}`}
+              className={`lv-biens-sync ${dataError ? 'is-error' : dataReady ? 'is-live' : ''}`}
               style={{
                 marginTop: 10,
                 display: 'inline-flex',
@@ -951,25 +1030,25 @@ export function Biens({ segment, store }: BiensProps) {
                 padding: '5px 9px',
                 fontSize: 11.5,
                 fontWeight: 650,
-                color: usingLiveData ? 'var(--color-success-text)' : liveError ? 'var(--color-danger-text)' : 'var(--color-text-secondary)',
+                color: dataError ? 'var(--color-danger-text)' : dataReady ? 'var(--color-success-text)' : 'var(--color-text-secondary)',
               }}
-              title={liveError ?? undefined}
+              title={dataError ?? undefined}
             >
               <span
                 style={{
                   width: 7,
                   height: 7,
                   borderRadius: 999,
-                   background: usingLiveData ? 'var(--color-success-dot)' : liveError ? 'var(--color-danger-text)' : 'var(--color-text-tertiary)',
+                   background: dataError ? 'var(--color-danger-text)' : dataReady ? 'var(--color-success-dot)' : 'var(--color-text-tertiary)',
                 }}
               />
-              {usingLiveData
+              {dataError
+                ? 'Données associées indisponibles'
+                : dataReady
                 ? `${(useServerPagination ? liveTotalCount : liveProperties.length).toLocaleString('fr-BE')} biens suivis`
-                : liveLoading
+                : dataLoading
                   ? 'Synchronisation des données...'
-                  : liveError
-                    ? 'Données indisponibles'
-                    : 'Source de données non configurée'}
+                  : 'Source de données non configurée'}
             </div>
           </div>
         </div>
@@ -1392,7 +1471,9 @@ export function Biens({ segment, store }: BiensProps) {
             }}
           >
             {pageItems.map((p, index) => {
-              const cardSignals = getCardSignals(p, store);
+              const association = getBiensPropertyAssociation(associationIndex, p.supabasePropertyId);
+              const livePropertySignals = association?.signals ?? [];
+              const cardSignals = getCardSignals(p, livePropertySignals);
               const propertyScore = p.supabasePropertyId ? scoresByProperty[p.supabasePropertyId] : undefined;
               return (
                 <PropertyCard
@@ -1412,19 +1493,19 @@ export function Biens({ segment, store }: BiensProps) {
                     : priorityToneFromScore(propertyScore, p.score)}
                   primarySignal={cardSignals.primarySignal}
                   secondarySignalCount={cardSignals.secondarySignalCount}
-                  signals={p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] ?? [] : []}
+                  signals={livePropertySignals}
                   scoreContent={(
                     <PropertyInsightDisplay
                       property={p}
                       score={propertyScore}
                       segment={segment}
-                      signals={p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] ?? [] : []}
+                      signals={livePropertySignals}
                       isInactive={p.reserved || p.status?.startsWith('archiv')}
                     />
                   )}
-                  opportunityReason={getOpportunityReason(p, store)}
-                  nextAction={getOpenPropertyTasks(p)[0]?.title ?? (store.getPropertyDeal(p.id) ? `Deal: ${store.getPropertyDeal(p.id)?.stage}` : 'Qualifier ce bien')}
-                  contactName={store.getPropertyContact(p.id)?.name}
+                  opportunityReason={getOpportunityReason(p, association, associationState)}
+                  nextAction={getOpenPropertyTasks(p)[0]?.title ?? (association?.activeDeal ? `Deal: ${association.activeDeal.stage?.name ?? association.activeDeal.reference ?? 'actif'}` : 'Qualifier ce bien')}
+                  contactName={associationState === 'ready' ? association?.primaryContact?.full_name : undefined}
                   onSignalBadgeClick={(signal) => handleSignalBadgeClick(p, signal)}
                   onPrimarySignalBadgeClick={(label) => handlePrimarySignalBadgeClick(p, label)}
                 />
@@ -1450,14 +1531,14 @@ export function Biens({ segment, store }: BiensProps) {
               <Search size={18} />
             </div>
             <strong style={{ display: 'block', color: 'var(--color-text-primary)', fontSize: 15, marginBottom: 5 }}>
-              {liveError ? 'Impossible de charger les données' : 'Aucun bien dans cette vue'}
+              {dataError ? 'Impossible de charger les données' : 'Aucun bien dans cette vue'}
             </strong>
             <span style={{ display: 'block', lineHeight: 1.5 }}>
-              {liveError
+              {dataError
                 ? 'Une erreur est survenue lors de la synchronisation. Réessayez dans un instant ou contactez le support si le problème persiste.'
                 : 'Élargissez la recherche, changez de vue sauvegardée ou réinitialisez les filtres actifs.'}
             </span>
-            {!liveError && (
+            {!dataError && (
               <button type="button" onClick={resetFilters} style={{ ...smallSecondaryButtonStyle, margin: '14px auto 0', height: 34 }}>
                 Réinitialiser les filtres
               </button>
@@ -1557,6 +1638,16 @@ export function Biens({ segment, store }: BiensProps) {
           property={selectedProperty}
           segment={segment}
           store={store}
+          association={getBiensPropertyAssociation(associationIndex, selectedProperty.supabasePropertyId)}
+          associationState={associationState}
+          contacts={contactsState.contacts}
+          contactsLoading={contactsState.isLoading}
+          contactsError={contactsState.error ?? contactLinksState.error}
+          onLinkContact={async (contactId, propertyId) => {
+            await contactsService.linkPropertyToContact(contactId, propertyId, 'interested');
+            await contactLinksState.invalidate();
+          }}
+          onCreateDeal={dealsState.createDeal}
           score={selectedProperty.supabasePropertyId ? scoresByProperty[selectedProperty.supabasePropertyId] : undefined}
           liveSignals={selectedProperty.supabasePropertyId ? signalsByProperty[selectedProperty.supabasePropertyId] ?? [] : []}
           currentAgentName={currentAgent.name}
@@ -1577,6 +1668,8 @@ export function Biens({ segment, store }: BiensProps) {
           property={fullProperty}
           segment={segment}
           store={store}
+          association={getBiensPropertyAssociation(associationIndex, fullProperty.supabasePropertyId)}
+          associationState={associationState}
           score={fullProperty.supabasePropertyId ? scoresByProperty[fullProperty.supabasePropertyId] : undefined}
           liveSignals={fullProperty.supabasePropertyId ? signalsByProperty[fullProperty.supabasePropertyId] ?? [] : []}
           currentAgentName={currentAgent.name}
@@ -1830,6 +1923,13 @@ interface MiniFicheBienProps {
   property: Property;
   segment: PropertySellerSegment;
   store: Store;
+  association?: BiensPropertyAssociation;
+  associationState: BiensAssociationState;
+  contacts: SupabaseContact[];
+  contactsLoading: boolean;
+  contactsError: string | null;
+  onLinkContact: (contactId: string, propertyId: string) => Promise<void>;
+  onCreateDeal: (input: CreateDealInput) => Promise<DealFull>;
   score?: ListingScore;
   liveSignals?: ListingSignal[];
   currentAgentName: string;
@@ -1991,6 +2091,8 @@ function MiniFicheBien({
   property,
   segment,
   store,
+  association,
+  associationState,
   score,
   liveSignals = [],
   currentAgentName,
@@ -2008,9 +2110,14 @@ function MiniFicheBien({
   const photos = resolvePropertyImages(property.id, property.photos);
   const currentPhoto = photos[photoIndex % photos.length];
   const price = formatEuro(property.price);
-  const relatedSignals = store.getSignals().filter((signal) => signal.propertyId === property.id).slice(0, 4);
-  const relatedDeal = store.getDeals().find((deal) => deal.propertyId === property.id);
-  const relatedContact = relatedDeal ? store.getContact(relatedDeal.contactId) : undefined;
+  const relatedSignals = liveSignals.slice(0, 4);
+  const relatedDeal = associationState === 'ready' ? association?.activeDeal : undefined;
+  const relatedContact = associationState === 'ready' ? association?.primaryContact : undefined;
+  const associationStatusLabel = associationState === 'loading'
+    ? 'Synchronisation en cours'
+    : associationState === 'error'
+      ? 'Associations indisponibles'
+      : null;
   const propertyTasks = useTasksFor({ propertyId: property.supabasePropertyId });
   const relatedTasks = propertyTasks.tasks.slice(0, 4).map(taskToView);
   const ownerAgent = property.ownerId ? store.getAgents().find((agent) => agent.id === property.ownerId) : undefined;
@@ -2238,10 +2345,10 @@ function MiniFicheBien({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 9 }}>
                 {relatedSignals.map((signal) => (
                   <div key={signal.id} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                    <span style={{ width: 8, height: 8, marginTop: 6, borderRadius: 99, background: signal.type === 'drop' ? 'var(--color-favorite)' : 'var(--color-brand)', flexShrink: 0 }} />
+                    <span style={{ width: 8, height: 8, marginTop: 6, borderRadius: 99, background: signal.signal_type === 'price_drop' ? 'var(--color-favorite)' : 'var(--color-brand)', flexShrink: 0 }} />
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 12.5, fontWeight: 650, color: 'var(--color-text-primary)' }}>{signal.heading}</p>
-                      <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>{signal.time} · {signal.source ?? property.source}</p>
+                      <p style={{ margin: 0, fontSize: 12.5, fontWeight: 650, color: 'var(--color-text-primary)' }}>{listingSignalLabel(signal)}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--color-text-secondary)' }}>{listingSignalMeta(signal)} · {property.source}</p>
                     </div>
                   </div>
                 ))}
@@ -2254,8 +2361,8 @@ function MiniFicheBien({
           <section style={miniSectionStyle}>
             <MiniSectionTitle title="Pipeline & contact" />
             <div style={{ marginTop: 9, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <InfoRow label="Statut" value={relatedDeal?.stage ?? 'Pas encore en pipeline'} />
-              <InfoRow label="Contact" value={relatedContact ? `${relatedContact.name} · ${relatedContact.phone}` : 'Aucun contact lié'} />
+              <InfoRow label="Statut" value={associationStatusLabel ?? relatedDeal?.stage?.name ?? 'Pas encore en pipeline'} />
+              <InfoRow label="Contact" value={associationStatusLabel ?? (relatedContact ? `${relatedContact.full_name} · ${relatedContact.phone ?? 'Téléphone non renseigné'}` : 'Aucun contact lié')} />
               <InfoRow label="Zone" value={`${property.city} · ${property.floodZone}`} />
               <InfoRow label="Rendement" value={property.yieldEstimate || 'Non calculé'} />
             </div>
@@ -2359,6 +2466,13 @@ function LegacyMiniFicheBien({
   property,
   segment,
   store,
+  association,
+  associationState,
+  contacts,
+  contactsLoading,
+  contactsError,
+  onLinkContact,
+  onCreateDeal,
   score,
   liveSignals = [],
   currentAgentName,
@@ -2381,23 +2495,19 @@ function LegacyMiniFicheBien({
   const photos = resolvePropertyImages(property.id, property.photos);
   const currentPhoto = photos[photoIndex % photos.length];
   const price = formatEuro(property.price);
-  const relatedDeal = store.getDeals().find((deal) => deal.propertyId === property.id);
+  const associationsReady = associationState === 'ready';
+  const relatedDeal = associationsReady ? association?.relevantDeal : undefined;
   const { profile } = useAuth();
-  const dealsState = useDeals({ includeClosed: false });
   const transfersState = useMyTransfers({ direction: 'all' });
-  const relatedSupabaseDeal = property.supabasePropertyId
-    ? dealsState.deals.find((deal) => deal.property_id === property.supabasePropertyId && !deal.closed_at)
-    : null;
-  const dealForActions = relatedSupabaseDeal;
+  const dealForActions = associationsReady ? association?.activeDeal : undefined;
   const isDealOwner = Boolean(dealForActions && profile?.id === dealForActions.owner_id);
   const pendingMyTransfer = dealForActions
     ? transfersState.transfers.find((transfer) => transfer.deal_id === dealForActions.id && transfer.status === 'pending' && transfer.requested_by === profile?.id)
     : undefined;
-  const relatedContact = relatedDeal ? store.getContact(relatedDeal.contactId) : undefined;
-  const relatedSignals = store.getPropertySignals(property.id).slice(0, 4);
+  const relatedContact = associationsReady ? association?.primaryContact : undefined;
+  const relatedSignals = liveSignals.slice(0, 4);
   const propertyTasks = useTasksFor({ propertyId: property.supabasePropertyId });
   const relatedTasks = propertyTasks.tasks.slice(0, 4).map(taskToView);
-  const { contacts, isLoading: contactsLoading, error: contactsError } = useContacts();
   const [selectedContactId, setSelectedContactId] = useState(relatedContact?.id ?? '');
   const propertyStatus: PropertyInternalStatus = property.status ?? (property.reserved ? 'réservé' : 'disponible');
   const displaySeed = propertyDisplaySeed(property.id);
@@ -2417,17 +2527,21 @@ function LegacyMiniFicheBien({
   const cityAvg = Math.round(propPpm * (0.9 + ((displaySeed * 7) % 22) / 100));
   const deltaPercent = Math.round(((propPpm - cityAvg) / cityAvg) * 100);
   const barPercent = Math.max(8, Math.min(92, 50 + deltaPercent * 2));
-  const vendorName = property.fsbo
+  const vendorName = !associationsReady
+    ? associationState === 'loading' ? 'Associations en cours de synchronisation' : 'Associations indisponibles'
+    : property.fsbo && !relatedContact
     ? 'Contact vendeur à identifier'
     : property.source === 'Biddit'
       ? 'Étude notariale à identifier'
-      : ownerAgent?.name ?? currentAgentName;
-  const vendorType = property.fsbo
+      : relatedContact?.full_name ?? ownerAgent?.name ?? currentAgentName;
+  const vendorType = !associationsReady
+    ? 'État neutre, aucune absence déduite'
+    : property.fsbo
     ? 'Particulier FSBO'
     : property.source === 'Biddit'
       ? 'Vente publique notaire'
-      : relatedDeal
-        ? `Pipeline ${relatedDeal.stage}`
+      : dealForActions
+        ? `Pipeline ${dealForActions.stage?.name ?? dealForActions.reference ?? 'actif'}`
         : 'Conseiller responsable';
   const vendorInitials = vendorName
     .split(' ')
@@ -2439,14 +2553,16 @@ function LegacyMiniFicheBien({
   const nextOpenTask = relatedTasks.find((task) => !task.done);
   const primarySignal = relatedSignals[0];
   const propertyNotes = useNotes({ propertyId: property.supabasePropertyId });
-  const recommendedAction = nextOpenTask
+  const recommendedAction = !associationsReady
+    ? associationState === 'loading' ? 'Synchronisation des associations en cours.' : 'Associations indisponibles, réessayez avant de décider.'
+    : nextOpenTask
     ? nextOpenTask.title
     : !relatedContact
       ? 'Lier un contact vendeur avant de créer le suivi commercial.'
-      : relatedDeal
-        ? `Faire avancer le deal vers ${relatedDeal.stage}.`
+      : dealForActions
+        ? `Faire avancer le deal vers ${dealForActions.stage?.name ?? 'la prochaine étape'}.`
         : primarySignal
-          ? `Traiter le signal: ${primarySignal.heading}.`
+          ? `Traiter le signal: ${listingSignalLabel(primarySignal)}.`
           : 'Qualifier le bien et programmer une prochaine action.';
   const propertyReasons = buildPropertyReasons({ property, signals: liveSignals, score });
   const visibleThumbs = photos;
@@ -2493,7 +2609,7 @@ function LegacyMiniFicheBien({
     }
 
     const contact = contacts.find((item) => item.id === selectedContactId);
-    void contactsService.linkPropertyToContact(selectedContactId, property.supabasePropertyId, 'interested')
+    void onLinkContact(selectedContactId, property.supabasePropertyId)
       .then(() => setActionMessage(contact ? `Contact lie : ${contact.full_name}` : 'Contact lie.'))
       .catch((linkError) => {
         setActionMessage(linkError instanceof Error ? linkError.message : 'Liaison contact impossible.');
@@ -2541,7 +2657,7 @@ function LegacyMiniFicheBien({
       return;
     }
 
-    void dealsService.createDeal({
+    void onCreateDeal({
       property_id: property.supabasePropertyId,
       contact_id: selectedContactId,
       title: property.title,
@@ -2831,7 +2947,7 @@ function LegacyMiniFicheBien({
               {recommendedAction}
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {!relatedContact && (
+              {associationsReady && !relatedContact && (
                 <button type="button" onClick={() => setActionMessage('Choisis un contact ci-dessous, puis clique sur Lier.')} style={smallSecondaryButtonStyle}>
                   Lier un contact
                 </button>
@@ -2842,7 +2958,7 @@ function LegacyMiniFicheBien({
                 </button>
               )}
               <button type="button" onClick={handleCreateDeal} style={smallPrimaryButtonStyle}>
-                {relatedDeal ? 'Voir le deal' : 'Créer un deal'}
+                {dealForActions ? 'Voir le deal' : 'Créer un deal'}
               </button>
             </div>
             <div style={{ display: 'grid', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--color-border-subtle)' }}>
@@ -2995,7 +3111,7 @@ function LegacyMiniFicheBien({
                 <div style={{ color: 'var(--color-text-primary)', fontSize: 13.5, fontWeight: 750 }}>{vendorName}</div>
                 <div style={{ color: 'var(--color-text-secondary)', fontSize: 12, marginTop: 2 }}>{vendorType}</div>
                 <div style={{ color: 'var(--color-text-tertiary)', fontSize: 11.5, marginTop: 5 }}>
-                  {relatedContact ? `${relatedContact.phone} · ${relatedContact.email}` : 'Coordonnées non renseignées'}
+                  {relatedContact ? `${relatedContact.phone ?? 'Téléphone non renseigné'} · ${relatedContact.email ?? 'Email non renseigné'}` : associationsReady ? 'Coordonnées non renseignées' : 'Association non déterminée'}
                 </div>
               </div>
               <div style={{ width: 44, height: 44, borderRadius: 999, background: 'var(--color-neutral-bg)', display: 'grid', placeItems: 'center', color: 'var(--color-text-secondary)', fontSize: 14, fontWeight: 750 }}>
@@ -3139,6 +3255,8 @@ interface GrandeFicheBienProps {
   property: Property;
   segment: PropertySellerSegment;
   store: Store;
+  association?: BiensPropertyAssociation;
+  associationState: BiensAssociationState;
   score?: ListingScore;
   liveSignals?: ListingSignal[];
   currentAgentName: string;
@@ -3152,6 +3270,8 @@ function GrandeFicheBien({
   property,
   segment,
   store,
+  association,
+  associationState,
   score,
   liveSignals = [],
   currentAgentName,
@@ -3164,9 +3284,10 @@ function GrandeFicheBien({
   const [noteDraft, setNoteDraft] = useState('');
   const photos = resolvePropertyImages(property.id, property.photos);
   const currentPhoto = photos[photoIndex % photos.length];
-  const relatedDeal = store.getPropertyDeal(property.id);
-  const relatedContact = relatedDeal ? store.getContact(relatedDeal.contactId) : store.getPropertyContact(property.id);
-  const relatedSignals = store.getPropertySignals(property.id);
+  const associationsReady = associationState === 'ready';
+  const relatedDeal = associationsReady ? association?.relevantDeal : undefined;
+  const relatedContact = associationsReady ? association?.primaryContact : undefined;
+  const relatedSignals = liveSignals;
   const propertyTasks = useTasksFor({ propertyId: property.supabasePropertyId });
   const relatedTasks = propertyTasks.tasks.map(taskToView);
   const activities = store.getPropertyActivities(property.id).slice(0, 5);
@@ -3186,9 +3307,14 @@ function GrandeFicheBien({
   const cityAvg = Math.round(propPpm * (0.9 + ((displaySeed * 7) % 22) / 100));
   const deltaPercent = Math.round(((propPpm - cityAvg) / cityAvg) * 100);
   const ownerAgent = property.ownerId ? store.getAgents().find((agent) => agent.id === property.ownerId) : undefined;
-  const vendorName = relatedContact?.name ?? ownerAgent?.name ?? (property.fsbo ? 'Propriétaire particulier' : currentAgentName);
-  const vendorMeta = relatedContact
-    ? `${relatedContact.phone} · ${relatedContact.email}`
+  const vendorName = relatedContact?.full_name
+    ?? (associationsReady
+      ? ownerAgent?.name ?? (property.fsbo ? 'Propriétaire particulier' : currentAgentName)
+      : associationState === 'loading' ? 'Associations en cours de synchronisation' : 'Associations indisponibles');
+  const vendorMeta = !associationsReady
+    ? 'Association non déterminée'
+    : relatedContact
+    ? `${relatedContact.phone ?? 'Téléphone non renseigné'} · ${relatedContact.email ?? 'Email non renseigné'}`
     : property.fsbo
       ? 'Contact propriétaire à qualifier'
       : 'Conseiller responsable';
@@ -3347,7 +3473,7 @@ function GrandeFicheBien({
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16 }}>
                 <DossierChip tone="green">{property.reserved ? 'Réservé' : 'Disponible'}</DossierChip>
                 <DossierChip tone="blue">{property.fsbo ? 'FSBO' : 'Mandat exclusif'}</DossierChip>
-                <DossierChip tone="green">{relatedContact ? 'Client actif' : 'À qualifier'}</DossierChip>
+                <DossierChip tone="green">{!associationsReady ? 'Association non déterminée' : relatedContact ? 'Client actif' : 'À qualifier'}</DossierChip>
                 <button type="button" onClick={onToggleFavorite} style={{ border: 0, background: 'transparent', color: isFavorite ? 'var(--color-favorite)' : 'var(--color-text-secondary)', cursor: 'pointer', display: 'grid', placeItems: 'center', padding: 4 }}>
                   <Star size={15} fill={isFavorite ? 'currentColor' : 'none'} />
                 </button>
@@ -3355,7 +3481,7 @@ function GrandeFicheBien({
 
               <div className="lv-biens-dossier-next-action">
                 <span>À faire maintenant</span>
-                <strong>{nextTask?.title ?? (relatedContact ? 'Planifier la prochaine action' : 'Identifier le contact vendeur')}</strong>
+                <strong>{nextTask?.title ?? (!associationsReady ? 'Association non déterminée' : relatedContact ? 'Planifier la prochaine action' : 'Identifier le contact vendeur')}</strong>
                 <small>{nextTask ? `${nextTask.date} · ${nextTask.time}` : 'Aucune action planifiée'}</small>
               </div>
 
@@ -3380,7 +3506,7 @@ function GrandeFicheBien({
                   <strong>{relatedSignals.length}</strong>
                 </div>
                 {relatedSignals.length > 0 ? relatedSignals.slice(0, 2).map((signal) => (
-                  <DossierSignal key={signal.id} title={signal.heading} meta={signal.info || signal.time} tone={signal.type === 'drop' ? 'orange' : 'green'} />
+                  <DossierSignal key={signal.id} title={listingSignalLabel(signal)} meta={listingSignalMeta(signal)} tone={signal.signal_type === 'price_drop' ? 'orange' : 'green'} />
                 )) : (
                   <p style={emptyMiniTextStyle}>Aucun signal actif lié à ce bien.</p>
                 )}
@@ -3458,12 +3584,12 @@ function GrandeFicheBien({
                 <DossierActionButton>WhatsApp</DossierActionButton>
               </div>
               <div style={{ border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 9, background: 'var(--color-bg-surface)' }}>
-                <DossierInfo label="Étape actuelle" value={relatedDeal ? relatedDeal.stage : 'À qualifier'} />
+                <DossierInfo label="Étape actuelle" value={!associationsReady ? 'Association non déterminée' : relatedDeal?.stage?.name ?? 'À qualifier'} />
                 <DossierInfo label="Prochaine action" value={nextTask ? `${nextTask.date} à ${nextTask.time}` : 'Créer une tâche'} />
               </div>
               <div style={{ marginTop: 9 }}>
-                <DossierLine label="Téléphone" value={relatedContact?.phone ?? 'Non renseigné'} />
-                <DossierLine label="Email" value={relatedContact?.email ?? 'Non renseigné'} />
+                <DossierLine label="Téléphone" value={!associationsReady ? 'Association non déterminée' : relatedContact?.phone ?? 'Non renseigné'} />
+                <DossierLine label="Email" value={!associationsReady ? 'Association non déterminée' : relatedContact?.email ?? 'Non renseigné'} />
                 <DossierLine label="Adresse" value={`1180 ${property.city}`} />
               </div>
             </DossierCard>
@@ -3527,7 +3653,7 @@ function GrandeFicheBien({
           <div className="lv-biens-dossier-action-dock">
             <div>
               <span>Prochaine action</span>
-              <strong>{nextTask?.title ?? (relatedContact ? 'Planifier la prochaine action' : 'Identifier le contact vendeur')}</strong>
+              <strong>{nextTask?.title ?? (!associationsReady ? 'Association non déterminée' : relatedContact ? 'Planifier la prochaine action' : 'Identifier le contact vendeur')}</strong>
               <small>{nextTask ? `${nextTask.date} · ${nextTask.time}` : 'À organiser'}</small>
             </div>
             <div className="lv-biens-dossier-action-dock-buttons">

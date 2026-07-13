@@ -62,6 +62,8 @@ export interface SupabasePropertyListFilters {
   favoritePropertyIds?: string[];
   fsboOnly?: boolean;
   ignoredPropertyIds?: string[];
+  includeAssociationPropertyIds?: string[];
+  excludeAssociationPropertyIds?: string[];
   maxPrice?: number | null;
   minBedrooms?: number | null;
   minPrice?: number | null;
@@ -372,6 +374,16 @@ function applyListFilters(query: any, filters: SupabasePropertyListFilters = {})
 
   if (filters.ignoredPropertyIds && filters.ignoredPropertyIds.length > 0) {
     next = next.not('property_id', 'in', escapeForIn(filters.ignoredPropertyIds));
+  }
+
+  if (filters.includeAssociationPropertyIds) {
+    next = filters.includeAssociationPropertyIds.length > 0
+      ? next.in('property_id', filters.includeAssociationPropertyIds)
+      : next.eq('property_id', '__never__');
+  }
+
+  if (filters.excludeAssociationPropertyIds && filters.excludeAssociationPropertyIds.length > 0) {
+    next = next.not('property_id', 'in', escapeForIn(filters.excludeAssociationPropertyIds));
   }
 
   return next;

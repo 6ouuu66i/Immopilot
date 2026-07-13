@@ -10,6 +10,7 @@ import {
 interface UseListingSignalsResult {
   signalsByProperty: SignalsByProperty;
   isLoading: boolean;
+  error: string | null;
 }
 
 export function useListingSignals(propertyIds: string[]): UseListingSignalsResult {
@@ -24,6 +25,7 @@ export function useListingSignals(propertyIds: string[]): UseListingSignalsResul
 
   return {
     signalsByProperty: query.data ?? {},
-    isLoading: query.isLoading,
+    isLoading: query.isLoading || query.isFetching,
+    error: query.error instanceof Error ? query.error.message : null,
   };
 }
