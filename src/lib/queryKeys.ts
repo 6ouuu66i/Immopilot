@@ -1,4 +1,5 @@
 import type { PropertySellerSegment, SupabasePropertyListFilters } from './supabaseProperties';
+import type { ListDealsFilters } from './services/dealsService';
 
 export function createPropertyIdsKey(propertyIds: string[]): string[] {
   return Array.from(new Set(propertyIds.filter(Boolean))).sort();
@@ -31,7 +32,31 @@ export function normalizePropertyListFilters(filters: SupabasePropertyListFilter
   };
 }
 
+export function normalizeDealFilters(filters: ListDealsFilters = {}) {
+  return {
+    stageId: filters.stage_id ?? null,
+    ownerId: filters.owner_id ?? null,
+    search: filters.search?.trim() ?? null,
+    includeClosed: Boolean(filters.includeClosed),
+  };
+}
+
 export const queryKeys = {
+  dealsRoot(userId: string | null | undefined) {
+    return ['deals', userId ?? 'anonymous'] as const;
+  },
+  deals(userId: string | null | undefined, filters: ListDealsFilters = {}) {
+    return [...queryKeys.dealsRoot(userId), normalizeDealFilters(filters)] as const;
+  },
+  dealRoot(userId: string | null | undefined) {
+    return ['deal', userId ?? 'anonymous'] as const;
+  },
+  deal(userId: string | null | undefined, dealIdOrReference: string | null | undefined) {
+    return [...queryKeys.dealRoot(userId), dealIdOrReference ?? 'none'] as const;
+  },
+  pipelineStages(userId: string | null | undefined) {
+    return ['pipeline-stages', userId ?? 'anonymous'] as const;
+  },
   contactsRoot(userId: string | null | undefined) {
     return ['contacts', userId ?? 'anonymous'] as const;
   },

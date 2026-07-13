@@ -1,19 +1,20 @@
 // src/components/pipeline/PipelineListView.tsx
 import { useEffect, useRef, useState } from 'react';
-import type { store as appStore } from '../../lib/store';
 import { formatEuro } from '../../lib/formatCurrency';
-import type { Deal, Task } from '../../types';
+import type { Task } from '../../types';
+import type { MovePipelineDeal, PipelineDeal, PipelineRuntimeData, PipelineStageView } from '../../types/pipeline';
 import { ScoreRing } from '../biens/ScoreRing';
 
-type Store = typeof appStore;
-
 interface PipelineListViewProps {
-  deals: Deal[];
-  stages: ReturnType<Store['getPipelineStages']>;
+  deals: PipelineDeal[];
+  stages: PipelineStageView[];
   onSelectDeal: (dealId: string) => void;
-  onMoveDeal: (dealId: string, stageName: string) => void;
+  onMoveDeal: MovePipelineDeal;
   selectedDealId: string | null;
-  store: Store;
+  propertiesById: PipelineRuntimeData['propertiesById'];
+  agentsById: PipelineRuntimeData['agentsById'];
+  tasksByDealId: PipelineRuntimeData['tasksByDealId'];
+  pendingDealIds: ReadonlySet<string>;
 }
 
 function fmt(v: number) { return formatEuro(v); }
@@ -76,21 +77,20 @@ const BLANK_IMG = (() => {
 // ── List Row ───────────────────────────────────────────────────────────────────
 
 interface ListRowProps {
-  deal: Deal;
-  store: Store;
+  deal: PipelineDeal;
+  property: ReturnType<PipelineRuntimeData['propertiesById']['get']>;
+  agent: ReturnType<PipelineRuntimeData['agentsById']['get']>;
+  tasks: Task[];
   selected: boolean;
   isDragging: boolean;
+  isPending: boolean;
   onSelect: () => void;
   onDragStart: (e: React.DragEvent<HTMLElement>) => void;
   onDragEnd: () => void;
 }
 
-function ListRow({ deal, store, selected, isDragging, onSelect, onDragStart, onDragEnd }: ListRowProps) {
-  const property = store.getProperty(deal.propertyId);
-  const agent    = store.getAgents().find(a => a.id === deal.ownerId);
-  const score    = property?.score ?? 70;
-  const openTasks = store
-    .getDealTasks(deal.id)
+function ListRow({ deal, property, agent, tasks, selected, isDragging, isPending, onSelect, onDragStart, onDragEnd }: ListRowProps) {
+  const openTasks = tasks
     .filter(task => !task.done)
     .sort((a, b) => taskTimestamp(a) - taskTimestamp(b));
   const nextTask = openTasks[0];
@@ -100,7 +100,7 @@ function ListRow({ deal, store, selected, isDragging, onSelect, onDragStart, onD
     <div
       className={`list-row${isDragging ? ' dragging' : ''}`}
       style={{ outline: selected ? '2px solid var(--color-brand)' : 'none', outlineOffset: -2 }}
-      draggable
+      draggable={!isPending}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onSelect}
@@ -142,9 +142,7 @@ function ListRow({ deal, store, selected, isDragging, onSelect, onDragStart, onD
         <span className="lr-owner-name">{agent?.name ?? '—'}</span>
       </div>
       <div />
-      <div className="lr-score">
-        <ScoreRing score={score} size="sm" />
-      </div>
+      <div className="lr-score">{property && <ScoreRing score={property.score} size="sm" />}</div>
       <div className="lr-actions">
         <button
           type="button"
@@ -169,7 +167,8 @@ const SCROLL_MAX  = 14;
 function edgeSpeed(dist: number) { return Math.ceil(Math.max(0, 1 - dist / SCROLL_EDGE) * SCROLL_MAX); }
 
 export function PipelineListView({
-  deals, stages, onSelectDeal, onMoveDeal, selectedDealId, store,
+  deals, stages, onSelectDeal, onMoveDeal, selectedDealId,
+  propertiesById, agentsById, tasksByDealId, pendingDealIds,
 }: PipelineListViewProps) {
   const [draggingDealId, setDraggingDealId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
@@ -250,12 +249,12 @@ export function PipelineListView({
     setDragOverStageId(null);
   };
 
-  const handleDrop = (stageName: string) => {
+  const handleDrop = (stageId: string) => {
     const id = draggingRef.current;
     if (!id) return;
     const deal = deals.find(d => d.id === id);
-    if (deal && stageNameToId(deal.stage) !== stageNameToId(stageName)) {
-      onMoveDeal(id, stageName);
+    if (deal && deal.stageId !== stageId && !pendingDealIds.has(id)) {
+      void onMoveDeal(id, stageId).catch(() => undefined);
     }
     endDrag();
   };
@@ -264,7 +263,7 @@ export function PipelineListView({
     <div className="list-view">
       {stages.map(stage => {
         const stageId         = stageNameToId(stage.name);
-        const stageDeals      = deals.filter(d => stageNameToId(d.stage) === stageId);
+        const stageDeals      = deals.filter(d => d.stageId === stage.id);
         const totalCommission = stageDeals.reduce((sum, d) => sum + d.commissionAmount, 0);
 
         return (
@@ -278,7 +277,7 @@ export function PipelineListView({
               const related = e.relatedTarget as Node | null;
               if (!related || !e.currentTarget.contains(related)) setDragOverStageId(null);
             }}
-            onDrop={() => handleDrop(stage.name)}
+            onDrop={() => handleDrop(stage.id)}
           >
             <div className="list-group-head">
               {stage.name}
@@ -296,9 +295,12 @@ export function PipelineListView({
                 <ListRow
                   key={deal.id}
                   deal={deal}
-                  store={store}
+                  property={propertiesById.get(deal.propertyId)}
+                  agent={agentsById.get(deal.ownerId)}
+                  tasks={tasksByDealId.get(deal.id) ?? []}
                   selected={selectedDealId === deal.id}
                   isDragging={draggingDealId === deal.id}
+                  isPending={pendingDealIds.has(deal.id)}
                   onSelect={() => onSelectDeal(deal.id)}
                   onDragStart={e => startDrag(deal.id, e)}
                   onDragEnd={endDrag}

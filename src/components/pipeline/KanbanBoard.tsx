@@ -1,19 +1,20 @@
 // src/components/pipeline/KanbanBoard.tsx
 import { useEffect, useRef, useState } from 'react';
-import type { store as appStore } from '../../lib/store';
 import { formatEuro } from '../../lib/formatCurrency';
-import type { Deal, Task } from '../../types';
+import type { Task } from '../../types';
+import type { MovePipelineDeal, PipelineDeal, PipelineRuntimeData, PipelineStageView } from '../../types/pipeline';
 import { ScoreRing } from '../biens/ScoreRing';
 
-type Store = typeof appStore;
-
 interface KanbanBoardProps {
-  deals: Deal[];
-  stages: ReturnType<Store['getPipelineStages']>;
+  deals: PipelineDeal[];
+  stages: PipelineStageView[];
   onSelectDeal: (dealId: string) => void;
-  onMoveDeal: (dealId: string, stageName: string) => void;
+  onMoveDeal: MovePipelineDeal;
   selectedDealId: string | null;
-  store: Store;
+  propertiesById: PipelineRuntimeData['propertiesById'];
+  agentsById: PipelineRuntimeData['agentsById'];
+  tasksByDealId: PipelineRuntimeData['tasksByDealId'];
+  pendingDealIds: ReadonlySet<string>;
 }
 
 function fmt(v: number) { return formatEuro(v); }
@@ -77,22 +78,21 @@ const BLANK_IMG = (() => {
 // ── Deal Card ──────────────────────────────────────────────────────────────────
 
 interface DealCardProps {
-  deal: Deal;
-  store: Store;
+  deal: PipelineDeal;
+  property: ReturnType<PipelineRuntimeData['propertiesById']['get']>;
+  agent: ReturnType<PipelineRuntimeData['agentsById']['get']>;
+  tasks: Task[];
   selected: boolean;
   isDragging: boolean;
+  isPending: boolean;
   onSelect: () => void;
   onDragStart: (e: React.DragEvent<HTMLElement>) => void;
   onDragEnd: () => void;
 }
 
-function DealCard({ deal, store, selected, isDragging, onSelect, onDragStart, onDragEnd }: DealCardProps) {
-  const property = store.getProperty(deal.propertyId);
-  const agent    = store.getAgents().find(a => a.id === deal.ownerId);
+function DealCard({ deal, property, agent, tasks, selected, isDragging, isPending, onSelect, onDragStart, onDragEnd }: DealCardProps) {
   const photo    = property?.photos[0] ?? '';
-  const score    = property?.score ?? 70;
-  const openTasks = store
-    .getDealTasks(deal.id)
+  const openTasks = tasks
     .filter(task => !task.done)
     .sort((a, b) => taskTimestamp(a) - taskTimestamp(b));
   const nextTask = openTasks[0];
@@ -103,7 +103,7 @@ function DealCard({ deal, store, selected, isDragging, onSelect, onDragStart, on
     <article
       className={`deal-card${isDragging ? ' dragging' : ''}`}
       style={{ outline: selected ? '2px solid var(--color-brand)' : 'none', outlineOffset: 2 }}
-      draggable
+      draggable={!isPending}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onSelect}
@@ -111,9 +111,7 @@ function DealCard({ deal, store, selected, isDragging, onSelect, onDragStart, on
       <div className="dc-img">
         {photo && <img src={photo} alt={property?.title ?? ''} loading="lazy" />}
       </div>
-      <div className="dc-ai">
-        <ScoreRing score={score} size="sm" />
-      </div>
+      {property && <div className="dc-ai"><ScoreRing score={property.score} size="sm" /></div>}
       <div className="dc-body">
         {openTasks.length > 0 && (
           <div className="dc-task-badges">
@@ -181,19 +179,22 @@ function DealCard({ deal, store, selected, isDragging, onSelect, onDragStart, on
 // ── Kanban Column ──────────────────────────────────────────────────────────────
 
 interface KanbanColumnProps {
-  stage: { id: string; name: string; color?: string };
-  deals: Deal[];
-  store: Store;
+  stage: PipelineStageView;
+  deals: PipelineDeal[];
+  propertiesById: PipelineRuntimeData['propertiesById'];
+  agentsById: PipelineRuntimeData['agentsById'];
+  tasksByDealId: PipelineRuntimeData['tasksByDealId'];
+  pendingDealIds: ReadonlySet<string>;
   selectedDealId: string | null;
   draggingDealId: string | null;
   onSelectDeal: (dealId: string) => void;
-  onDrop: (stageName: string) => void;
+  onDrop: (stageId: string) => void;
   onDragStart: (dealId: string, e: React.DragEvent<HTMLElement>) => void;
   onDragEnd: () => void;
 }
 
 function KanbanColumn({
-  stage, deals, store, selectedDealId, draggingDealId,
+  stage, deals, propertiesById, agentsById, tasksByDealId, pendingDealIds, selectedDealId, draggingDealId,
   onSelectDeal, onDrop, onDragStart, onDragEnd,
 }: KanbanColumnProps) {
   const [dragOver, setDragOver] = useState(false);
@@ -214,7 +215,7 @@ function KanbanColumn({
       onDrop={e => {
         e.preventDefault();
         setDragOver(false);
-        onDrop(stage.name);
+        onDrop(stage.id);
       }}
     >
       <div className="column-head">
@@ -236,9 +237,12 @@ function KanbanColumn({
             <DealCard
               key={deal.id}
               deal={deal}
-              store={store}
+              property={propertiesById.get(deal.propertyId)}
+              agent={agentsById.get(deal.ownerId)}
+              tasks={tasksByDealId.get(deal.id) ?? []}
               selected={selectedDealId === deal.id}
               isDragging={draggingDealId === deal.id}
+              isPending={pendingDealIds.has(deal.id)}
               onSelect={() => onSelectDeal(deal.id)}
               onDragStart={e => onDragStart(deal.id, e)}
               onDragEnd={onDragEnd}
@@ -263,7 +267,8 @@ const SCROLL_MAX  = 14;
 function edgeSpeed(dist: number) { return Math.ceil(Math.max(0, 1 - dist / SCROLL_EDGE) * SCROLL_MAX); }
 
 export function KanbanBoard({
-  deals, stages, onSelectDeal, onMoveDeal, selectedDealId, store,
+  deals, stages, onSelectDeal, onMoveDeal, selectedDealId,
+  propertiesById, agentsById, tasksByDealId, pendingDealIds,
 }: KanbanBoardProps) {
   const [draggingDealId, setDraggingDealId] = useState<string | null>(null);
   // We keep a ref alongside state so handleDrop always reads the live value
@@ -354,12 +359,12 @@ export function KanbanBoard({
     setDraggingDealId(null);
   };
 
-  const handleDrop = (stageName: string) => {
+  const handleDrop = (stageId: string) => {
     const id = draggingRef.current; // always fresh, never stale
     if (!id) return;
     const deal = deals.find(d => d.id === id);
-    if (deal && stageNameToId(deal.stage) !== stageNameToId(stageName)) {
-      onMoveDeal(id, stageName);
+    if (deal && deal.stageId !== stageId && !pendingDealIds.has(id)) {
+      void onMoveDeal(id, stageId).catch(() => undefined);
     }
     endDrag();
   };
@@ -368,13 +373,16 @@ export function KanbanBoard({
     <div className="kanban-board" ref={boardRef}>
       {stages.map(stage => {
         const stageId    = stageNameToId(stage.name);
-        const stageDeals = deals.filter(d => stageNameToId(d.stage) === stageId);
+        const stageDeals = deals.filter(d => d.stageId === stage.id);
         return (
           <KanbanColumn
             key={stage.id}
             stage={stage}
             deals={stageDeals}
-            store={store}
+            propertiesById={propertiesById}
+            agentsById={agentsById}
+            tasksByDealId={tasksByDealId}
+            pendingDealIds={pendingDealIds}
             selectedDealId={selectedDealId}
             draggingDealId={draggingDealId}
             onSelectDeal={onSelectDeal}

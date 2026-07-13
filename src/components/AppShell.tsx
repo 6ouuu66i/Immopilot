@@ -20,16 +20,12 @@ import {
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CommandPalette } from './CommandPalette';
 import { useAuth } from '../lib/auth';
-import type { store as appStore } from '../lib/store';
 import { resolveNotificationUrl, type NotificationRow } from '../lib/services/notificationsService';
 import { useNotifications } from '../lib/useNotifications';
-
-type Store = typeof appStore;
 
 interface AppShellProps {
   activeRoute: string;
   children: ReactNode;
-  store: Store;
 }
 
 interface NavItem {
@@ -59,7 +55,7 @@ const crmNav: NavItem[] = [
 
 const adminNav: NavItem = { key: 'admin', label: 'Admin', href: '#admin', icon: Shield };
 
-export function AppShell({ activeRoute, children, store }: AppShellProps) {
+export function AppShell({ activeRoute, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('ip_sidebar_collapsed') === 'true');
   const [, refreshShell] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);

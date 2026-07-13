@@ -18,17 +18,11 @@ import {
   type DashboardSignalItem,
   type DashboardSnapshot,
 } from '../lib/services/dashboardService';
-import type { store as appStore } from '../lib/store';
 import { useDashboardSnapshot } from '../lib/useDashboardSnapshot';
 import { taskLinkLabel, taskToView, useTasks } from '../lib/useTasks';
 import type { TaskWithRelations } from '../lib/services/tasksService';
 
-type Store = typeof appStore;
 type KpiTone = 'good' | 'risk' | 'watch' | 'neutral';
-
-interface DashboardProps {
-  store: Store;
-}
 
 interface KpiCard {
   delta: string;
@@ -124,7 +118,7 @@ function buildKpis({
   ];
 }
 
-export function Dashboard({ store: _store }: DashboardProps) {
+export function Dashboard() {
   const { profile } = useAuth();
   const todayTasksState = useTasks({ scope: 'today' });
   const overdueTasksState = useTasks({ scope: 'overdue' });

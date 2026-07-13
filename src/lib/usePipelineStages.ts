@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './auth';
+import { queryKeys } from './queryKeys';
 import { pipelineStagesService, type PipelineStageRow } from './services/pipelineStagesService';
-
-let stagesCache: PipelineStageRow[] | null = null;
 
 export interface UsePipelineStagesResult {
   stages: PipelineStageRow[];
@@ -14,34 +14,18 @@ export interface UsePipelineStagesResult {
 
 export function usePipelineStages(): UsePipelineStagesResult {
   const { user } = useAuth();
-  const [stages, setStages] = useState<PipelineStageRow[]>(stagesCache ?? []);
-  const [isLoading, setIsLoading] = useState(!stagesCache);
-  const [error, setError] = useState<string | null>(null);
+  const stagesQuery = useQuery({
+    queryKey: queryKeys.pipelineStages(user?.id),
+    queryFn: pipelineStagesService.listStages,
+    enabled: Boolean(user),
+    refetchOnMount: 'always',
+  });
+  const stages = stagesQuery.data ?? [];
 
   const refresh = useCallback(async () => {
-    if (!user) {
-      setStages([]);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      const nextStages = await pipelineStagesService.listStages();
-      stagesCache = nextStages;
-      setStages(nextStages);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Chargement des étapes impossible.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (stagesCache) return;
-    void refresh();
-  }, [refresh]);
+    if (!user) return;
+    await stagesQuery.refetch();
+  }, [stagesQuery, user]);
 
   const getStageById = useCallback(
     (id: string | null | undefined) => stages.find((stage) => stage.id === id) ?? null,
@@ -50,8 +34,8 @@ export function usePipelineStages(): UsePipelineStagesResult {
 
   return {
     stages,
-    isLoading,
-    error,
+    isLoading: stagesQuery.isLoading,
+    error: stagesQuery.error instanceof Error ? stagesQuery.error.message : null,
     refresh,
     getStageById,
   };

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarClock, Check, Clock, ExternalLink, Loader2, Plus, Search, X } from 'lucide-react';
-import type { store as appStore } from '../lib/store';
 import { searchPropertiesForLink } from '../lib/supabaseProperties';
 import { useContacts } from '../lib/useContacts';
 import { useDeals } from '../lib/useDeals';
@@ -10,13 +9,8 @@ import type { TaskWithRelations } from '../lib/services/tasksService';
 import { StatusBadge } from '../components/ui';
 import { AgendaSkeleton } from '../components/agenda/AgendaSkeleton';
 
-type Store = typeof appStore;
 type AgendaFilter = 'overdue' | 'today' | 'this_week' | 'all' | 'completed';
 type LinkKind = 'none' | 'deal' | 'property' | 'contact';
-
-interface AgendaProps {
-  store: Store;
-}
 
 const filterLabels: Record<AgendaFilter, string> = {
   overdue: 'En retard',
@@ -132,8 +126,7 @@ function getTaskKind(task: TaskWithRelations): 'deal' | 'bien' | 'contact' | 'pe
   return 'perso';
 }
 
-export function Agenda({ store }: AgendaProps) {
-  void store;
+export function Agenda() {
   const [filter, setFilter] = useState<AgendaFilter>('overdue');
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);

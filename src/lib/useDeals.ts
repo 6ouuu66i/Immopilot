@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useAuth } from './auth';
+import {
+  applyOptimisticDealPatch,
+  DealMutationLock,
+  executeOptimisticMutation,
+  replaceDealInList,
+} from './pipelineRuntime';
+import { queryKeys } from './queryKeys';
 import {
   dealsService,
   type CloseDealInput,
@@ -8,16 +16,21 @@ import {
   type ListDealsFilters,
   type UpdateDealInput,
 } from './services/dealsService';
+import type { PipelineStageRow } from './services/pipelineStagesService';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+type DealQuerySnapshot = Array<[QueryKey, DealFull[] | undefined]>;
 
 export interface UseDealsResult {
   deals: DealFull[];
   isLoading: boolean;
+  loadError: string | null;
+  mutationError: string | null;
   error: string | null;
   filters: ListDealsFilters;
   setFilters: (filters: ListDealsFilters) => void;
   refresh: () => Promise<void>;
+  pendingDealIds: ReadonlySet<string>;
   createDeal: (input: CreateDealInput) => Promise<DealFull>;
   updateDeal: (dealId: string, patch: UpdateDealInput) => Promise<DealFull>;
   updateDealStage: (dealId: string, newStageId: string) => Promise<DealFull>;
@@ -33,136 +46,185 @@ export interface UseDealResult {
   refresh: () => Promise<void>;
 }
 
-function filtersKey(filters: ListDealsFilters) {
-  return JSON.stringify({
-    stage_id: filters.stage_id ?? null,
-    owner_id: filters.owner_id ?? null,
-    search: filters.search ?? null,
-    includeClosed: Boolean(filters.includeClosed),
-  });
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : error ? String(error) : fallback;
 }
 
-function replaceDeal(deals: DealFull[], deal: DealFull) {
-  return deals.map((item) => (item.id === deal.id ? deal : item));
+function restoreSnapshots(queryClient: ReturnType<typeof useQueryClient>, snapshots: DealQuerySnapshot) {
+  snapshots.forEach(([key, value]) => queryClient.setQueryData(key, value));
+}
+
+function updateSnapshots(
+  queryClient: ReturnType<typeof useQueryClient>,
+  snapshots: DealQuerySnapshot,
+  updater: (deals: DealFull[], includeClosed: boolean) => DealFull[],
+) {
+  snapshots.forEach(([key, value]) => {
+    const filters = key[2] as { includeClosed?: boolean } | undefined;
+    queryClient.setQueryData(key, updater(value ?? [], Boolean(filters?.includeClosed)));
+  });
 }
 
 export function useDeals(initialFilters: ListDealsFilters = {}): UseDealsResult {
   const { user } = useAuth();
-  const [deals, setDeals] = useState<DealFull[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [filters, setFilters] = useState<ListDealsFilters>(initialFilters);
-  const key = useMemo(() => filtersKey(filters), [filters]);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [pendingDealIds, setPendingDealIds] = useState<ReadonlySet<string>>(new Set());
+  const lockRef = useRef<DealMutationLock | null>(null);
+  if (!lockRef.current) lockRef.current = new DealMutationLock(setPendingDealIds);
+
+  const queryKey = queryKeys.deals(user?.id, filters);
+  const rootQueryKey = queryKeys.dealsRoot(user?.id);
+  const dealsQuery = useQuery({
+    queryKey,
+    queryFn: () => dealsService.listDeals(filters),
+    enabled: Boolean(user),
+  });
+  const createMutation = useMutation({ mutationFn: dealsService.createDeal });
+  const updateMutation = useMutation({
+    mutationFn: ({ dealId, patch }: { dealId: string; patch: UpdateDealInput }) => dealsService.updateDeal(dealId, patch),
+  });
+  const closeMutation = useMutation({
+    mutationFn: ({ dealId, input }: { dealId: string; input: CloseDealInput }) => dealsService.closeDeal(dealId, input),
+  });
+  const reopenMutation = useMutation({ mutationFn: dealsService.reopenDeal });
+  const deleteMutation = useMutation({ mutationFn: dealsService.deleteDeal });
+  const deals = dealsQuery.data ?? [];
 
   const refresh = useCallback(async () => {
-    if (!user) {
-      setDeals([]);
-      setIsLoading(false);
-      return;
-    }
+    if (!user) return;
+    await dealsQuery.refetch();
+  }, [dealsQuery, user]);
 
-    setIsLoading(true);
-    setError(null);
+  const invalidateDeals = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: rootQueryKey }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.dealRoot(user?.id) }),
+    ]);
+  }, [queryClient, rootQueryKey, user?.id]);
+
+  const runLocked = useCallback(async <T,>(dealId: string, operation: () => Promise<T>): Promise<T> => {
+    setMutationError(null);
     try {
-      const nextDeals = await dealsService.listDeals(filters);
-      setDeals(nextDeals);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Chargement des deals impossible.');
-    } finally {
-      setIsLoading(false);
+      return await lockRef.current!.run(dealId, operation);
+    } catch (error) {
+      setMutationError(errorMessage(error, 'Mutation du deal impossible.'));
+      throw error;
     }
-  }, [filters, user]);
-
-  useEffect(() => {
-    void refresh();
-  }, [key, refresh]);
+  }, []);
 
   const createDeal = useCallback(async (input: CreateDealInput) => {
-    setError(null);
+    setMutationError(null);
     try {
-      const created = await dealsService.createDeal(input);
-      setDeals((current) => [created, ...current]);
+      const created = await createMutation.mutateAsync(input);
+      queryClient.setQueryData<DealFull[]>(queryKey, (current = []) => [created, ...current.filter((deal) => deal.id !== created.id)]);
+      await invalidateDeals();
       return created;
-    } catch (createError) {
-      const message = createError instanceof Error ? createError.message : 'Création du deal impossible.';
-      setError(message);
-      throw new Error(message);
+    } catch (error) {
+      setMutationError(errorMessage(error, 'Creation du deal impossible.'));
+      throw error;
     }
-  }, []);
+  }, [createMutation, invalidateDeals, queryClient, queryKey]);
 
-  const updateDeal = useCallback(async (dealId: string, patch: UpdateDealInput) => {
-    const previousDeals = deals;
-    setError(null);
-    setDeals((current) => current.map((deal) => (deal.id === dealId ? { ...deal, ...patch, updated_at: new Date().toISOString() } : deal)));
-
-    try {
-      const updated = await dealsService.updateDeal(dealId, patch);
-      setDeals((current) => replaceDeal(current, updated));
-      return updated;
-    } catch (updateError) {
-      setDeals(previousDeals);
-      const message = updateError instanceof Error ? updateError.message : 'Modification du deal impossible.';
-      setError(message);
-      throw new Error(message);
-    }
-  }, [deals]);
+  const updateDeal = useCallback((dealId: string, patch: UpdateDealInput) => runLocked(dealId, async () => {
+    const stages = user
+      ? queryClient.getQueryData<PipelineStageRow[]>(queryKeys.pipelineStages(user.id)) ?? []
+      : [];
+    return executeOptimisticMutation({
+      snapshot: () => queryClient.getQueriesData<DealFull[]>({ queryKey: rootQueryKey }),
+      apply: () => queryClient.setQueriesData<DealFull[]>({ queryKey: rootQueryKey }, (current = []) => (
+        current.map((deal) => deal.id === dealId ? applyOptimisticDealPatch(deal, patch, stages) : deal)
+      )),
+      mutate: () => updateMutation.mutateAsync({ dealId, patch }),
+      commit: (updated) => queryClient.setQueriesData<DealFull[]>({ queryKey: rootQueryKey }, (current = []) => (
+        replaceDealInList(current, updated)
+      )),
+      rollback: (snapshots) => restoreSnapshots(queryClient, snapshots),
+      invalidate: invalidateDeals,
+    });
+  }), [invalidateDeals, queryClient, rootQueryKey, runLocked, updateMutation, user]);
 
   const updateDealStage = useCallback(async (dealId: string, newStageId: string) => {
+    const stages = user
+      ? queryClient.getQueryData<PipelineStageRow[]>(queryKeys.pipelineStages(user.id)) ?? []
+      : [];
+    if (!stages.some((stage) => stage.id === newStageId)) {
+      const error = new Error('Etape de pipeline non supportee.');
+      setMutationError(error.message);
+      throw error;
+    }
     return updateDeal(dealId, { stage_id: newStageId });
-  }, [updateDeal]);
+  }, [queryClient, updateDeal, user]);
 
-  const closeDeal = useCallback(async (dealId: string, input: CloseDealInput) => {
-    const previousDeals = deals;
-    setError(null);
-    setDeals((current) => current.filter((deal) => deal.id !== dealId));
+  const closeDeal = useCallback((dealId: string, input: CloseDealInput) => runLocked(dealId, async () => {
+    const now = new Date().toISOString();
+    const stages = user
+      ? queryClient.getQueryData<PipelineStageRow[]>(queryKeys.pipelineStages(user.id)) ?? []
+      : [];
+    const terminalStage = stages.find((stage) => input.is_won ? stage.is_won : stage.is_lost);
+    if (!terminalStage) throw new Error(input.is_won ? 'Etape gagnee introuvable.' : 'Etape perdue introuvable.');
+    let snapshots: DealQuerySnapshot = [];
+    return executeOptimisticMutation({
+      snapshot: () => {
+        snapshots = queryClient.getQueriesData<DealFull[]>({ queryKey: rootQueryKey });
+        return snapshots;
+      },
+      apply: () => updateSnapshots(queryClient, snapshots, (current, includeClosed) => (
+        current
+          .map((deal) => deal.id === dealId ? {
+            ...deal,
+            stage_id: terminalStage.id,
+            stage: terminalStage,
+            closed_at: now,
+            is_won: input.is_won,
+            is_lost: !input.is_won,
+            lost_reason: input.is_won ? null : input.lost_reason ?? null,
+          } : deal)
+          .filter((deal) => includeClosed || !deal.closed_at)
+      )),
+      mutate: () => closeMutation.mutateAsync({ dealId, input }),
+      commit: (updated) => updateSnapshots(queryClient, snapshots, (current, includeClosed) => (
+        includeClosed ? replaceDealInList(current, updated) : current.filter((deal) => deal.id !== updated.id)
+      )),
+      rollback: (snapshots) => restoreSnapshots(queryClient, snapshots),
+      invalidate: invalidateDeals,
+    });
+  }), [closeMutation, invalidateDeals, queryClient, rootQueryKey, runLocked, user]);
 
+  const reopenDeal = useCallback((dealId: string) => runLocked(dealId, async () => {
+    const snapshots = queryClient.getQueriesData<DealFull[]>({ queryKey: rootQueryKey });
     try {
-      const updated = await dealsService.closeDeal(dealId, input);
-      if (filters.includeClosed) setDeals((current) => replaceDeal(current, updated));
+      const updated = await reopenMutation.mutateAsync(dealId);
+      queryClient.setQueriesData<DealFull[]>({ queryKey: rootQueryKey }, (current = []) => replaceDealInList(current, updated));
+      await invalidateDeals();
       return updated;
-    } catch (closeError) {
-      setDeals(previousDeals);
-      const message = closeError instanceof Error ? closeError.message : 'Clôture du deal impossible.';
-      setError(message);
-      throw new Error(message);
+    } catch (error) {
+      restoreSnapshots(queryClient, snapshots);
+      throw error;
     }
-  }, [deals, filters.includeClosed]);
+  }), [invalidateDeals, queryClient, reopenMutation, rootQueryKey, runLocked]);
 
-  const reopenDeal = useCallback(async (dealId: string) => {
-    setError(null);
-    try {
-      const updated = await dealsService.reopenDeal(dealId);
-      setDeals((current) => replaceDeal(current, updated));
-      return updated;
-    } catch (reopenError) {
-      const message = reopenError instanceof Error ? reopenError.message : 'Réouverture du deal impossible.';
-      setError(message);
-      throw new Error(message);
-    }
-  }, []);
+  const deleteDeal = useCallback((dealId: string) => runLocked(dealId, async () => executeOptimisticMutation({
+    snapshot: () => queryClient.getQueriesData<DealFull[]>({ queryKey: rootQueryKey }),
+    apply: () => queryClient.setQueriesData<DealFull[]>({ queryKey: rootQueryKey }, (current = []) => current.filter((deal) => deal.id !== dealId)),
+    mutate: () => deleteMutation.mutateAsync(dealId),
+    commit: () => undefined,
+    rollback: (snapshots) => restoreSnapshots(queryClient, snapshots),
+    invalidate: invalidateDeals,
+  })), [deleteMutation, invalidateDeals, queryClient, rootQueryKey, runLocked]);
 
-  const deleteDeal = useCallback(async (dealId: string) => {
-    const previousDeals = deals;
-    setError(null);
-    setDeals((current) => current.filter((deal) => deal.id !== dealId));
-
-    try {
-      await dealsService.deleteDeal(dealId);
-    } catch (deleteError) {
-      setDeals(previousDeals);
-      const message = deleteError instanceof Error ? deleteError.message : 'Suppression du deal impossible.';
-      setError(message);
-      throw new Error(message);
-    }
-  }, [deals]);
-
+  const loadError = dealsQuery.error ? errorMessage(dealsQuery.error, 'Chargement des deals impossible.') : null;
   return {
     deals,
-    isLoading,
-    error,
+    isLoading: dealsQuery.isLoading,
+    loadError,
+    mutationError,
+    error: loadError ?? mutationError,
     filters,
     setFilters,
     refresh,
+    pendingDealIds,
     createDeal,
     updateDeal,
     updateDealStage,
@@ -174,39 +236,23 @@ export function useDeals(initialFilters: ListDealsFilters = {}): UseDealsResult 
 
 export function useDeal(dealIdOrReference: string | null | undefined): UseDealResult {
   const { user } = useAuth();
-  const [deal, setDeal] = useState<DealFull | null>(null);
-  const [isLoading, setIsLoading] = useState(Boolean(dealIdOrReference));
-  const [error, setError] = useState<string | null>(null);
+  const dealQuery = useQuery({
+    queryKey: queryKeys.deal(user?.id, dealIdOrReference),
+    queryFn: () => UUID_RE.test(dealIdOrReference ?? '')
+      ? dealsService.getDeal(dealIdOrReference as string)
+      : dealsService.getDealFullByReference(dealIdOrReference as string),
+    enabled: Boolean(user && dealIdOrReference),
+  });
 
   const refresh = useCallback(async () => {
-    if (!user || !dealIdOrReference) {
-      setDeal(null);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      const nextDeal = UUID_RE.test(dealIdOrReference)
-        ? await dealsService.getDeal(dealIdOrReference)
-        : await dealsService.getDealFullByReference(dealIdOrReference);
-      setDeal(nextDeal);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Chargement du deal impossible.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [dealIdOrReference, user]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (!user || !dealIdOrReference) return;
+    await dealQuery.refetch();
+  }, [dealIdOrReference, dealQuery, user]);
 
   return {
-    deal,
-    isLoading,
-    error,
+    deal: dealQuery.data ?? null,
+    isLoading: dealQuery.isLoading,
+    error: dealQuery.error ? errorMessage(dealQuery.error, 'Chargement du deal impossible.') : null,
     refresh,
   };
 }

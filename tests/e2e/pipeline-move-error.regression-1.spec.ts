@@ -1,22 +1,97 @@
 import { expect, test } from '@playwright/test';
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import {
+  applyOptimisticDealPatch,
+  DealMutationLock,
+  executeOptimisticMutation,
+  replaceDealInList,
+} from '../../src/lib/pipelineRuntime';
+import type { DealFull } from '../../src/lib/services/dealsService';
+import type { PipelineStageRow } from '../../src/lib/services/pipelineStagesService';
 
-const rootDir = process.cwd();
+const stageA = { id: 'stage-a', name: 'Nouveau' } as PipelineStageRow;
+const stageB = { id: 'stage-b', name: 'Contact' } as PipelineStageRow;
 
-// Regression: Pipeline stage failures left the UI without a local error.
-// Found by /investigate on 2026-07-12.
-// Report: docs/testing/main-user-flow-audit.md
-test('deal stage failure rolls back optimistic state and shows one local message', async () => {
-  const useDealsSource = await fs.readFile(path.join(rootDir, 'src/lib/useDeals.ts'), 'utf8');
-  const pipelineSource = await fs.readFile(path.join(rootDir, 'src/pages/Pipeline.tsx'), 'utf8');
+function deal(stage: PipelineStageRow = stageA): DealFull {
+  return {
+    id: 'deal-a',
+    stage_id: stage.id,
+    stage,
+    updated_at: '2026-07-13T10:00:00.000Z',
+  } as DealFull;
+}
 
-  expect(useDealsSource).toContain('const previousDeals = deals;');
-  expect(useDealsSource).toContain('setDeals(previousDeals);');
-  expect(useDealsSource).toContain('throw new Error(message);');
+test('successful deal move is optimistic, commits the Supabase result, and invalidates once', async () => {
+  const original = deal();
+  const serverResult = deal(stageB);
+  let cached = [original];
+  let optimisticStageId: string | null = null;
+  let invalidations = 0;
 
-  expect(pipelineSource).toContain('await dealsState.updateDealStage(dealId, stage.id);');
-  expect(pipelineSource).toContain("setMoveError('Impossible de déplacer le deal. Veuillez réessayer.');");
-  expect(pipelineSource).toContain('const loadError = moveError ?? dealsState.error ?? stagesState.error;');
-  expect(pipelineSource).not.toContain('void dealsState.updateDealStage(dealId, stage.id);');
+  await executeOptimisticMutation({
+    snapshot: () => cached,
+    apply: () => {
+      cached = cached.map((item) => applyOptimisticDealPatch(item, { stage_id: stageB.id }, [stageA, stageB]));
+    },
+    mutate: async () => {
+      optimisticStageId = cached[0].stage?.id ?? null;
+      return serverResult;
+    },
+    commit: (updated) => { cached = replaceDealInList(cached, updated); },
+    rollback: (snapshot) => { cached = snapshot; },
+    invalidate: async () => { invalidations += 1; },
+  });
+
+  expect(optimisticStageId).toBe(stageB.id);
+  expect(cached[0]).toBe(serverResult);
+  expect(invalidations).toBe(1);
+});
+
+test('failed deal move rolls the optimistic stage back and does not invalidate', async () => {
+  const original = deal();
+  let cached = [original];
+  let invalidations = 0;
+
+  await expect(executeOptimisticMutation({
+    snapshot: () => cached,
+    apply: () => {
+      cached = cached.map((item) => applyOptimisticDealPatch(item, { stage_id: stageB.id }, [stageA, stageB]));
+    },
+    mutate: async () => { throw new Error('RLS denied update'); },
+    commit: (updated: DealFull) => { cached = replaceDealInList(cached, updated); },
+    rollback: (snapshot) => { cached = snapshot; },
+    invalidate: async () => { invalidations += 1; },
+  })).rejects.toThrow('RLS denied update');
+
+  expect(cached).toEqual([original]);
+  expect(invalidations).toBe(0);
+});
+
+test('a refresh failure after a confirmed mutation keeps the committed server result', async () => {
+  const original = deal();
+  const serverResult = deal(stageB);
+  let cached = [original];
+
+  await expect(executeOptimisticMutation({
+    snapshot: () => cached,
+    apply: () => { cached = [applyOptimisticDealPatch(original, { stage_id: stageB.id }, [stageA, stageB])]; },
+    mutate: async () => serverResult,
+    commit: (updated) => { cached = replaceDealInList(cached, updated); },
+    rollback: (snapshot) => { cached = snapshot; },
+    invalidate: async () => { throw new Error('refresh failed'); },
+  })).rejects.toThrow('refresh failed');
+
+  expect(cached[0]).toBe(serverResult);
+});
+
+test('a second concurrent mutation for the same deal is rejected', async () => {
+  let releaseFirst!: () => void;
+  const firstOperation = new Promise<void>((resolve) => { releaseFirst = resolve; });
+  const lock = new DealMutationLock();
+  const first = lock.run('deal-a', () => firstOperation);
+
+  await expect(lock.run('deal-a', async () => undefined)).rejects.toThrow('deja en cours');
+  await expect(lock.run('deal-b', async () => 'other deal')).resolves.toBe('other deal');
+
+  releaseFirst();
+  await first;
 });

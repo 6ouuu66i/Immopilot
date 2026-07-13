@@ -1,26 +1,38 @@
 // src/components/pipeline/DealFichePanel.tsx
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../lib/auth';
-import type { store as appStore } from '../../lib/store';
+import { pipelineUiError } from '../../lib/pipelineRuntime';
 import { formatAmount } from '../../lib/services/commissionsService';
 import { useNotes } from '../../lib/useNotes';
 import { ScoreRing } from '../biens/ScoreRing';
 import { useAgencyCommissions, useMyCommissions } from '../../lib/useCommissions';
 import { taskToView, useTasksFor } from '../../lib/useTasks';
 import { useMyTransfers } from '../../lib/useTransfers';
-import type { Deal, DealStage, PropertyKey } from '../../types';
+import type { Contact, Property } from '../../types';
+import type {
+  ClosePipelineDeal,
+  MovePipelineDeal,
+  PipelineDeal,
+  PipelineStageView,
+  ReopenPipelineDeal,
+  UpdatePipelineDealLinks,
+} from '../../types/pipeline';
 import { NotesList, StatusBadge } from '../ui';
 
-type Store = typeof appStore;
-
 interface DealFichePanelProps {
-  deal: Deal;
-  store: Store;
+  deal: PipelineDeal;
+  property?: Property;
+  contact?: Contact;
+  stages: PipelineStageView[];
+  contacts: Contact[];
+  properties: Property[];
+  isPending: boolean;
   onClose: () => void;
-  onMoveDeal: (dealId: string, stageName: string) => void;
-  onUpdateDealLinks?: (dealId: string, links: { contactId?: string; propertyId?: PropertyKey }) => void;
-  onCloseDeal?: (dealId: string, outcome: 'won' | 'lost') => void;
-  onReopenDeal?: (dealId: string) => void;
+  onMoveDeal: MovePipelineDeal;
+  onUpdateDealLinks: UpdatePipelineDealLinks;
+  onCloseDeal: ClosePipelineDeal;
+  onReopenDeal: ReopenPipelineDeal;
+  onRefreshDeals: () => Promise<void>;
 }
 
 const priceFormatter = new Intl.NumberFormat('fr-BE', {
@@ -30,12 +42,18 @@ function fmt(v: number) { return priceFormatter.format(v).replace(/\s?EUR/, ' �
 
 export function DealFichePanel({
   deal,
-  store,
+  property,
+  contact,
+  stages,
+  contacts,
+  properties,
+  isPending,
   onClose,
   onMoveDeal,
   onUpdateDealLinks,
   onCloseDeal,
   onReopenDeal,
+  onRefreshDeals,
 }: DealFichePanelProps) {
   const [noteDraft, setNoteDraft] = useState('');
   const [nextActionTitle, setNextActionTitle] = useState('');
@@ -50,15 +68,10 @@ export function DealFichePanel({
   const transfersState = useMyTransfers({ direction: 'all' });
   const myCommissionsState = useMyCommissions({ period: 'all' });
   const agencyCommissionsState = useAgencyCommissions({ period: 'all' });
-  const property = store.getProperty(deal.propertyId);
-  const contact  = store.getContact(deal.contactId);
   const dealTasks = useTasksFor({ dealId: deal.id });
   const tasks    = dealTasks.tasks.slice(0, 5).map(taskToView);
   const dealNotes = useNotes({ dealId: deal.id });
-  const stages   = store.getPipelineStages();
-  const contacts = store.getContacts();
-  const properties = store.getProperties();
-  const currentStageIdx = stages.findIndex(s => s.name === deal.stage);
+  const currentStageIdx = stages.findIndex(s => s.id === deal.stageId);
   const isActive = !['Perdu', 'Bien vendu'].includes(deal.stage);
   const isDealOwner = profile?.id === deal.ownerId;
   const commission = (profile?.role === 'admin' ? agencyCommissionsState.commissions : myCommissionsState.commissions)
@@ -83,13 +96,13 @@ export function DealFichePanel({
 
   useEffect(() => {
     if (!dealNotes.error) return;
-    store.addNotification('notes_error', 'Synchronisation notes impossible', dealNotes.error, '#pipeline');
-  }, [dealNotes.error, store]);
+    setActionMessage(pipelineUiError('notes', dealNotes.error));
+  }, [dealNotes.error]);
 
   useEffect(() => {
     if (!dealTasks.error) return;
-    store.addNotification('tasks_error', 'Synchronisation taches impossible', dealTasks.error, '#pipeline');
-  }, [dealTasks.error, store]);
+    setActionMessage(pipelineUiError('tasks', dealTasks.error));
+  }, [dealTasks.error]);
 
   useEffect(() => {
     setSelectedContactId(deal.contactId);
@@ -101,9 +114,13 @@ export function DealFichePanel({
     setRefusalOpen(false);
   }, [deal.id, deal.contactId, deal.propertyId]);
 
-  const handleAdvanceStage = () => {
+  const handleAdvanceStage = async () => {
     if (currentStageIdx < stages.length - 1) {
-      onMoveDeal(deal.id, stages[currentStageIdx + 1].name);
+      try {
+        await onMoveDeal(deal.id, stages[currentStageIdx + 1].id);
+      } catch {
+        setActionMessage('Deplacement du deal impossible.');
+      }
     }
   };
 
@@ -128,45 +145,78 @@ export function DealFichePanel({
       });
   };
 
-  const handleLinkContact = () => {
-    onUpdateDealLinks?.(deal.id, { contactId: selectedContactId });
-    const linked = store.getContact(selectedContactId);
-    setActionMessage(linked ? `Contact lié : ${linked.name}` : 'Contact introuvable.');
+  const handleLinkContact = async () => {
+    const linked = contacts.find((item) => item.id === selectedContactId);
+    if (!linked) {
+      setActionMessage('Contact introuvable.');
+      return;
+    }
+    try {
+      await onUpdateDealLinks(deal.id, { contactId: linked.id });
+      setActionMessage(`Contact lie : ${linked.name}`);
+    } catch {
+      setActionMessage('Liaison du contact impossible.');
+    }
   };
 
-  const handleLinkProperty = () => {
-    const numericPropertyId = Number(selectedPropertyId);
-    const propertyId: PropertyKey = Number.isFinite(numericPropertyId) && String(numericPropertyId) === selectedPropertyId
-      ? numericPropertyId
-      : selectedPropertyId;
-    onUpdateDealLinks?.(deal.id, { propertyId });
-    const linked = store.getProperty(propertyId);
-    setActionMessage(linked ? `Bien lié : ${linked.title}` : 'Bien introuvable.');
+  const handleLinkProperty = async () => {
+    const linked = properties.find((item) => item.id === selectedPropertyId);
+    if (!linked?.supabasePropertyId) {
+      setActionMessage('Bien introuvable.');
+      return;
+    }
+    try {
+      await onUpdateDealLinks(deal.id, { propertyId: linked.supabasePropertyId });
+      setActionMessage(`Bien lie : ${linked.title}`);
+    } catch {
+      setActionMessage('Liaison du bien impossible.');
+    }
   };
 
-  const handleMilestone = (milestone: 'rdv' | 'offre' | 'mandat_potentiel') => {
-    const targetByMilestone: Record<typeof milestone, DealStage> = {
-      rdv: 'Visite',
-      offre: 'Proposition',
-      mandat_potentiel: 'Mandat signé',
+  const handleMilestone = async (milestone: 'rdv' | 'offre' | 'mandat_potentiel') => {
+    const targetByMilestone: Record<typeof milestone, string> = {
+      rdv: 'visite',
+      offre: 'proposition',
+      mandat_potentiel: 'mandat',
     };
-    const stageName = targetByMilestone[milestone];
-    onMoveDeal(deal.id, stageName);
-    setActionMessage(`Statut commercial : ${stageName}`);
+    const target = stages.find((stage) => stage.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(targetByMilestone[milestone]));
+    if (!target) {
+      setActionMessage('Etape commerciale indisponible.');
+      return;
+    }
+    try {
+      await onMoveDeal(deal.id, target.id);
+      setActionMessage(`Statut commercial : ${target.name}`);
+    } catch {
+      setActionMessage('Changement de statut impossible.');
+    }
   };
 
-  const handleStageSelect = (stageName: DealStage) => {
-    if (stageName !== deal.stage) onMoveDeal(deal.id, stageName);
+  const handleStageSelect = async (stageId: string) => {
+    if (stageId === deal.stageId) return;
+    try {
+      await onMoveDeal(deal.id, stageId);
+    } catch {
+      setActionMessage('Changement de statut impossible.');
+    }
   };
 
-  const handleCloseDeal = (outcome: 'won' | 'lost') => {
-    onCloseDeal?.(deal.id, outcome);
-    setActionMessage(outcome === 'won' ? 'Deal marque comme gagne.' : 'Deal marque comme perdu.');
+  const handleCloseDeal = async (outcome: 'won' | 'lost') => {
+    try {
+      await onCloseDeal(deal.id, outcome);
+      setActionMessage(outcome === 'won' ? 'Deal marque comme gagne.' : 'Deal marque comme perdu.');
+    } catch {
+      setActionMessage('Cloture du deal impossible.');
+    }
   };
 
-  const handleReopenDeal = () => {
-    onReopenDeal?.(deal.id);
-    setActionMessage('Deal rouvert.');
+  const handleReopenDeal = async () => {
+    try {
+      await onReopenDeal(deal.id);
+      setActionMessage('Deal rouvert.');
+    } catch {
+      setActionMessage('Reouverture du deal impossible.');
+    }
   };
 
   const handleRequestTransfer = () => {
@@ -190,7 +240,10 @@ export function DealFichePanel({
   const handleAcceptTransfer = () => {
     if (!pendingIncomingTransfer) return;
     void transfersState.acceptTransfer(pendingIncomingTransfer.id)
-      .then(() => setActionMessage('Transfert accepte.'))
+      .then(async () => {
+        await onRefreshDeals();
+        setActionMessage('Transfert accepte.');
+      })
       .catch((error: unknown) => setActionMessage(error instanceof Error ? error.message : 'Acceptation impossible.'));
   };
 
@@ -268,7 +321,7 @@ export function DealFichePanel({
               <div
                 key={stage.id}
                 className={`step ${cls}`}
-                onClick={() => handleStageSelect(stage.name)}
+                onClick={() => { void handleStageSelect(stage.id); }}
               >
                 <div className="step-icon">
                   {idx < currentStageIdx && (
@@ -285,16 +338,16 @@ export function DealFichePanel({
 
         {/* ── Body ── */}
         <div className="deal-quick-actions">
-          <button type="button" onClick={() => handleMilestone('rdv')}>Marquer RDV</button>
-          <button type="button" onClick={() => handleMilestone('offre')}>Marquer offre</button>
-          <button type="button" onClick={() => handleMilestone('mandat_potentiel')}>Mandat potentiel</button>
+          <button type="button" disabled={isPending} onClick={() => { void handleMilestone('rdv'); }}>Marquer RDV</button>
+          <button type="button" disabled={isPending} onClick={() => { void handleMilestone('offre'); }}>Marquer offre</button>
+          <button type="button" disabled={isPending} onClick={() => { void handleMilestone('mandat_potentiel'); }}>Mandat potentiel</button>
           {isActive ? (
             <>
-              <button type="button" onClick={() => handleCloseDeal('won')}>Gagné</button>
-              <button type="button" onClick={() => handleCloseDeal('lost')}>Perdu</button>
+              <button type="button" disabled={isPending} onClick={() => { void handleCloseDeal('won'); }}>Gagné</button>
+              <button type="button" disabled={isPending} onClick={() => { void handleCloseDeal('lost'); }}>Perdu</button>
             </>
           ) : (
-            <button type="button" onClick={handleReopenDeal}>Réouvrir</button>
+            <button type="button" disabled={isPending} onClick={() => { void handleReopenDeal(); }}>Réouvrir</button>
           )}
         </div>
         {actionMessage && <div className="deal-action-message">{actionMessage}</div>}
@@ -378,7 +431,7 @@ export function DealFichePanel({
                       <option key={item.id} value={item.id}>{item.name}</option>
                     ))}
                   </select>
-                  <button type="button" onClick={handleLinkContact}>Lier</button>
+                  <button type="button" disabled={isPending} onClick={() => { void handleLinkContact(); }}>Lier</button>
                 </div>
               </div>
 
@@ -475,7 +528,7 @@ export function DealFichePanel({
                       <option key={item.id} value={item.id}>{item.title} - {item.city}</option>
                     ))}
                   </select>
-                  <button type="button" onClick={handleLinkProperty}>Lier</button>
+                  <button type="button" disabled={isPending} onClick={() => { void handleLinkProperty(); }}>Lier</button>
                 </div>
               </div>
 
@@ -490,7 +543,7 @@ export function DealFichePanel({
                     </div>
                     <div className="commission-row">
                       <span className="ck">Pourcentage</span>
-                      <span className="cv">{commission.percentage ? `${commission.percentage.toLocaleString('fr-BE')} %` : '�'}</span>
+                      <span className="cv">{commission.percentage ? `${commission.percentage.toLocaleString('fr-BE')} %` : '—'}</span>
                     </div>
                     <div className="commission-row">
                       <span className="ck">Statut</span>
@@ -538,8 +591,8 @@ export function DealFichePanel({
           <button
             type="button"
             className="btn btn-primary"
-            onClick={handleAdvanceStage}
-            disabled={currentStageIdx >= stages.length - 1}
+            onClick={() => { void handleAdvanceStage(); }}
+            disabled={isPending || currentStageIdx >= stages.length - 1}
           >
             Avancer stage
           </button>

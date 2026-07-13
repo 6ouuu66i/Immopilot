@@ -14,6 +14,9 @@ type TaskRow = Tables<'tasks'>;
 type DealUpdate = TablesUpdate<'deals'>;
 
 export type SupabaseDeal = Tables<'deals'>;
+export type DealActivity = ActivityRow & {
+  actor: Pick<ProfileRow, 'id' | 'full_name' | 'email'> | null;
+};
 
 export interface DealByReferenceResult {
   id: string;
@@ -49,14 +52,14 @@ export interface DealFull extends SupabaseDeal {
   contact: ContactRow | null;
   owner: ProfileRow | null;
   stage: PipelineStageRow | null;
-  activities: ActivityRow[];
+  activities: DealActivity[];
   tasks: TaskRow[];
   notesList: NoteWithAuthor[];
 }
 
 type ListingByPropertyId = Map<string, ListingRow>;
 type MutationError = { message: string } | null;
-type ActivitiesByDeal = Record<string, ActivityRow[]>;
+type ActivitiesByDeal = Record<string, DealActivity[]>;
 type TasksByDeal = Record<string, TaskRow[]>;
 
 type InsertDealQuery = {
@@ -175,7 +178,7 @@ function uniqueDealIds(dealIds: string[]): string[] {
   return Array.from(new Set(dealIds.filter(Boolean)));
 }
 
-function groupActivitiesByDeal(rows: ActivityRow[]): ActivitiesByDeal {
+function groupActivitiesByDeal(rows: DealActivity[]): ActivitiesByDeal {
   const grouped = rows.reduce<ActivitiesByDeal>((acc, row) => {
     if (!row.deal_id) return acc;
     const current = acc[row.deal_id] ?? [];
@@ -357,11 +360,17 @@ export const dealsService = {
   },
 
   async updateDealStage(dealId: string, newStageId: string): Promise<DealFull> {
-    return dealsService.updateDeal(dealId, { stage_id: newStageId });
+    const updated = await dealsService.updateDeal(dealId, { stage_id: newStageId });
+    await logActivity(updated, 'stage_changed', { stage_id: newStageId });
+    return updated;
   },
 
   async closeDeal(dealId: string, { is_won, lost_reason }: CloseDealInput): Promise<DealFull> {
+    const stages = await pipelineStagesService.listStages();
+    const terminalStage = stages.find((stage) => is_won ? stage.is_won : stage.is_lost);
+    if (!terminalStage) throw new Error(is_won ? 'Etape gagnee introuvable.' : 'Etape perdue introuvable.');
     const updated = await dealsService.updateDeal(dealId, {
+      stage_id: terminalStage.id,
       closed_at: new Date().toISOString(),
       is_won,
       is_lost: !is_won,
@@ -375,7 +384,11 @@ export const dealsService = {
   },
 
   async reopenDeal(dealId: string): Promise<DealFull> {
+    const stages = await pipelineStagesService.listStages();
+    const activeStage = stages.find((stage) => !stage.is_won && !stage.is_lost);
+    if (!activeStage) throw new Error('Aucune etape active disponible.');
     const updated = await dealsService.updateDeal(dealId, {
+      stage_id: activeStage.id,
       closed_at: null,
       is_won: false,
       is_lost: false,
@@ -413,17 +426,17 @@ export const dealsService = {
     if (error) throw new Error(error.message);
   },
 
-  async getDealActivities(dealId: string): Promise<ActivityRow[]> {
+  async getDealActivities(dealId: string): Promise<DealActivity[]> {
     const client = assertSupabase();
     const { data, error } = await client
       .from('activities')
-      .select('*')
+      .select('*, actor:profiles!activities_actor_id_fkey(id,full_name,email)')
       .eq('deal_id', dealId)
       .order('created_at', { ascending: false })
       .limit(20);
 
     if (error) throw new Error(error.message);
-    return (data ?? []) as ActivityRow[];
+    return (data ?? []) as unknown as DealActivity[];
   },
 
   async getActivitiesForDeals(dealIds: string[]): Promise<ActivitiesByDeal> {
@@ -433,12 +446,12 @@ export const dealsService = {
     const client = assertSupabase();
     const { data, error } = await client
       .from('activities')
-      .select('*')
+      .select('*, actor:profiles!activities_actor_id_fkey(id,full_name,email)')
       .in('deal_id', ids)
       .order('created_at', { ascending: false });
 
     if (error) throw new Error(error.message);
-    return groupActivitiesByDeal((data ?? []) as ActivityRow[]);
+    return groupActivitiesByDeal((data ?? []) as unknown as DealActivity[]);
   },
 
   async getDealOpenTasks(dealId: string): Promise<TaskRow[]> {

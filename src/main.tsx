@@ -173,10 +173,10 @@ function App() {
 
   return (
     <ProtectedRoute>
-      <AppShell activeRoute={route} store={store}>
+      <AppShell activeRoute={route}>
         <Suspense fallback={<PageLoading />}>
           {route === 'dashboard' ? (
-            <Dashboard store={store} />
+            <Dashboard />
           ) : route === 'score-test' ? (
             <ScoreTest />
           ) : route === 'biens' ? (
@@ -184,9 +184,9 @@ function App() {
           ) : route === 'biens-agence' ? (
             <Biens key="agence" segment="agence" store={store} />
           ) : route === 'pipeline' ? (
-            <Pipeline store={store} />
+            <Pipeline />
           ) : route === 'agenda' ? (
-            <Agenda store={store} />
+            <Agenda />
           ) : route === 'contacts' ? (
             <Contacts />
           ) : route === 'transfers' ? (
@@ -202,7 +202,7 @@ function App() {
           ) : isLegacyRoute ? (
             <LegacyPage route={route} />
           ) : (
-            <Dashboard store={store} />
+            <Dashboard />
           )}
         </Suspense>
       </AppShell>
