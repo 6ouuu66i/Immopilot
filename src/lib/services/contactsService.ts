@@ -5,6 +5,7 @@ import { notesService, type NoteWithAuthor } from './notesService';
 type ProfileRow = Tables<'profiles'>;
 export type SupabaseContact = Tables<'contacts'>;
 export type SupabaseDeal = Tables<'deals'>;
+type ActivityRow = Tables<'activities'>;
 type ContactPropertyRow = Tables<'contact_properties'>;
 export type PropertyContactLink = ContactPropertyRow;
 type PropertyRow = Tables<'properties'>;
@@ -44,8 +45,13 @@ export interface ContactPropertyLink extends ContactPropertyRow {
 export interface ContactFull extends SupabaseContact {
   properties: ContactPropertyLink[];
   deals: SupabaseDeal[];
+  activities: ContactActivity[];
   notesList: NoteWithAuthor[];
 }
+
+export type ContactActivity = ActivityRow & {
+  actor: Pick<ProfileRow, 'id' | 'full_name' | 'email'> | null;
+};
 
 type RawContactProperty = ContactPropertyRow & {
   properties?: PropertyRow | PropertyRow[] | null;
@@ -219,9 +225,10 @@ export const contactsService = {
     const contact = data as SupabaseContact | null;
     if (!contact) return null;
 
-    const [properties, deals, notesList] = await Promise.all([
+    const [properties, deals, activities, notesList] = await Promise.all([
       contactsService.getContactProperties(contact.id),
       contactsService.getContactDeals(contact.id),
+      contactsService.listContactActivities([contact.id]),
       notesService.getNotesForContact(contact.id),
     ]);
 
@@ -229,6 +236,7 @@ export const contactsService = {
       ...contact,
       properties,
       deals,
+      activities,
       notesList,
     };
   },
@@ -256,6 +264,22 @@ export const contactsService = {
 
     if (error) throw new Error(error.message);
     return (data ?? []) as SupabaseDeal[];
+  },
+
+  async listContactActivities(contactIds: string[]): Promise<ContactActivity[]> {
+    const ids = Array.from(new Set(contactIds.filter(Boolean)));
+    if (ids.length === 0) return [];
+
+    const client = assertSupabase();
+    const { data, error } = await client
+      .from('activities')
+      .select('*, actor:profiles!activities_actor_id_fkey(id,full_name,email)')
+      .in('contact_id', ids)
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (error) throw new Error(error.message);
+    return (data ?? []) as unknown as ContactActivity[];
   },
 
   async createContact(input: CreateContactInput): Promise<SupabaseContact> {

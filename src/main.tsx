@@ -188,7 +188,7 @@ function App() {
           ) : route === 'agenda' ? (
             <Agenda store={store} />
           ) : route === 'contacts' ? (
-            <Contacts store={store} />
+            <Contacts />
           ) : route === 'transfers' ? (
             <Transfers />
           ) : route === 'commissions' ? (

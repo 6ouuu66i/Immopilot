@@ -32,6 +32,18 @@ export function normalizePropertyListFilters(filters: SupabasePropertyListFilter
 }
 
 export const queryKeys = {
+  contactsRoot(userId: string | null | undefined) {
+    return ['contacts', userId ?? 'anonymous'] as const;
+  },
+  contacts(userId: string | null | undefined, search = '') {
+    return [...queryKeys.contactsRoot(userId), search.trim()] as const;
+  },
+  contact(userId: string | null | undefined, contactId: string | null | undefined) {
+    return ['contact', userId ?? 'anonymous', contactId ?? 'none'] as const;
+  },
+  contactActivities(userId: string | null | undefined, contactIds: string[]) {
+    return ['contact-activities', userId ?? 'anonymous', createPropertyIdsKey(contactIds)] as const;
+  },
   propertyMarks(userId: string | null | undefined) {
     return ['property-marks', userId ?? 'anonymous'] as const;
   },

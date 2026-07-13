@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './auth';
+import {
+  mapContactActivities,
+  removeContactFromList,
+  replaceContactInList,
+  upsertContactList,
+} from './contactRuntime';
+import { queryKeys } from './queryKeys';
 import {
   contactsService,
   type ContactFull,
@@ -30,6 +38,12 @@ export interface UseContactResult {
   refresh: () => Promise<void>;
 }
 
+export interface UseContactActivitiesResult {
+  activitiesByContact: Record<string, ReturnType<typeof mapContactActivities>>;
+  isLoading: boolean;
+  error: string | null;
+}
+
 function useDebouncedValue(value: string, delay: number) {
   const [debounced, setDebounced] = useState(value);
 
@@ -41,8 +55,8 @@ function useDebouncedValue(value: string, delay: number) {
   return debounced;
 }
 
-function sortByNewest(contacts: SupabaseContact[]) {
-  return [...contacts].sort((a, b) => b.created_at.localeCompare(a.created_at));
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : error ? String(error) : fallback;
 }
 
 function createOptimisticContact(input: CreateContactInput, agencyId: string, userId: string): SupabaseContact {
@@ -67,101 +81,118 @@ function createOptimisticContact(input: CreateContactInput, agencyId: string, us
 
 export function useContacts(initialParams: { search?: string } = {}): UseContactsResult {
   const { user, profile } = useAuth();
-  const [contacts, setContacts] = useState<SupabaseContact[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState(initialParams.search ?? '');
   const debouncedSearch = useDebouncedValue(search, CONTACT_SEARCH_DEBOUNCE_MS);
+  const queryKey = queryKeys.contacts(user?.id, debouncedSearch);
+  const rootQueryKey = queryKeys.contactsRoot(user?.id);
+  const contactsQuery = useQuery({
+    queryKey,
+    queryFn: () => contactsService.listContacts({ search: debouncedSearch }),
+    enabled: Boolean(user),
+  });
+  const createMutation = useMutation({ mutationFn: contactsService.createContact });
+  const updateMutation = useMutation({
+    mutationFn: ({ contactId, patch }: { contactId: string; patch: UpdateContactInput }) => (
+      contactsService.updateContact(contactId, patch)
+    ),
+  });
+  const deleteMutation = useMutation({ mutationFn: contactsService.deleteContact });
+  const contacts = contactsQuery.data ?? [];
 
   const refresh = useCallback(async () => {
-    if (!user) {
-      setContacts([]);
-      setIsLoading(false);
-      return;
-    }
+    if (!user) return;
+    await contactsQuery.refetch();
+  }, [contactsQuery, user]);
 
-    setIsLoading(true);
-    setError(null);
+  const createContact = useCallback(async (input: CreateContactInput) => {
+    if (!profile?.agency_id || !user) throw new Error('Utilisateur non connecte.');
+
+    createMutation.reset();
+    const previousContacts = queryClient.getQueryData<SupabaseContact[]>(queryKey) ?? [];
+    const tempContact = createOptimisticContact(input, profile.agency_id, user.id);
+    queryClient.setQueryData(queryKey, upsertContactList(previousContacts, tempContact));
+
     try {
-      const nextContacts = await contactsService.listContacts({
-        search: debouncedSearch,
-      });
-      setContacts(nextContacts);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Chargement des contacts impossible.');
-    } finally {
-      setIsLoading(false);
+      const created = await createMutation.mutateAsync(input);
+      queryClient.setQueryData<SupabaseContact[]>(queryKey, (current = []) => (
+        upsertContactList(current, created, tempContact.id)
+      ));
+      await queryClient.invalidateQueries({ queryKey: rootQueryKey });
+      return created;
+    } catch (createError) {
+      queryClient.setQueryData(queryKey, previousContacts);
+      throw new Error(errorMessage(createError, 'Creation du contact impossible.'));
     }
-  }, [debouncedSearch, user]);
+  }, [createMutation, profile?.agency_id, queryClient, queryKey, rootQueryKey, user]);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const updateContact = useCallback(async (contactId: string, patch: UpdateContactInput) => {
+    if (!user) throw new Error('Utilisateur non connecte.');
 
-  const createContact = useCallback(
-    async (input: CreateContactInput) => {
-      if (!profile?.agency_id || !user) throw new Error('Utilisateur non connecté.');
+    updateMutation.reset();
+    const listSnapshots = queryClient.getQueriesData<SupabaseContact[]>({ queryKey: rootQueryKey });
+    const detailQueryKey = queryKeys.contact(user.id, contactId);
+    const detailSnapshot = queryClient.getQueryData<ContactFull | null>(detailQueryKey);
+    const optimistic = contacts.find((contact) => contact.id === contactId);
+    if (optimistic) {
+      const nextContact = { ...optimistic, ...patch, updated_at: new Date().toISOString() };
+      queryClient.setQueriesData<SupabaseContact[]>({ queryKey: rootQueryKey }, (current = []) => (
+        replaceContactInList(current, nextContact)
+      ));
+    }
 
-      const previousContacts = contacts;
-      const tempContact = createOptimisticContact(input, profile.agency_id, user.id);
-      setError(null);
-      setContacts(sortByNewest([tempContact, ...contacts]));
+    try {
+      const updated = await updateMutation.mutateAsync({ contactId, patch });
+      queryClient.setQueriesData<SupabaseContact[]>({ queryKey: rootQueryKey }, (current = []) => (
+        replaceContactInList(current, updated)
+      ));
+      queryClient.setQueryData<ContactFull | null>(detailQueryKey, (current) => (
+        current ? { ...current, ...updated } : current
+      ));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: rootQueryKey }),
+        queryClient.invalidateQueries({ queryKey: detailQueryKey }),
+      ]);
+      return updated;
+    } catch (updateError) {
+      listSnapshots.forEach(([key, value]) => queryClient.setQueryData(key, value));
+      queryClient.setQueryData(detailQueryKey, detailSnapshot);
+      throw new Error(errorMessage(updateError, 'Modification du contact impossible.'));
+    }
+  }, [contacts, queryClient, rootQueryKey, updateMutation, user]);
 
-      try {
-        const created = await contactsService.createContact(input);
-        setContacts((current) => sortByNewest([created, ...current.filter((contact) => contact.id !== tempContact.id)]));
-        return created;
-      } catch (createError) {
-        setContacts(previousContacts);
-        const message = createError instanceof Error ? createError.message : 'Création du contact impossible.';
-        setError(message);
-        throw new Error(message);
-      }
-    },
-    [contacts, profile?.agency_id, user],
-  );
+  const deleteContact = useCallback(async (contactId: string) => {
+    if (!user) throw new Error('Utilisateur non connecte.');
 
-  const updateContact = useCallback(
-    async (contactId: string, patch: UpdateContactInput) => {
-      const previousContacts = contacts;
-      setError(null);
-      setContacts(contacts.map((contact) => contact.id === contactId ? { ...contact, ...patch, updated_at: new Date().toISOString() } : contact));
+    deleteMutation.reset();
+    const listSnapshots = queryClient.getQueriesData<SupabaseContact[]>({ queryKey: rootQueryKey });
+    const detailQueryKey = queryKeys.contact(user.id, contactId);
+    const detailSnapshot = queryClient.getQueryData<ContactFull | null>(detailQueryKey);
+    queryClient.setQueriesData<SupabaseContact[]>({ queryKey: rootQueryKey }, (current = []) => (
+      removeContactFromList(current, contactId)
+    ));
 
-      try {
-        const updated = await contactsService.updateContact(contactId, patch);
-        setContacts((current) => current.map((contact) => contact.id === contactId ? updated : contact));
-        return updated;
-      } catch (updateError) {
-        setContacts(previousContacts);
-        const message = updateError instanceof Error ? updateError.message : 'Modification du contact impossible.';
-        setError(message);
-        throw new Error(message);
-      }
-    },
-    [contacts],
-  );
+    try {
+      await deleteMutation.mutateAsync(contactId);
+      queryClient.removeQueries({ queryKey: detailQueryKey, exact: true });
+      await queryClient.invalidateQueries({ queryKey: rootQueryKey });
+    } catch (deleteError) {
+      listSnapshots.forEach(([key, value]) => queryClient.setQueryData(key, value));
+      queryClient.setQueryData(detailQueryKey, detailSnapshot);
+      throw new Error(errorMessage(deleteError, 'Suppression du contact impossible.'));
+    }
+  }, [deleteMutation, queryClient, rootQueryKey, user]);
 
-  const deleteContact = useCallback(
-    async (contactId: string) => {
-      const previousContacts = contacts;
-      setError(null);
-      setContacts(contacts.filter((contact) => contact.id !== contactId));
-
-      try {
-        await contactsService.deleteContact(contactId);
-      } catch (deleteError) {
-        setContacts(previousContacts);
-        const message = deleteError instanceof Error ? deleteError.message : 'Suppression du contact impossible.';
-        setError(message);
-        throw new Error(message);
-      }
-    },
-    [contacts],
-  );
+  const mutationError = createMutation.error ?? updateMutation.error ?? deleteMutation.error;
+  const error = contactsQuery.error
+    ? errorMessage(contactsQuery.error, 'Chargement des contacts impossible.')
+    : mutationError
+      ? errorMessage(mutationError, 'Mutation du contact impossible.')
+      : null;
 
   return {
     contacts,
-    isLoading,
+    isLoading: contactsQuery.isLoading,
     error,
     search,
     setSearch,
@@ -174,37 +205,49 @@ export function useContacts(initialParams: { search?: string } = {}): UseContact
 
 export function useContact(contactId: string | null | undefined): UseContactResult {
   const { user } = useAuth();
-  const [contact, setContact] = useState<ContactFull | null>(null);
-  const [isLoading, setIsLoading] = useState(Boolean(contactId));
-  const [error, setError] = useState<string | null>(null);
+  const isValidContactId = Boolean(contactId && UUID_RE.test(contactId));
+  const contactQuery = useQuery({
+    queryKey: queryKeys.contact(user?.id, contactId),
+    queryFn: () => contactsService.getContact(contactId as string),
+    enabled: Boolean(user && isValidContactId),
+  });
 
   const refresh = useCallback(async () => {
-    if (!user || !contactId || !UUID_RE.test(contactId)) {
-      setContact(null);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      const nextContact = await contactsService.getContact(contactId);
-      setContact(nextContact);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Chargement du contact impossible.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [contactId, user]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    if (!user || !isValidContactId) return;
+    await contactQuery.refetch();
+  }, [contactQuery, isValidContactId, user]);
 
   return {
-    contact,
-    isLoading,
-    error,
+    contact: contactQuery.data ?? null,
+    isLoading: contactQuery.isLoading,
+    error: contactQuery.error ? errorMessage(contactQuery.error, 'Chargement du contact impossible.') : null,
     refresh,
+  };
+}
+
+export function useContactActivities(contacts: SupabaseContact[]): UseContactActivitiesResult {
+  const { user } = useAuth();
+  const contactIds = useMemo(() => contacts.map((contact) => contact.id), [contacts]);
+  const agenciesByContact = useMemo(
+    () => new Map(contacts.map((contact) => [contact.id, contact.agency_id])),
+    [contacts],
+  );
+  const activitiesQuery = useQuery({
+    queryKey: queryKeys.contactActivities(user?.id, contactIds),
+    queryFn: () => contactsService.listContactActivities(contactIds),
+    enabled: Boolean(user && contactIds.length > 0),
+  });
+  const activitiesByContact = useMemo(() => {
+    const rows = activitiesQuery.data ?? [];
+    return Object.fromEntries(contactIds.map((contactId) => [
+      contactId,
+      mapContactActivities(rows, contactId, agenciesByContact.get(contactId) ?? ''),
+    ]));
+  }, [activitiesQuery.data, agenciesByContact, contactIds]);
+
+  return {
+    activitiesByContact,
+    isLoading: activitiesQuery.isLoading,
+    error: activitiesQuery.error ? errorMessage(activitiesQuery.error, 'Chargement des activites impossible.') : null,
   };
 }

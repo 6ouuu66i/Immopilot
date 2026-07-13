@@ -16,13 +16,13 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import type { store as appStore } from '../lib/store';
 import type { Contact, ContactRelations, Deal, Property, Task, TaskPriority } from '../types';
 import { ActivityTimeline, NotesList, StatusBadge, TaskList, ContactsSkeleton } from '../components/ui';
 import { useAuth } from '../lib/auth';
 import { formatEuro } from '../lib/formatCurrency';
 import { searchPropertiesForLink } from '../lib/supabaseProperties';
-import { useContact, useContacts } from '../lib/useContacts';
+import { getContactsDataState, mapContactActivities } from '../lib/contactRuntime';
+import { useContact, useContactActivities, useContacts } from '../lib/useContacts';
 import { useNotes } from '../lib/useNotes';
 import { taskToView, useTasks, useTasksFor } from '../lib/useTasks';
 import {
@@ -33,12 +33,7 @@ import {
   type SupabaseDeal,
 } from '../lib/services/contactsService';
 
-type Store = typeof appStore;
 type RelationshipOption = 'owner' | 'interested' | 'former_owner' | 'tenant';
-
-interface ContactsProps {
-  store: Store;
-}
 
 const CONTACT_ROLES = ['vendeur', 'acheteur', 'prospect', 'investisseur', 'proprietaire'];
 const RELATIONSHIP_OPTIONS: { value: RelationshipOption; label: string }[] = [
@@ -174,7 +169,11 @@ function dealToView(deal: SupabaseDeal): Deal {
   };
 }
 
-function contactFullToRelations(contact: ContactFull | SupabaseContact, store: Store, contactTasks: Task[] = []): ContactRelations {
+function contactFullToRelations(
+  contact: ContactFull | SupabaseContact,
+  contactTasks: Task[] = [],
+  listActivities: ContactRelations['activities'] = [],
+): ContactRelations {
   const fullContact = 'properties' in contact ? contact : null;
 
   return {
@@ -182,11 +181,13 @@ function contactFullToRelations(contact: ContactFull | SupabaseContact, store: S
     properties: fullContact?.properties.map(propertyLinkToProperty) ?? [],
     deals: fullContact?.deals.map(dealToView) ?? [],
     tasks: contactTasks,
-    activities: store.getContactActivities(contact.id),
+    activities: fullContact
+      ? mapContactActivities(fullContact.activities, contact.id, contact.agency_id)
+      : listActivities,
   };
 }
 
-export function Contacts({ store }: ContactsProps) {
+export function Contacts() {
   const { profile } = useAuth();
   const {
     contacts: supabaseContacts,
@@ -198,6 +199,13 @@ export function Contacts({ store }: ContactsProps) {
     deleteContact,
     refresh,
   } = useContacts();
+  const contactActivities = useContactActivities(supabaseContacts);
+  const contactsError = error ?? contactActivities.error;
+  const contactsDataState = getContactsDataState(
+    supabaseContacts,
+    isLoading || contactActivities.isLoading,
+    contactsError,
+  );
   const allTasks = useTasks({ scope: 'all' });
   const [actionMessage, setActionMessage] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
@@ -216,12 +224,12 @@ export function Contacts({ store }: ContactsProps) {
     supabaseContacts.forEach((contact) => {
       map.set(contact.id, contactFullToRelations(
         contact,
-        store,
         allTasks.tasks.filter((task) => task.contact_id === contact.id).map(taskToView),
+        contactActivities.activitiesByContact[contact.id] ?? [],
       ));
     });
     return map;
-  }, [allTasks.tasks, store, supabaseContacts]);
+  }, [allTasks.tasks, contactActivities.activitiesByContact, supabaseContacts]);
 
   const filteredContacts = contacts;
   const selectedContact = selectedContactDetails.contact
@@ -232,7 +240,6 @@ export function Contacts({ store }: ContactsProps) {
   const selectedRelations = selectedContactDetails.contact
       ? contactFullToRelations(
         selectedContactDetails.contact,
-        store,
         allTasks.tasks.filter((task) => task.contact_id === selectedContactDetails.contact?.id).map(taskToView),
       )
     : selectedContact
@@ -374,10 +381,10 @@ export function Contacts({ store }: ContactsProps) {
         <div className="contacts-left">
           <div className="contacts-table-shell">
             <div className="table-count"><strong>{filteredContacts.length}</strong>&nbsp; contacts</div>
-            {(error || selectedContactDetails.error || actionMessage) && (
-              <div className="contact-action-message">{error ?? selectedContactDetails.error ?? actionMessage}</div>
+            {(contactsError || selectedContactDetails.error || actionMessage) && (
+              <div className="contact-action-message">{contactsError ?? selectedContactDetails.error ?? actionMessage}</div>
             )}
-            {isLoading && <ContactsSkeleton rowCount={skeletonRowCount} />}
+            {contactsDataState === 'loading' && <ContactsSkeleton rowCount={skeletonRowCount} />}
             <div className="table-scroll">
               <table className="contacts-table">
                 <thead>
@@ -395,12 +402,12 @@ export function Contacts({ store }: ContactsProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {!isLoading && filteredContacts.length === 0 && (
+                  {contactsDataState === 'empty' && (
                     <tr>
                       <td colSpan={10}><span className="muted-line">Aucun contact Supabase pour cette agence.</span></td>
                     </tr>
                   )}
-                  {filteredContacts.map((contact) => {
+                  {contactsDataState !== 'loading' && filteredContacts.map((contact) => {
                     const relations = relationsById.get(contact.id);
                     if (!relations) return null;
                     const status = contactStatus(relations);
