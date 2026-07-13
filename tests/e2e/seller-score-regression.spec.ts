@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+type SellerSegment = 'particulier' | 'agence';
+
 function credentials() {
   const email = process.env.E2E_EMAIL;
   const password = process.env.E2E_PASSWORD;
@@ -21,6 +23,27 @@ async function login(page: Page) {
   await expect(page.locator('a.ip-sidebar-link[href="#biens"]').first()).toBeVisible();
 }
 
+function waitForCanonicalPropertyTotal(page: Page, segment: SellerSegment): Promise<number> {
+  return page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return response.request().method() === 'GET'
+      && url.pathname.endsWith('/rest/v1/active_properties_canonical_mat')
+      && url.searchParams.get('seller_segment') === `eq.${segment}`;
+  }).then((response) => {
+    const contentRange = response.headers()['content-range'];
+    const total = contentRange ? Number(contentRange.split('/').at(-1)) : Number.NaN;
+    expect(total, `missing exact count for ${segment} canonical properties`).toBeGreaterThanOrEqual(0);
+    return total;
+  });
+}
+
+async function expectDisplayedPropertyTotal(page: Page, expectedTotal: number) {
+  const counter = page.getByText(/^\d[\d.\s]* biens suivis$/, { exact: true });
+  await expect(counter).toBeVisible();
+  const displayedTotal = Number((await counter.innerText()).replace(/\D/g, ''));
+  expect(displayedTotal).toBe(expectedTotal);
+}
+
 test('seller score remains visible on Biens and Pipeline without console errors', async ({ page }) => {
   const consoleErrors: string[] = [];
   page.on('console', (message) => {
@@ -32,14 +55,16 @@ test('seller score remains visible on Biens and Pipeline without console errors'
 
   await login(page);
 
+  const particulierTotal = waitForCanonicalPropertyTotal(page, 'particulier');
   await page.goto('/#biens');
   await expect(page.getByRole('heading', { name: 'Biens Particuliers' })).toBeVisible();
-  await expect(page.getByText(/^[1-9]\d*(?:[.\s]\d{3})* biens suivis$/, { exact: true })).toBeVisible();
+  await expectDisplayedPropertyTotal(page, await particulierTotal);
   await expect(page.locator('[aria-label^="Indice de tension vendeur"]').first()).toBeVisible();
 
+  const agenceTotal = waitForCanonicalPropertyTotal(page, 'agence');
   await page.goto('/#biens-agence');
   await expect(page.getByRole('heading', { name: 'Biens Agence' })).toBeVisible();
-  await expect(page.getByText(/^[1-9]\d*(?:[.\s]\d{3})* biens suivis$/, { exact: true })).toBeVisible();
+  await expectDisplayedPropertyTotal(page, await agenceTotal);
   await expect(page.locator('[aria-label="Statut du mandat agence"]').first()).toBeVisible();
   await expect(page.locator('[aria-label^="Indice de tension vendeur"]')).toHaveCount(0);
 
