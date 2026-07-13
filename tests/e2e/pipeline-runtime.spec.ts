@@ -296,19 +296,20 @@ test('Pipeline has no runtime or type dependency on ImmoPilotStore and keeps bat
   expect(migrationSource).toContain('CREATE TRIGGER log_deal_stage_change_trigger AFTER UPDATE ON public.deals');
 });
 
-test('the app transports ImmoPilotStore only to Biens after Pipeline detachment', async () => {
-  const [mainSource, contactsSource] = await Promise.all([
+test('the app no longer instantiates or transports ImmoPilotStore', async () => {
+  const [mainSource, biensSource, contactsSource] = await Promise.all([
     fs.readFile(path.join(rootDir, 'src/main.tsx'), 'utf8'),
+    fs.readFile(path.join(rootDir, 'src/pages/Biens.tsx'), 'utf8'),
     fs.readFile(path.join(rootDir, 'src/pages/Contacts.tsx'), 'utf8'),
   ]);
-  const transportedStoreProps: string[] = Array.from(
-    mainSource.matchAll(/<[^>]+store=\{store\}[^>]*>/g),
-    (match) => match[0],
-  );
 
-  expect(transportedStoreProps).toHaveLength(2);
-  expect(transportedStoreProps.every((usage) => usage.startsWith('<Biens '))).toBe(true);
+  expect(mainSource).not.toContain('lib/store');
+  expect(mainSource).not.toContain('ImmoPilotStore');
+  expect(mainSource).not.toContain('store={store}');
+  expect(biensSource).not.toContain('lib/store');
+  expect(biensSource).not.toContain('store.');
   expect(mainSource).toContain('<Pipeline />');
   expect(mainSource).not.toContain('<Pipeline store={store} />');
   expect(contactsSource).not.toContain('lib/store');
+  await expect(fs.access(path.join(rootDir, 'src/lib/store.ts'))).rejects.toThrow();
 });

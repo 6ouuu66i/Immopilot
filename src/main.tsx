@@ -14,7 +14,6 @@ import '@fontsource/archivo/600.css';
 import '@fontsource/archivo/700.css';
 import './index.css';
 import './styles/la-cote-overrides.css';
-import { store } from './lib/store';
 import { renderInteractiveMap, hasValidKey } from './lib/maps';
 import { AppShell } from './components/AppShell';
 import { PostHogErrorBoundary } from './components/PostHogErrorBoundary';
@@ -127,7 +126,6 @@ function App() {
   const [route, setRoute] = useState<RouteKey>(() => getRouteFromHash());
 
   useEffect(() => {
-    (window as Window & { ImmoPilotStore?: typeof store }).ImmoPilotStore = store;
     (window as Window & { renderInteractiveMap?: typeof renderInteractiveMap }).renderInteractiveMap = renderInteractiveMap;
     (window as Window & { gmpHasValidKey?: typeof hasValidKey }).gmpHasValidKey = hasValidKey;
     (window as Window & { syncSidebarProfile?: () => void }).syncSidebarProfile = () => {
