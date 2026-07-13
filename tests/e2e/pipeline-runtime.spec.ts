@@ -4,23 +4,31 @@ import path from 'node:path';
 import {
   buildPipelineRuntime,
   getPipelineDataState,
+  getPipelineStageTransition,
   isSupportedPipelineStage,
   pipelineUiError,
+  resolvePipelineDeal,
+  togglePipelineDealSelection,
 } from '../../src/lib/pipelineRuntime';
 import type { DealFull } from '../../src/lib/services/dealsService';
 import type { PipelineStageRow } from '../../src/lib/services/pipelineStagesService';
 
 const rootDir = process.cwd();
 
-function stage(id: string, name: string, position: number): PipelineStageRow {
+function stage(
+  id: string,
+  name: string,
+  position: number,
+  flags: { isWon?: boolean; isLost?: boolean } = {},
+): PipelineStageRow {
   return {
     id,
     agency_id: 'agency-a',
     color: '#123456',
     created_at: '2026-07-13T08:00:00.000Z',
     is_default: true,
-    is_lost: false,
-    is_won: false,
+    is_lost: Boolean(flags.isLost),
+    is_won: Boolean(flags.isWon),
     name,
     position,
   };
@@ -153,6 +161,31 @@ test('a real empty stage stays empty without borrowing deals from another status
   expect(runtime.deals.filter((deal) => deal.stageId === 'stage-contact')).toEqual([]);
 });
 
+test('deal deep links resolve references to UUID selection and toggle the selected card', () => {
+  const runtime = buildPipelineRuntime([fullDeal()], [stage('stage-new', 'Nouveau', 1)], {});
+
+  expect(resolvePipelineDeal(runtime, 'DEAL-001')?.id).toBe('deal-a');
+  expect(togglePipelineDealSelection(runtime, 'DEAL-001', 'deal-a')).toBeNull();
+  expect(togglePipelineDealSelection(runtime, null, 'deal-a')).toBe('deal-a');
+});
+
+test('a shared property is hydrated from the active deal before newer closed history', () => {
+  const stages = [stage('stage-new', 'Nouveau', 1), stage('stage-won', 'Vendu', 2, { isWon: true })];
+  const active = fullDeal({ id: 'deal-active', owner_id: 'owner-active', updated_at: '2026-07-12T08:00:00.000Z' });
+  const closed = fullDeal({
+    id: 'deal-closed',
+    owner_id: 'owner-closed',
+    stage_id: 'stage-won',
+    stage: stages[1],
+    closed_at: '2026-07-13T08:00:00.000Z',
+    is_won: true,
+    updated_at: '2026-07-13T08:00:00.000Z',
+  });
+  const runtime = buildPipelineRuntime([active, closed], stages, {});
+
+  expect(runtime.propertiesById.get('property-a')).toMatchObject({ ownerId: 'owner-active', reserved: false });
+});
+
 test('Pipeline distinguishes loading, error, empty, and ready data states', () => {
   const stages = [stage('stage-new', 'Nouveau', 1)];
   const deals = [fullDeal()];
@@ -161,6 +194,51 @@ test('Pipeline distinguishes loading, error, empty, and ready data states', () =
   expect(getPipelineDataState([], stages, false, 'network error')).toBe('error');
   expect(getPipelineDataState([], stages, false, null)).toBe('empty');
   expect(getPipelineDataState(deals, stages, false, null)).toBe('ready');
+  expect(getPipelineDataState(deals, stages, true, 'refetch failed')).toBe('ready');
+});
+
+test('terminal stages close active deals and closed deals must be reopened explicitly', () => {
+  const activeStage = stage('stage-new', 'Nouveau', 1);
+  const wonStage = stage('stage-won', 'Vendu personnalise', 2, { isWon: true });
+  const lostStage = stage('stage-lost', 'Archive personnalisee', 3, { isLost: true });
+  const runtime = buildPipelineRuntime([fullDeal({ stage_id: activeStage.id, stage: activeStage })], [activeStage, wonStage, lostStage], {});
+  const activeDeal = runtime.deals[0];
+  const [activeStageView, wonStageView, lostStageView] = runtime.stages;
+
+  expect(getPipelineStageTransition(activeDeal, wonStageView)).toEqual({ type: 'close', outcome: 'won' });
+  expect(getPipelineStageTransition(activeDeal, lostStageView)).toEqual({ type: 'close', outcome: 'lost' });
+  expect(getPipelineStageTransition(activeDeal, activeStageView)).toEqual({ type: 'blocked', reason: 'same-stage' });
+  expect(getPipelineStageTransition({ ...activeDeal, closedAt: '2026-07-13T12:00:00.000Z', isWon: true }, activeStageView))
+    .toEqual({ type: 'blocked', reason: 'closed' });
+  expect(getPipelineStageTransition({ ...activeDeal, closedAt: '2026-07-13T12:00:00.000Z', isWon: true }, lostStageView))
+    .toEqual({ type: 'blocked', reason: 'closed' });
+});
+
+test('unlinked Supabase contacts and properties remain available as Pipeline link targets', () => {
+  const stages = [stage('stage-new', 'Nouveau', 1)];
+  const optionDeal = fullDeal({
+    id: 'deal-option',
+    property_id: 'property-option',
+    property: { ...fullDeal().property!, id: 'property-option', address_key: 'Bien sans deal courant' },
+  });
+  const optionProperty = buildPipelineRuntime([optionDeal], stages, {}).properties[0];
+  const unlinkedContact = { ...fullDeal().contact!, id: 'contact-option', full_name: 'Contact sans deal' };
+  const runtime = buildPipelineRuntime([fullDeal({ contact: null, contact_id: null })], stages, {}, {
+    contacts: [unlinkedContact],
+    properties: [optionProperty],
+  });
+
+  expect(runtime.contactsById.get('contact-option')?.name).toBe('Contact sans deal');
+  expect(runtime.propertiesById.get('property-option')?.title).toBe('Bien sans deal courant');
+});
+
+test('tasks without a due date stay undated instead of becoming overdue at 09:00', () => {
+  const base = fullDeal();
+  const runtime = buildPipelineRuntime([fullDeal({
+    tasks: [{ ...base.tasks[0], due_date: null }],
+  })], [base.stage as PipelineStageRow], {});
+
+  expect(runtime.tasksByDealId.get('deal-a')?.[0]).toMatchObject({ date: '', time: '' });
 });
 
 test('missing associated objects remain unavailable and never fall back to mocks', () => {
@@ -193,18 +271,29 @@ test('Pipeline has no runtime or type dependency on ImmoPilotStore and keeps bat
     'src/components/pipeline/PipelineListView.tsx',
     'src/components/pipeline/DealFichePanel.tsx',
   ];
-  const [sources, serviceSource] = await Promise.all([
+  const [sources, serviceSource, migrationSource] = await Promise.all([
     Promise.all(files.map((file) => fs.readFile(path.join(rootDir, file), 'utf8'))),
     fs.readFile(path.join(rootDir, 'src/lib/services/dealsService.ts'), 'utf8'),
+    fs.readFile(path.join(rootDir, 'supabase/migrations/20260629182636_create_crm_remaining_schema_rls.sql'), 'utf8'),
   ]);
 
   for (const source of sources) {
     expect(source).not.toContain('lib/store');
     expect(source).not.toContain('store.');
   }
+  expect(sources[0]).toContain('listPropertiesForPipelineLink');
+  expect(sources[0]).toContain('const contactsState = useContacts();');
+  expect(sources[1]).toContain('draggable={!isPending && !deal.closedAt && !deal.isWon && !deal.isLost}');
+  expect(sources[2]).toContain('draggable={!isPending && !deal.closedAt && !deal.isWon && !deal.isLost}');
+  expect(sources[3]).not.toContain('property?.score ?? 70');
   expect(serviceSource).toContain(".in('id', propertyIds)");
   expect(serviceSource).toContain(".in('deal_id', ids)");
   expect(serviceSource).toContain('const [activitiesByDeal, tasksByDeal, notesByDeal] = await Promise.all([');
+  expect(serviceSource).not.toContain("logActivity(updated, 'stage_changed'");
+  expect(serviceSource).toContain(".eq('stage_id', expectedStageId)");
+  expect(serviceSource).toContain(".is('closed_at', null)");
+  expect(serviceSource).toContain(".not('closed_at', 'is', null)");
+  expect(migrationSource).toContain('CREATE TRIGGER log_deal_stage_change_trigger AFTER UPDATE ON public.deals');
 });
 
 test('the app transports ImmoPilotStore only to Biens after Pipeline detachment', async () => {

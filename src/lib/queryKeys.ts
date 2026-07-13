@@ -57,6 +57,9 @@ export const queryKeys = {
   pipelineStages(userId: string | null | undefined) {
     return ['pipeline-stages', userId ?? 'anonymous'] as const;
   },
+  pipelineLinkProperties(userId: string | null | undefined) {
+    return ['pipeline-link-properties', userId ?? 'anonymous'] as const;
+  },
   contactsRoot(userId: string | null | undefined) {
     return ['contacts', userId ?? 'anonymous'] as const;
   },

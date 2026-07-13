@@ -72,7 +72,8 @@ export function DealFichePanel({
   const tasks    = dealTasks.tasks.slice(0, 5).map(taskToView);
   const dealNotes = useNotes({ dealId: deal.id });
   const currentStageIdx = stages.findIndex(s => s.id === deal.stageId);
-  const isActive = !['Perdu', 'Bien vendu'].includes(deal.stage);
+  const currentStage = stages[currentStageIdx];
+  const isActive = !deal.closedAt && !deal.isWon && !deal.isLost && !currentStage?.isWon && !currentStage?.isLost;
   const isDealOwner = profile?.id === deal.ownerId;
   const commission = (profile?.role === 'admin' ? agencyCommissionsState.commissions : myCommissionsState.commissions)
     .find((item) => item.deal_id === deal.id);
@@ -115,7 +116,7 @@ export function DealFichePanel({
   }, [deal.id, deal.contactId, deal.propertyId]);
 
   const handleAdvanceStage = async () => {
-    if (currentStageIdx < stages.length - 1) {
+    if (isActive && !isPending && currentStageIdx >= 0 && currentStageIdx < stages.length - 1) {
       try {
         await onMoveDeal(deal.id, stages[currentStageIdx + 1].id);
       } catch {
@@ -174,6 +175,7 @@ export function DealFichePanel({
   };
 
   const handleMilestone = async (milestone: 'rdv' | 'offre' | 'mandat_potentiel') => {
+    if (!isActive || isPending) return;
     const targetByMilestone: Record<typeof milestone, string> = {
       rdv: 'visite',
       offre: 'proposition',
@@ -193,7 +195,7 @@ export function DealFichePanel({
   };
 
   const handleStageSelect = async (stageId: string) => {
-    if (stageId === deal.stageId) return;
+    if (!isActive || isPending || stageId === deal.stageId) return;
     try {
       await onMoveDeal(deal.id, stageId);
     } catch {
@@ -269,7 +271,7 @@ export function DealFichePanel({
           <div className="fiche-head-left">
             <span className="deal-ref">{dealRef}</span>
             <StatusBadge tone={isActive ? 'success' : 'neutral'} leadingDot>
-              {deal.stage === 'Bien vendu' ? 'Vendu' : deal.stage === 'Perdu' ? 'Perdu' : 'Actif'}
+              {deal.isWon || currentStage?.isWon ? 'Vendu' : deal.isLost || currentStage?.isLost ? 'Perdu' : 'Actif'}
             </StatusBadge>
           </div>
           <button className="fiche-close" type="button" onClick={onClose} aria-label="Fermer">
@@ -286,9 +288,7 @@ export function DealFichePanel({
               <img src={property.photos[0]} alt={property.title} />
             )}
           </div>
-          <div className="ai-badge">
-            <ScoreRing score={property?.score ?? 70} size="lg" />
-          </div>
+          {property && <div className="ai-badge"><ScoreRing score={property.score} size="lg" /></div>}
         </div>
 
         {/* ── Info ── */}
@@ -321,6 +321,7 @@ export function DealFichePanel({
               <div
                 key={stage.id}
                 className={`step ${cls}`}
+                aria-disabled={isPending || !isActive}
                 onClick={() => { void handleStageSelect(stage.id); }}
               >
                 <div className="step-icon">
@@ -338,9 +339,9 @@ export function DealFichePanel({
 
         {/* ── Body ── */}
         <div className="deal-quick-actions">
-          <button type="button" disabled={isPending} onClick={() => { void handleMilestone('rdv'); }}>Marquer RDV</button>
-          <button type="button" disabled={isPending} onClick={() => { void handleMilestone('offre'); }}>Marquer offre</button>
-          <button type="button" disabled={isPending} onClick={() => { void handleMilestone('mandat_potentiel'); }}>Mandat potentiel</button>
+          <button type="button" disabled={isPending || !isActive} onClick={() => { void handleMilestone('rdv'); }}>Marquer RDV</button>
+          <button type="button" disabled={isPending || !isActive} onClick={() => { void handleMilestone('offre'); }}>Marquer offre</button>
+          <button type="button" disabled={isPending || !isActive} onClick={() => { void handleMilestone('mandat_potentiel'); }}>Mandat potentiel</button>
           {isActive ? (
             <>
               <button type="button" disabled={isPending} onClick={() => { void handleCloseDeal('won'); }}>Gagné</button>
@@ -592,7 +593,7 @@ export function DealFichePanel({
             type="button"
             className="btn btn-primary"
             onClick={() => { void handleAdvanceStage(); }}
-            disabled={isPending || currentStageIdx >= stages.length - 1}
+            disabled={isPending || !isActive || currentStageIdx < 0 || currentStageIdx >= stages.length - 1}
           >
             Avancer stage
           </button>

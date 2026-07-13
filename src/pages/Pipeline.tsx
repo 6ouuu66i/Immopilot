@@ -1,14 +1,27 @@
 // src/pages/Pipeline.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { LayoutGrid, List, Plus } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { KanbanBoard } from '../components/pipeline/KanbanBoard';
 import { PipelineListView } from '../components/pipeline/PipelineListView';
 import { DealFichePanel } from '../components/pipeline/DealFichePanel';
 import { PipelineSkeleton } from '../components/pipeline/PipelineSkeleton';
+import { useAuth } from '../lib/auth';
+import { queryKeys } from '../lib/queryKeys';
+import { listPropertiesForPipelineLink } from '../lib/supabaseProperties';
+import { useContacts } from '../lib/useContacts';
 import { useDeals } from '../lib/useDeals';
 import { useListingScores } from '../lib/useListingScores';
 import { usePipelineStages } from '../lib/usePipelineStages';
-import { buildPipelineRuntime, getPipelineDataState, isSupportedPipelineStage, pipelineUiError } from '../lib/pipelineRuntime';
+import {
+  buildPipelineRuntime,
+  getPipelineDataState,
+  getPipelineStageTransition,
+  isSupportedPipelineStage,
+  pipelineUiError,
+  resolvePipelineDeal,
+  togglePipelineDealSelection,
+} from '../lib/pipelineRuntime';
 import { formatEuro } from '../lib/formatCurrency';
 import type { PipelineDealLinks } from '../types/pipeline';
 import '../components/pipeline/pipeline.css';
@@ -55,11 +68,19 @@ function KpiCell({ label, value, delta, last }: KpiCellProps) {
 }
 
 export function Pipeline() {
+  const { user } = useAuth();
   const dealsState = useDeals({ includeClosed: true });
   const stagesState = usePipelineStages();
+  const contactsState = useContacts();
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
-  const [selectedDealId, setSelectedDealId] = useState<string | null>(() => getDealParamFromHash());
+  const [selectedDealKey, setSelectedDealKey] = useState<string | null>(() => getDealParamFromHash());
   const [moveError, setMoveError] = useState<string | null>(null);
+  const linkPropertiesQuery = useQuery({
+    queryKey: queryKeys.pipelineLinkProperties(user?.id),
+    queryFn: () => listPropertiesForPipelineLink(),
+    enabled: Boolean(user && selectedDealKey),
+    staleTime: 5 * 60 * 1000,
+  });
   const scorePropertyIds = useMemo(
     () => Array.from(new Set(dealsState.deals.map((deal) => deal.property_id).filter(Boolean))),
     [dealsState.deals],
@@ -67,20 +88,22 @@ export function Pipeline() {
   const { scoresByProperty } = useListingScores(scorePropertyIds);
 
   useEffect(() => {
-    const syncSelectedDeal = () => setSelectedDealId(getDealParamFromHash());
+    const syncSelectedDeal = () => setSelectedDealKey(getDealParamFromHash());
     window.addEventListener('hashchange', syncSelectedDeal);
     syncSelectedDeal();
     return () => window.removeEventListener('hashchange', syncSelectedDeal);
   }, []);
 
   const pipeline = useMemo(
-    () => buildPipelineRuntime(dealsState.deals, stagesState.stages, scoresByProperty),
-    [dealsState.deals, scoresByProperty, stagesState.stages],
+    () => buildPipelineRuntime(dealsState.deals, stagesState.stages, scoresByProperty, {
+      contacts: contactsState.contacts,
+      properties: linkPropertiesQuery.data ?? [],
+    }),
+    [contactsState.contacts, dealsState.deals, linkPropertiesQuery.data, scoresByProperty, stagesState.stages],
   );
   const { deals, stages } = pipeline;
-  const selectedDeal = selectedDealId
-    ? pipeline.dealsById.get(selectedDealId) ?? pipeline.dealsByReference.get(selectedDealId)
-    : undefined;
+  const selectedDeal = resolvePipelineDeal(pipeline, selectedDealKey);
+  const selectedDealId = selectedDeal?.id ?? null;
   const panelOpen = Boolean(selectedDeal);
 
   useEffect(() => {
@@ -93,9 +116,9 @@ export function Pipeline() {
   }, [panelOpen]);
 
   const kpis = useMemo(() => {
-    const active = deals.filter((deal) => !['Perdu', 'Bien vendu'].includes(deal.stage));
-    const mandats = deals.filter((deal) => deal.stage === 'Mandat signé').length;
-    const vendus = deals.filter((deal) => deal.stage === 'Bien vendu').length;
+    const active = deals.filter((deal) => !deal.closedAt && !deal.isWon && !deal.isLost);
+    const mandats = active.filter((deal) => deal.stage.toLocaleLowerCase('fr').includes('mandat')).length;
+    const vendus = deals.filter((deal) => deal.isWon).length;
     const commission = active.reduce((sum, deal) => sum + deal.commissionAmount, 0);
     return { active: active.length, mandats, vendus, commission };
   }, [deals]);
@@ -108,8 +131,8 @@ export function Pipeline() {
   const skeletonDealCount = Math.max(1, Math.min(deals.length || 3, 4));
 
   const handleSelectDeal = (dealId: string) => {
-    setSelectedDealId((prev) => {
-      const nextDealId = prev === dealId ? null : dealId;
+    setSelectedDealKey((previousKey) => {
+      const nextDealId = togglePipelineDealSelection(pipeline, previousKey, dealId);
       const nextDeal = nextDealId ? pipeline.dealsById.get(nextDealId) : undefined;
       window.location.hash = nextDeal?.reference ? `#pipeline?deal=${encodeURIComponent(nextDeal.reference)}` : '#pipeline';
       return nextDealId;
@@ -118,13 +141,29 @@ export function Pipeline() {
 
   const handleMoveDeal = async (dealId: string, stageId: string) => {
     setMoveError(null);
-    if (!isSupportedPipelineStage(stages, stageId)) {
+    const deal = pipeline.dealsById.get(dealId);
+    const targetStage = stages.find((stage) => stage.id === stageId);
+    if (!deal || !targetStage || !isSupportedPipelineStage(stages, stageId)) {
       setMoveError(pipelineUiError('move', 'Etape non supportee.'));
       throw new Error('Etape de pipeline non supportee.');
     }
 
     try {
-      await dealsState.updateDealStage(dealId, stageId);
+      const transition = getPipelineStageTransition(deal, targetStage);
+      if (transition.type === 'blocked') {
+        if (transition.reason === 'same-stage') return;
+        throw new Error(transition.reason === 'closed'
+          ? 'Reouvrez ce deal avant de le deplacer.'
+          : 'Configuration terminale invalide.');
+      }
+      if (transition.type === 'close') {
+        await dealsState.closeDeal(dealId, {
+          is_won: transition.outcome === 'won',
+          lost_reason: transition.outcome === 'lost' ? 'Cloture depuis le pipeline' : null,
+        });
+      } else {
+        await dealsState.updateDealStage(dealId, transition.stageId);
+      }
     } catch (error) {
       setMoveError(pipelineUiError('move', 'Veuillez reessayer.'));
       throw error;
@@ -317,7 +356,7 @@ export function Pipeline() {
           properties={pipeline.properties}
           isPending={dealsState.pendingDealIds.has(selectedDeal.id)}
           onClose={() => {
-            setSelectedDealId(null);
+            setSelectedDealKey(null);
             window.location.hash = '#pipeline';
           }}
           onMoveDeal={handleMoveDeal}

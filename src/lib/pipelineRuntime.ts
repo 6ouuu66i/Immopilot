@@ -1,4 +1,5 @@
 import type { ListingScoresByProperty } from './services/listingScoresService';
+import type { SupabaseContact } from './services/contactsService';
 import type { DealFull, UpdateDealInput } from './services/dealsService';
 import type { PipelineStageRow } from './services/pipelineStagesService';
 import type { Activity, Agent, Contact, PipelineStage, Property, Task } from '../types';
@@ -59,6 +60,13 @@ function mapProperty(deal: DealFull, scoresByProperty: ListingScoresByProperty):
   };
 }
 
+function preferPropertyDeal(candidate: DealFull, current: DealFull): boolean {
+  const candidateIsActive = !candidate.closed_at && !candidate.is_won && !candidate.is_lost;
+  const currentIsActive = !current.closed_at && !current.is_won && !current.is_lost;
+  if (candidateIsActive !== currentIsActive) return candidateIsActive;
+  return candidate.updated_at > current.updated_at;
+}
+
 function mapContact(deal: DealFull): Contact | undefined {
   if (!deal.contact) return undefined;
   return {
@@ -71,6 +79,20 @@ function mapContact(deal: DealFull): Contact | undefined {
     notes: deal.contact.notes ? [deal.contact.notes] : [],
     assignedDeals: [deal.id],
     assignedProperties: [deal.property_id],
+  };
+}
+
+function mapAvailableContact(contact: SupabaseContact): Contact {
+  return {
+    id: contact.id,
+    reference: contact.reference ?? 'CTC-...',
+    name: contact.full_name,
+    email: contact.email ?? 'Email a completer',
+    phone: contact.phone ?? 'Telephone a completer',
+    roles: (contact.roles.length > 0 ? contact.roles : ['prospect']) as Contact['roles'],
+    notes: contact.notes ? [contact.notes] : [],
+    assignedDeals: [],
+    assignedProperties: [],
   };
 }
 
@@ -87,11 +109,12 @@ function mapAgent(deal: DealFull): Agent | undefined {
 
 function mapTask(task: DealFull['tasks'][number]): Task {
   const due = task.due_date ? new Date(task.due_date) : null;
+  const hasDueDate = Boolean(due && !Number.isNaN(due.getTime()));
   return {
     id: task.id,
     title: task.title,
-    date: due && !Number.isNaN(due.getTime()) ? due.toISOString().slice(0, 10) : '',
-    time: due && !Number.isNaN(due.getTime()) ? due.toTimeString().slice(0, 5) : '09:00',
+    date: hasDueDate ? due!.toISOString().slice(0, 10) : '',
+    time: hasDueDate ? due!.toTimeString().slice(0, 5) : '',
     priority: task.priority === 'high' || task.priority === 'haute' ? 'haute' : task.priority === 'low' || task.priority === 'basse' ? 'basse' : 'moyenne',
     done: task.is_completed,
     agentId: task.owner_id,
@@ -143,24 +166,52 @@ function mapDeal(deal: DealFull): PipelineDeal {
   };
 }
 
+export interface BuildPipelineRuntimeOptions {
+  contacts?: SupabaseContact[];
+  properties?: Property[];
+}
+
 export function buildPipelineRuntime(
   dealsFull: DealFull[],
   stageRows: PipelineStageRow[],
   scoresByProperty: ListingScoresByProperty,
+  options: BuildPipelineRuntimeOptions = {},
 ): PipelineRuntimeData {
   const deals: PipelineDeal[] = [];
   const propertiesById = new Map<Property['id'], Property>();
   const contactsById = new Map<string, Contact>();
   const agentsById = new Map<string, Agent>();
   const tasksByDealId = new Map<string, Task[]>();
+  const propertyDealsById = new Map<string, DealFull>();
+
+  for (const property of options.properties ?? []) {
+    if (typeof property.id === 'string') propertiesById.set(property.id, property);
+  }
+  for (const contact of options.contacts ?? []) {
+    contactsById.set(contact.id, mapAvailableContact(contact));
+  }
 
   for (const dealFull of dealsFull) {
     deals.push(mapDeal(dealFull));
     const property = mapProperty(dealFull, scoresByProperty);
     const contact = mapContact(dealFull);
     const agent = mapAgent(dealFull);
-    if (property) propertiesById.set(property.id, property);
-    if (contact) contactsById.set(contact.id, contact);
+    if (property) {
+      const currentDeal = propertyDealsById.get(property.id as string);
+      if (!currentDeal || preferPropertyDeal(dealFull, currentDeal)) {
+        propertyDealsById.set(property.id as string, dealFull);
+        propertiesById.set(property.id, property);
+      }
+    }
+    if (contact) {
+      const existing = contactsById.get(contact.id);
+      contactsById.set(contact.id, {
+        ...existing,
+        ...contact,
+        assignedDeals: Array.from(new Set([...(existing?.assignedDeals ?? []), ...contact.assignedDeals])),
+        assignedProperties: Array.from(new Set([...(existing?.assignedProperties ?? []), ...contact.assignedProperties])),
+      });
+    }
     if (agent) agentsById.set(agent.id, agent);
     tasksByDealId.set(dealFull.id, dealFull.tasks.map(mapTask));
   }
@@ -186,13 +237,47 @@ export function getPipelineDataState(
   isLoading: boolean,
   error: string | null,
 ): PipelineDataState {
-  if (isLoading) return 'loading';
-  if (error) return 'error';
+  const hasCachedData = deals.length > 0 && stages.length > 0;
+  if (isLoading && !hasCachedData) return 'loading';
+  if (error && !hasCachedData) return 'error';
   return deals.length === 0 || stages.length === 0 ? 'empty' : 'ready';
 }
 
 export function isSupportedPipelineStage(stages: Pick<PipelineStage, 'id'>[], stageId: string): boolean {
   return stages.some((stage) => stage.id === stageId);
+}
+
+export function resolvePipelineDeal(
+  pipeline: Pick<PipelineRuntimeData, 'dealsById' | 'dealsByReference'>,
+  dealIdOrReference: string | null | undefined,
+): PipelineDeal | undefined {
+  if (!dealIdOrReference) return undefined;
+  return pipeline.dealsById.get(dealIdOrReference) ?? pipeline.dealsByReference.get(dealIdOrReference);
+}
+
+export function togglePipelineDealSelection(
+  pipeline: Pick<PipelineRuntimeData, 'dealsById' | 'dealsByReference'>,
+  currentDealIdOrReference: string | null,
+  clickedDealId: string,
+): string | null {
+  return resolvePipelineDeal(pipeline, currentDealIdOrReference)?.id === clickedDealId ? null : clickedDealId;
+}
+
+export type PipelineStageTransition =
+  | { type: 'move'; stageId: string }
+  | { type: 'close'; outcome: 'won' | 'lost' }
+  | { type: 'blocked'; reason: 'closed' | 'invalid-terminal-stage' | 'same-stage' };
+
+export function getPipelineStageTransition(
+  deal: Pick<PipelineDeal, 'stageId' | 'closedAt' | 'isWon' | 'isLost'>,
+  target: Pick<PipelineStageView, 'id' | 'isWon' | 'isLost'>,
+): PipelineStageTransition {
+  if (deal.closedAt || deal.isWon || deal.isLost) return { type: 'blocked', reason: 'closed' };
+  if (deal.stageId === target.id) return { type: 'blocked', reason: 'same-stage' };
+  if (target.isWon && target.isLost) return { type: 'blocked', reason: 'invalid-terminal-stage' };
+  if (target.isWon) return { type: 'close', outcome: 'won' };
+  if (target.isLost) return { type: 'close', outcome: 'lost' };
+  return { type: 'move', stageId: target.id };
 }
 
 export function pipelineUiError(scope: 'move' | 'notes' | 'tasks', error: string): string {
@@ -221,6 +306,22 @@ export function applyOptimisticDealPatch(
 
 export function replaceDealInList(deals: DealFull[], deal: DealFull): DealFull[] {
   return deals.map((current) => current.id === deal.id ? deal : current);
+}
+
+export function restoreDealInList(
+  deals: DealFull[],
+  snapshot: { deal: DealFull | undefined; index: number },
+): DealFull[] {
+  const withoutTarget = snapshot.deal
+    ? deals.filter((deal) => deal.id !== snapshot.deal?.id)
+    : deals;
+  if (!snapshot.deal) return withoutTarget;
+  const insertAt = Math.max(0, Math.min(snapshot.index, withoutTarget.length));
+  return [
+    ...withoutTarget.slice(0, insertAt),
+    snapshot.deal,
+    ...withoutTarget.slice(insertAt),
+  ];
 }
 
 export interface OptimisticMutationOptions<TSnapshot, TResult> {

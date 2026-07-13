@@ -6,6 +6,7 @@ import {
   DealMutationLock,
   executeOptimisticMutation,
   replaceDealInList,
+  restoreDealInList,
 } from './pipelineRuntime';
 import { queryKeys } from './queryKeys';
 import {
@@ -19,7 +20,12 @@ import {
 import type { PipelineStageRow } from './services/pipelineStagesService';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-type DealQuerySnapshot = Array<[QueryKey, DealFull[] | undefined]>;
+
+interface DealQuerySnapshot {
+  key: QueryKey;
+  deal: DealFull | undefined;
+  index: number;
+}
 
 export interface UseDealsResult {
   deals: DealFull[];
@@ -50,18 +56,32 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : error ? String(error) : fallback;
 }
 
-function restoreSnapshots(queryClient: ReturnType<typeof useQueryClient>, snapshots: DealQuerySnapshot) {
-  snapshots.forEach(([key, value]) => queryClient.setQueryData(key, value));
+function snapshotDealQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  rootQueryKey: QueryKey,
+  dealId: string,
+): DealQuerySnapshot[] {
+  return queryClient.getQueriesData<DealFull[]>({ queryKey: rootQueryKey }).map(([key, deals]) => {
+    const index = deals?.findIndex((deal) => deal.id === dealId) ?? -1;
+    return { key, deal: index >= 0 ? deals?.[index] : undefined, index };
+  });
+}
+
+function restoreSnapshots(queryClient: ReturnType<typeof useQueryClient>, snapshots: DealQuerySnapshot[]) {
+  snapshots.forEach((snapshot) => queryClient.setQueryData<DealFull[]>(
+    snapshot.key,
+    (current = []) => restoreDealInList(current, snapshot),
+  ));
 }
 
 function updateSnapshots(
   queryClient: ReturnType<typeof useQueryClient>,
-  snapshots: DealQuerySnapshot,
+  snapshots: DealQuerySnapshot[],
   updater: (deals: DealFull[], includeClosed: boolean) => DealFull[],
 ) {
-  snapshots.forEach(([key, value]) => {
+  snapshots.forEach(({ key }) => {
     const filters = key[2] as { includeClosed?: boolean } | undefined;
-    queryClient.setQueryData(key, updater(value ?? [], Boolean(filters?.includeClosed)));
+    queryClient.setQueryData<DealFull[]>(key, (current = []) => updater(current, Boolean(filters?.includeClosed)));
   });
 }
 
@@ -84,6 +104,11 @@ export function useDeals(initialFilters: ListDealsFilters = {}): UseDealsResult 
   const createMutation = useMutation({ mutationFn: dealsService.createDeal });
   const updateMutation = useMutation({
     mutationFn: ({ dealId, patch }: { dealId: string; patch: UpdateDealInput }) => dealsService.updateDeal(dealId, patch),
+  });
+  const stageMutation = useMutation({
+    mutationFn: ({ dealId, stageId, expectedStageId }: { dealId: string; stageId: string; expectedStageId: string }) => (
+      dealsService.updateDealStage(dealId, stageId, expectedStageId)
+    ),
   });
   const closeMutation = useMutation({
     mutationFn: ({ dealId, input }: { dealId: string; input: CloseDealInput }) => dealsService.closeDeal(dealId, input),
@@ -128,11 +153,12 @@ export function useDeals(initialFilters: ListDealsFilters = {}): UseDealsResult 
   }, [createMutation, invalidateDeals, queryClient, queryKey]);
 
   const updateDeal = useCallback((dealId: string, patch: UpdateDealInput) => runLocked(dealId, async () => {
+    await queryClient.cancelQueries({ queryKey: rootQueryKey });
     const stages = user
       ? queryClient.getQueryData<PipelineStageRow[]>(queryKeys.pipelineStages(user.id)) ?? []
       : [];
     return executeOptimisticMutation({
-      snapshot: () => queryClient.getQueriesData<DealFull[]>({ queryKey: rootQueryKey }),
+      snapshot: () => snapshotDealQueries(queryClient, rootQueryKey, dealId),
       apply: () => queryClient.setQueriesData<DealFull[]>({ queryKey: rootQueryKey }, (current = []) => (
         current.map((deal) => deal.id === dealId ? applyOptimisticDealPatch(deal, patch, stages) : deal)
       )),
@@ -145,7 +171,7 @@ export function useDeals(initialFilters: ListDealsFilters = {}): UseDealsResult 
     });
   }), [invalidateDeals, queryClient, rootQueryKey, runLocked, updateMutation, user]);
 
-  const updateDealStage = useCallback(async (dealId: string, newStageId: string) => {
+  const updateDealStage = useCallback((dealId: string, newStageId: string) => runLocked(dealId, async () => {
     const stages = user
       ? queryClient.getQueryData<PipelineStageRow[]>(queryKeys.pipelineStages(user.id)) ?? []
       : [];
@@ -154,20 +180,40 @@ export function useDeals(initialFilters: ListDealsFilters = {}): UseDealsResult 
       setMutationError(error.message);
       throw error;
     }
-    return updateDeal(dealId, { stage_id: newStageId });
-  }, [queryClient, updateDeal, user]);
+    await queryClient.cancelQueries({ queryKey: rootQueryKey });
+    const snapshots = snapshotDealQueries(queryClient, rootQueryKey, dealId);
+    const currentDeal = snapshots.find((snapshot) => snapshot.deal)?.deal;
+    if (!currentDeal) throw new Error('Deal introuvable dans le pipeline. Rechargez la page.');
+    return executeOptimisticMutation({
+      snapshot: () => snapshots,
+      apply: () => queryClient.setQueriesData<DealFull[]>({ queryKey: rootQueryKey }, (current = []) => (
+        current.map((deal) => deal.id === dealId ? applyOptimisticDealPatch(deal, { stage_id: newStageId }, stages) : deal)
+      )),
+      mutate: () => stageMutation.mutateAsync({
+        dealId,
+        stageId: newStageId,
+        expectedStageId: currentDeal.stage_id,
+      }),
+      commit: (updated) => queryClient.setQueriesData<DealFull[]>({ queryKey: rootQueryKey }, (current = []) => (
+        replaceDealInList(current, updated)
+      )),
+      rollback: (snapshots) => restoreSnapshots(queryClient, snapshots),
+      invalidate: invalidateDeals,
+    });
+  }), [invalidateDeals, queryClient, rootQueryKey, runLocked, stageMutation, user]);
 
   const closeDeal = useCallback((dealId: string, input: CloseDealInput) => runLocked(dealId, async () => {
+    await queryClient.cancelQueries({ queryKey: rootQueryKey });
     const now = new Date().toISOString();
     const stages = user
       ? queryClient.getQueryData<PipelineStageRow[]>(queryKeys.pipelineStages(user.id)) ?? []
       : [];
     const terminalStage = stages.find((stage) => input.is_won ? stage.is_won : stage.is_lost);
     if (!terminalStage) throw new Error(input.is_won ? 'Etape gagnee introuvable.' : 'Etape perdue introuvable.');
-    let snapshots: DealQuerySnapshot = [];
+    let snapshots: DealQuerySnapshot[] = [];
     return executeOptimisticMutation({
       snapshot: () => {
-        snapshots = queryClient.getQueriesData<DealFull[]>({ queryKey: rootQueryKey });
+        snapshots = snapshotDealQueries(queryClient, rootQueryKey, dealId);
         return snapshots;
       },
       apply: () => updateSnapshots(queryClient, snapshots, (current, includeClosed) => (
@@ -193,7 +239,8 @@ export function useDeals(initialFilters: ListDealsFilters = {}): UseDealsResult 
   }), [closeMutation, invalidateDeals, queryClient, rootQueryKey, runLocked, user]);
 
   const reopenDeal = useCallback((dealId: string) => runLocked(dealId, async () => {
-    const snapshots = queryClient.getQueriesData<DealFull[]>({ queryKey: rootQueryKey });
+    await queryClient.cancelQueries({ queryKey: rootQueryKey });
+    const snapshots = snapshotDealQueries(queryClient, rootQueryKey, dealId);
     try {
       const updated = await reopenMutation.mutateAsync(dealId);
       queryClient.setQueriesData<DealFull[]>({ queryKey: rootQueryKey }, (current = []) => replaceDealInList(current, updated));
@@ -205,14 +252,17 @@ export function useDeals(initialFilters: ListDealsFilters = {}): UseDealsResult 
     }
   }), [invalidateDeals, queryClient, reopenMutation, rootQueryKey, runLocked]);
 
-  const deleteDeal = useCallback((dealId: string) => runLocked(dealId, async () => executeOptimisticMutation({
-    snapshot: () => queryClient.getQueriesData<DealFull[]>({ queryKey: rootQueryKey }),
-    apply: () => queryClient.setQueriesData<DealFull[]>({ queryKey: rootQueryKey }, (current = []) => current.filter((deal) => deal.id !== dealId)),
-    mutate: () => deleteMutation.mutateAsync(dealId),
-    commit: () => undefined,
-    rollback: (snapshots) => restoreSnapshots(queryClient, snapshots),
-    invalidate: invalidateDeals,
-  })), [deleteMutation, invalidateDeals, queryClient, rootQueryKey, runLocked]);
+  const deleteDeal = useCallback((dealId: string) => runLocked(dealId, async () => {
+    await queryClient.cancelQueries({ queryKey: rootQueryKey });
+    return executeOptimisticMutation({
+      snapshot: () => snapshotDealQueries(queryClient, rootQueryKey, dealId),
+      apply: () => queryClient.setQueriesData<DealFull[]>({ queryKey: rootQueryKey }, (current = []) => current.filter((deal) => deal.id !== dealId)),
+      mutate: () => deleteMutation.mutateAsync(dealId),
+      commit: () => undefined,
+      rollback: (snapshots) => restoreSnapshots(queryClient, snapshots),
+      invalidate: invalidateDeals,
+    });
+  }), [deleteMutation, invalidateDeals, queryClient, rootQueryKey, runLocked]);
 
   const loadError = dealsQuery.error ? errorMessage(dealsQuery.error, 'Chargement des deals impossible.') : null;
   return {

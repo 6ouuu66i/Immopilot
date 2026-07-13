@@ -445,6 +445,20 @@ export async function searchPropertiesForLink(term: string, limit = 20): Promise
   return (data ?? []).map(mapCanonicalPropertyRow);
 }
 
+export async function listPropertiesForPipelineLink(limit = 1000): Promise<Property[]> {
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from(ACTIVE_PROPERTIES_CANONICAL_VIEW)
+    .select(ACTIVE_PROPERTIES_CANONICAL_SELECT)
+    .order('last_seen_at', { ascending: false })
+    .limit(Math.max(1, Math.min(limit, 1000)))
+    .returns<ActivePropertyCanonicalRow[]>();
+
+  if (error) throw new Error(error.message);
+  return uniqueSupabaseProperties((data ?? []).map(mapCanonicalPropertyRow));
+}
+
 export async function fetchPropertyDetail(listingId: string): Promise<PropertyDetail | null> {
   if (!supabase) return null;
 

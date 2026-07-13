@@ -40,11 +40,12 @@ function localDateKey(date = new Date()): string {
 }
 
 function taskTimestamp(task: Task): number {
+  if (!task.date) return Number.POSITIVE_INFINITY;
   return new Date(`${task.date}T${task.time || '23:59'}`).getTime();
 }
 
 function dueState(task: Task | undefined): 'overdue' | 'today' | 'later' | 'none' {
-  if (!task) return 'none';
+  if (!task?.date) return 'none';
   const today = localDateKey();
   if (task.date < today) return 'overdue';
   if (task.date === today) return 'today';
@@ -53,6 +54,7 @@ function dueState(task: Task | undefined): 'overdue' | 'today' | 'later' | 'none
 
 function compactTaskTime(task: Task): string {
   const state = dueState(task);
+  if (state === 'none') return 'Sans échéance';
   if (state === 'overdue' || state === 'today') return task.time;
   const date = new Date(`${task.date}T12:00:00`);
   const label = Number.isNaN(date.getTime())
@@ -63,6 +65,7 @@ function compactTaskTime(task: Task): string {
 
 function taskStatusLabel(task: Task): string {
   const state = dueState(task);
+  if (state === 'none') return 'Sans échéance';
   if (state === 'overdue') return 'En retard';
   if (state === 'today') return "Aujourd'hui";
   return 'À venir';
@@ -103,7 +106,7 @@ function DealCard({ deal, property, agent, tasks, selected, isDragging, isPendin
     <article
       className={`deal-card${isDragging ? ' dragging' : ''}`}
       style={{ outline: selected ? '2px solid var(--color-brand)' : 'none', outlineOffset: 2 }}
-      draggable={!isPending}
+      draggable={!isPending && !deal.closedAt && !deal.isWon && !deal.isLost}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onSelect}

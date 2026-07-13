@@ -4,6 +4,7 @@ import {
   DealMutationLock,
   executeOptimisticMutation,
   replaceDealInList,
+  restoreDealInList,
 } from '../../src/lib/pipelineRuntime';
 import type { DealFull } from '../../src/lib/services/dealsService';
 import type { PipelineStageRow } from '../../src/lib/services/pipelineStagesService';
@@ -94,4 +95,15 @@ test('a second concurrent mutation for the same deal is rejected', async () => {
 
   releaseFirst();
   await first;
+});
+
+test('rolling back one deal preserves a concurrent success on another deal', () => {
+  const originalA = deal();
+  const originalB = { ...deal(stageB), id: 'deal-b' };
+  const committedA = { ...originalA, title: 'Concurrent success' };
+  const optimisticB = { ...originalB, title: 'Optimistic change' };
+
+  const restored = restoreDealInList([committedA, optimisticB], { deal: originalB, index: 1 });
+
+  expect(restored).toEqual([committedA, originalB]);
 });

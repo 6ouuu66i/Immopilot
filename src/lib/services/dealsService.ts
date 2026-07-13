@@ -359,42 +359,77 @@ export const dealsService = {
     return updated;
   },
 
-  async updateDealStage(dealId: string, newStageId: string): Promise<DealFull> {
-    const updated = await dealsService.updateDeal(dealId, { stage_id: newStageId });
-    await logActivity(updated, 'stage_changed', { stage_id: newStageId });
+  async updateDealStage(dealId: string, newStageId: string, expectedStageId: string): Promise<DealFull> {
+    const client = assertSupabase();
+    const { data, error } = await client
+      .from('deals')
+      .update({ stage_id: newStageId })
+      .eq('id', dealId)
+      .eq('stage_id', expectedStageId)
+      .is('closed_at', null)
+      .eq('is_won', false)
+      .eq('is_lost', false)
+      .select('*')
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('Ce deal a deja change ou ete cloture. Rechargez le pipeline.');
+    const [updated] = await hydrateDeals([data as SupabaseDeal]);
+    if (!updated) throw new Error('Deal modifie introuvable.');
     return updated;
   },
 
   async closeDeal(dealId: string, { is_won, lost_reason }: CloseDealInput): Promise<DealFull> {
+    const client = assertSupabase();
     const stages = await pipelineStagesService.listStages();
     const terminalStage = stages.find((stage) => is_won ? stage.is_won : stage.is_lost);
     if (!terminalStage) throw new Error(is_won ? 'Etape gagnee introuvable.' : 'Etape perdue introuvable.');
-    const updated = await dealsService.updateDeal(dealId, {
-      stage_id: terminalStage.id,
-      closed_at: new Date().toISOString(),
-      is_won,
-      is_lost: !is_won,
-      lost_reason: is_won ? null : normalizeNullable(lost_reason),
-    } as DealUpdate);
+    const { data, error } = await client
+      .from('deals')
+      .update({
+        stage_id: terminalStage.id,
+        closed_at: new Date().toISOString(),
+        is_won,
+        is_lost: !is_won,
+        lost_reason: is_won ? null : normalizeNullable(lost_reason),
+      })
+      .eq('id', dealId)
+      .is('closed_at', null)
+      .eq('is_won', false)
+      .eq('is_lost', false)
+      .select('*')
+      .maybeSingle();
 
-    await logActivity(updated, is_won ? 'deal_won' : 'deal_lost', {
-      lost_reason: updated.lost_reason,
-    });
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('Ce deal a deja ete cloture ou modifie. Rechargez le pipeline.');
+    const [updated] = await hydrateDeals([data as SupabaseDeal]);
+    if (!updated) throw new Error('Deal cloture introuvable.');
     return updated;
   },
 
   async reopenDeal(dealId: string): Promise<DealFull> {
+    const client = assertSupabase();
     const stages = await pipelineStagesService.listStages();
     const activeStage = stages.find((stage) => !stage.is_won && !stage.is_lost);
     if (!activeStage) throw new Error('Aucune etape active disponible.');
-    const updated = await dealsService.updateDeal(dealId, {
-      stage_id: activeStage.id,
-      closed_at: null,
-      is_won: false,
-      is_lost: false,
-      lost_reason: null,
-    } as DealUpdate);
-    await logActivity(updated, 'deal_reopened');
+    const { data, error } = await client
+      .from('deals')
+      .update({
+        stage_id: activeStage.id,
+        closed_at: null,
+        is_won: false,
+        is_lost: false,
+        lost_reason: null,
+      })
+      .eq('id', dealId)
+      .not('closed_at', 'is', null)
+      .select('*')
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('Ce deal est deja ouvert ou a ete modifie. Rechargez le pipeline.');
+    const [updated] = await hydrateDeals([data as SupabaseDeal]);
+    if (!updated) throw new Error('Deal rouvert introuvable.');
     return updated;
   },
 
