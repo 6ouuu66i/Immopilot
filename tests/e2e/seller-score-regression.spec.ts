@@ -30,8 +30,10 @@ function waitForCanonicalPropertyTotal(page: Page, segment: SellerSegment): Prom
       && url.pathname.endsWith('/rest/v1/active_properties_canonical_mat')
       && url.searchParams.get('seller_segment') === `eq.${segment}`;
   }).then((response) => {
+    const prefer = response.request().headers().prefer ?? '';
     const contentRange = response.headers()['content-range'];
     const total = contentRange ? Number(contentRange.split('/').at(-1)) : Number.NaN;
+    expect(prefer.split(',').map((value) => value.trim()), `missing exact count request for ${segment}`).toContain('count=exact');
     expect(total, `missing exact count for ${segment} canonical properties`).toBeGreaterThanOrEqual(0);
     return total;
   });
