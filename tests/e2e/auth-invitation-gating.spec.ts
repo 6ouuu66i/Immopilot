@@ -152,7 +152,8 @@ test('F-006 architecture has no unguarded signup or incomplete-account fallback'
     source('src/components/ProtectedRoute.tsx'),
     source(`supabase/migrations/${migrationName}`),
   ]);
-  expect(auth).toContain('options: { data: invitationSignUpMetadata(invitationToken) }');
+  expect(auth).toContain('data: invitationSignUpMetadata(invitationToken)');
+  expect(auth).toContain('emailRedirectTo: invitationConfirmationRedirectUrl()');
   expect(auth).not.toContain('signUp: (email: string, password: string)');
   const signupSources = await Promise.all((await sourceFiles('src')).map(async (relativePath) => ({
     contents: await source(relativePath),

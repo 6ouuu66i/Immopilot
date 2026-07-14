@@ -23,6 +23,7 @@ import { AuthProvider, useAuth } from './lib/auth';
 import { initPostHog } from './lib/posthog';
 import { appQueryClient } from './lib/queryClient';
 import { captureAndStripInviteToken } from './lib/inviteToken';
+import { isInvitationResumeRequest } from './lib/invitationSignUp';
 
 type RouteKey =
   | 'dashboard'
@@ -62,6 +63,9 @@ const legacyRouteLoaders: Partial<Record<RouteKey, () => Promise<{ default: stri
 
 function getRouteFromHash(): RouteKey {
   if (window.location.pathname === '/login') return 'login';
+  // Supabase's browser confirmation flow owns the fragment for session tokens. The
+  // non-sensitive query marker keeps this route recoverable until Auth consumes it.
+  if (isInvitationResumeRequest()) return 'invite';
   const rawHash = window.location.hash.replace(/^#/, '') || DEFAULT_ROUTE;
   const routeName = rawHash.split('?')[0] as RouteKey;
   if (routeName === 'login' || routeName === 'dashboard' || routeName === 'biens' || routeName === 'biens-agence' || routeName === 'pipeline' || routeName === 'agenda' || routeName === 'contacts' || routeName === 'transfers' || routeName === 'commissions' || routeName === 'notifications' || routeName === 'settings' || routeName === 'admin' || routeName === 'score-test' || routeName === 'invite' || routeName === 'reset-password' || legacyRouteLoaders[routeName]) return routeName;

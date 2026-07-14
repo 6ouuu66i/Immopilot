@@ -49,5 +49,6 @@
   "20260712150857_pipeline_observability.sql": "00d8e94099fe638b1691b72182a4b10cb422241b44b765ca518c55e980f0e47c",
   "20260713005437_fix_pipeline_health_source_separation.sql": "cbe8d9f643d4dbc30a9f19da052df14872f35290ce95e5d0c447661dc4e7581d",
   "20260713020957_fix_pipeline_observability_real_timestamps.sql": "d0f0655b3bda11ff507746f855ff23d5402d4a81a1c498dc27af6f56f94d4473",
-  "20260713204325_enforce_invitation_only_access.sql": "c29dcc82585a6b3bc102e444348e6786be6d40f3549997ef33e93c1297c374fb"
+  "20260713204325_enforce_invitation_only_access.sql": "c29dcc82585a6b3bc102e444348e6786be6d40f3549997ef33e93c1297c374fb",
+  "20260715120000_resume_confirmed_invitation_signup.sql": "04e4511f29dee2f489196a9991bcb5654b2c72e4e33adc9c0a30c54fdb8792e4"
 }

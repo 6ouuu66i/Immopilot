@@ -68,6 +68,19 @@ const ACCEPT_INVITATION_SQLSTATE_MAP: Record<string, AcceptInvitationErrorCode> 
   IPV08: 'integrity_error',
 };
 
+const RESUME_INVITATION_STATUS_MAP: Record<string, AcceptInvitationErrorCode> = {
+  not_authenticated: 'not_authenticated',
+  invalid_token: 'invalid_token',
+  not_found: 'not_found',
+  already_used: 'already_used',
+  expired: 'expired',
+  email_mismatch: 'email_mismatch',
+  profile_not_found: 'profile_not_found',
+  already_in_agency: 'already_in_agency',
+  integrity_error: 'integrity_error',
+  unknown: 'unknown',
+};
+
 function acceptInvitationMessageForCode(code: AcceptInvitationErrorCode): string {
   switch (code) {
     case 'not_authenticated':
@@ -243,5 +256,24 @@ export const agentsService = {
       const code = ACCEPT_INVITATION_SQLSTATE_MAP[rawCode] ?? 'unknown';
       throw new AcceptInvitationError(code, acceptInvitationMessageForCode(code));
     }
+  },
+
+  // F-006: after email confirmation the browser no longer has the bearer token. The
+  // server-side resume context is keyed by auth.uid(), contains only an invitation ID,
+  // and delegates the actual mutation to accept_invitation(token) atomically.
+  async resumeInvitationSignup(): Promise<void> {
+    const client = assertSupabase();
+    const { data, error } = await client.rpc('resume_invitation_signup' as never);
+
+    if (error) {
+      throw new AcceptInvitationError('unknown', acceptInvitationMessageForCode('unknown'));
+    }
+
+    const result = data as unknown;
+    const status = typeof result === 'string' ? result : 'unknown';
+    if (status === 'accepted') return;
+
+    const code = RESUME_INVITATION_STATUS_MAP[status] ?? 'unknown';
+    throw new AcceptInvitationError(code, acceptInvitationMessageForCode(code));
   },
 };

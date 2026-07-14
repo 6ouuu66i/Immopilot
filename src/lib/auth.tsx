@@ -9,7 +9,11 @@ import { listingScoresService } from './services/listingScoresService';
 import { listingSignalsService } from './services/listingSignalsService';
 import { fetchSupabasePropertiesPage, type SupabasePropertyListFilters } from './supabaseProperties';
 import { supabase } from './supabase';
-import { invitationSignUpMetadata, INVITATION_ONLY_MESSAGE } from './invitationSignUp';
+import {
+  invitationConfirmationRedirectUrl,
+  invitationSignUpMetadata,
+  INVITATION_ONLY_MESSAGE,
+} from './invitationSignUp';
 
 export type AuthProfile = Tables<'profiles'>;
 export type AuthAgency = Tables<'agencies'>;
@@ -23,10 +27,14 @@ interface AuthContextValue {
   isPasswordRecovery: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  signUpWithInvitation: (email: string, password: string, invitationToken: string) => Promise<void>;
+  signUpWithInvitation: (email: string, password: string, invitationToken: string) => Promise<InvitationSignUpResult>;
   requestPasswordReset: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
+}
+
+export interface InvitationSignUpResult {
+  requiresEmailConfirmation: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -245,12 +253,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signUpWithInvitation = useCallback(async (email: string, password: string, invitationToken: string) => {
     if (!supabase) throw new Error("Supabase n'est pas configure.");
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: invitationSignUpMetadata(invitationToken) },
+      options: {
+        data: invitationSignUpMetadata(invitationToken),
+        emailRedirectTo: invitationConfirmationRedirectUrl(),
+      },
     });
     if (error) throw new Error(INVITATION_ONLY_MESSAGE);
+    return { requiresEmailConfirmation: data.session === null };
   }, []);
 
   const requestPasswordReset = useCallback(async (email: string) => {
