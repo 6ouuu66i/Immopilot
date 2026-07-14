@@ -271,7 +271,7 @@ export const agentsService = {
 
     const result = data as unknown;
     const status = typeof result === 'string' ? result : 'unknown';
-    if (status === 'accepted') return;
+    if (status === 'accepted' || status === 'already_accepted') return;
 
     const code = RESUME_INVITATION_STATUS_MAP[status] ?? 'unknown';
     throw new AcceptInvitationError(code, acceptInvitationMessageForCode(code));

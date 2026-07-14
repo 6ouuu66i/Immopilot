@@ -82,6 +82,9 @@ AS $$
 DECLARE
   v_user_id uuid := auth.uid();
   v_context public.invitation_signup_resumptions%ROWTYPE;
+  v_invitation public.agency_invitations%ROWTYPE;
+  v_profile public.profiles%ROWTYPE;
+  v_caller_email text;
   v_token text;
   v_result text;
 BEGIN
@@ -104,19 +107,44 @@ BEGIN
     RETURN 'expired';
   END IF;
 
-  IF v_context.accepted_at IS NOT NULL THEN
-    RETURN 'accepted';
-  END IF;
-
-  SELECT invitation.token
-  INTO v_token
+  SELECT invitation.*
+  INTO v_invitation
   FROM public.agency_invitations invitation
   WHERE invitation.id = v_context.invitation_id;
 
-  IF v_token IS NULL THEN
+  IF NOT FOUND THEN
     DELETE FROM public.invitation_signup_resumptions WHERE user_id = v_user_id;
     RETURN 'not_found';
   END IF;
+
+  -- A refresh after a completed acceptance must not blindly trust accepted_at. Verify
+  -- that the current account still represents the exact membership granted by the
+  -- linked invitation. This path never replays accept_invitation() and never changes a
+  -- role or agency; any mismatch fails closed for investigation.
+  IF v_context.accepted_at IS NOT NULL THEN
+    SELECT profile.*
+    INTO v_profile
+    FROM public.profiles profile
+    WHERE profile.id = v_user_id;
+
+    SELECT users.email
+    INTO v_caller_email
+    FROM auth.users users
+    WHERE users.id = v_user_id;
+
+    IF v_profile.id IS NULL
+      OR v_caller_email IS NULL
+      OR v_profile.agency_id IS DISTINCT FROM v_invitation.agency_id
+      OR v_profile.role IS DISTINCT FROM v_invitation.role
+      OR lower(trim(v_caller_email)) IS DISTINCT FROM lower(trim(v_invitation.email))
+    THEN
+      RETURN 'integrity_error';
+    END IF;
+
+    RETURN 'already_accepted';
+  END IF;
+
+  v_token := v_invitation.token;
 
   BEGIN
     PERFORM public.accept_invitation(v_token);

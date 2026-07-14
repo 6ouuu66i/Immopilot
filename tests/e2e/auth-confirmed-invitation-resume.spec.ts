@@ -40,8 +40,12 @@ test('3. the confirmation callback routes to the authenticated server resume', a
 
 test('4. full reload recovery uses a server context and no browser token storage', async () => {
   const [migration, tokenHelper] = await Promise.all([source(resumeMigration), source('src/lib/inviteToken.ts')]);
+  const triggerFunction = migration.slice(0, migration.indexOf('CREATE FUNCTION public.resume_invitation_signup()'));
   expect(migration).toContain('CREATE TABLE public.invitation_signup_resumptions');
   expect(migration).toContain('user_id uuid PRIMARY KEY REFERENCES auth.users(id)');
+  expect(triggerFunction).toContain('NEW.id');
+  expect(triggerFunction).toMatch(/VALUES \(\s*NEW\.id,\s*v_invitation_id/);
+  expect(triggerFunction).not.toContain('auth.uid()');
   expect(migration).not.toContain('invitation_token text');
   expect(tokenHelper).not.toMatch(/(?:localStorage|sessionStorage)\.(?:setItem|getItem)/);
 });
@@ -67,7 +71,11 @@ test('7. a revoked invitation is rejected by the canonical acceptance function',
 
 test('8. a consumed invitation has a controlled outcome while a completed refresh is idempotent', async () => {
   const migration = await source(resumeMigration);
-  expect(migration).toMatch(/v_context\.accepted_at IS NOT NULL[\s\S]*?RETURN 'accepted'/);
+  expect(migration).toMatch(/v_context\.accepted_at IS NOT NULL[\s\S]*?RETURN 'already_accepted'/);
+  expect(migration).toContain('v_profile.agency_id IS DISTINCT FROM v_invitation.agency_id');
+  expect(migration).toContain('v_profile.role IS DISTINCT FROM v_invitation.role');
+  expect(migration).toContain('lower(trim(v_caller_email)) IS DISTINCT FROM lower(trim(v_invitation.email))');
+  expect(migration).toContain("RETURN 'integrity_error'");
   expect(migration).toContain("WHEN SQLSTATE 'IPV03' THEN v_result := 'already_used'");
 });
 
@@ -85,10 +93,12 @@ test('10. another authenticated user cannot read or resume someone else context'
 });
 
 test('11. accept_invitation is called once and subsequent refreshes use accepted_at', async () => {
-  const migration = await source(resumeMigration);
+  const [migration, service] = await Promise.all([source(resumeMigration), source('src/lib/services/agentsService.ts')]);
   expect(migration.match(/PERFORM public\.accept_invitation\(v_token\)/g)).toHaveLength(1);
   expect(migration).toContain('SET accepted_at = now()');
   expect(migration).toContain('IF v_context.accepted_at IS NOT NULL THEN');
+  expect(migration).toMatch(/FOR UPDATE[\s\S]*?PERFORM public\.accept_invitation\(v_token\)[\s\S]*?SET accepted_at = now\(\)/);
+  expect(service).toContain("status === 'accepted' || status === 'already_accepted'");
 });
 
 test('12. auth submission and invitation acceptance both have double-run guards', async () => {
