@@ -8,6 +8,7 @@ import {
   ChevronUp,
   ClipboardList,
   Copy,
+  HeartPulse,
   Plus,
   RotateCcw,
   Search,
@@ -27,10 +28,11 @@ import { agentsService, type AgentWithStats, type InvitationResult } from '../li
 import { auditLogsService, type AuditLogFull } from '../lib/services/auditLogsService';
 import { formatAmount } from '../lib/services/commissionsService';
 import { dealsService } from '../lib/services/dealsService';
-import { formatAddress } from '../lib/services/adminUtils';
+import { assertSupabase, formatAddress } from '../lib/services/adminUtils';
 import { pipelineStagesService, type PipelineStageRow } from '../lib/services/pipelineStagesService';
+import { StatusBadge, type StatusBadgeTone } from '../components/ui/StatusBadge';
 
-type AdminTab = 'overview' | 'agents' | 'transfers' | 'activity' | 'pipeline' | 'reserved';
+type AdminTab = 'overview' | 'agents' | 'transfers' | 'activity' | 'pipeline' | 'reserved' | 'health';
 
 const ADMIN_TABS = [
   { key: 'overview' as const, label: "Vue d'ensemble", icon: BarChart3 },
@@ -38,6 +40,7 @@ const ADMIN_TABS = [
   { key: 'transfers' as const, label: 'Transferts', icon: ArrowLeftRight },
   { key: 'activity' as const, label: 'Activité', icon: Activity },
   { key: 'pipeline' as const, label: 'Configuration pipeline', icon: SlidersHorizontal },
+  { key: 'health' as const, label: 'Santé système', icon: HeartPulse },
   { key: 'reserved' as const, label: 'Biens réservés', icon: ClipboardList },
 ];
 
@@ -97,6 +100,7 @@ export function Admin() {
           {tab === 'transfers' && <AdminTransfersPanel />}
           {tab === 'activity' && <ActivityTab />}
           {tab === 'pipeline' && <PipelineConfigTab onToast={notify} />}
+          {tab === 'health' && <SystemHealthTab />}
           {tab === 'reserved' && <ReservedDealsTab onToast={notify} />}
         </section>
       </div>
@@ -417,6 +421,204 @@ function ReservedDealsTab({ onToast }: { onToast: (message: string) => void }) {
         <p className="admin-help">Le deal sera clôturé en perdu avec la raison "Libéré par admin".</p>
         <div className="admin-modal-actions"><button type="button" onClick={() => setReleaseDeal(null)}>Annuler</button><button type="button" onClick={() => { void dealsService.releaseAsAdmin(releaseDeal.id, 'Libéré par admin').then(() => { setReleaseDeal(null); refresh(); onToast('Bien libéré.'); }); }}>Confirmer</button></div>
       </Modal>}
+    </Panel>
+  );
+}
+
+type HealthStatus = 'healthy' | 'stale' | 'failed' | 'running' | 'disabled' | 'unknown';
+
+interface HealthFreshnessItem {
+  status: HealthStatus;
+  last_updated_at: string | null;
+  age_seconds: number | null;
+}
+
+interface HealthRun {
+  id: string;
+  source: string;
+  status: string;
+  started_at: string;
+  finished_at: string | null;
+  duration_ms: number | null;
+  successful_steps: number;
+  total_steps: number;
+}
+
+interface SystemHealthSnapshot {
+  checked_at: string;
+  global_status: HealthStatus;
+  action_required: string | null;
+  pipeline: {
+    status: HealthStatus;
+    last_attempt: (HealthRun & { failed_step: string | null; error_message: string | null; error_count: number }) | null;
+    last_success_at: string | null;
+    age_seconds: number | null;
+    next_run_at: string | null;
+  };
+  cron: { status: HealthStatus; active: boolean; schedule: string | null; next_run_at: string | null };
+  ingestion: { enabled: boolean; status: HealthStatus; last_callback_at: string | null; last_success_at: string | null };
+  freshness: {
+    listings: HealthFreshnessItem;
+    scores: HealthFreshnessItem;
+    signals: HealthFreshnessItem;
+    market_reference: HealthFreshnessItem;
+    canonical_matview: HealthFreshnessItem;
+  };
+  history: HealthRun[];
+}
+
+interface HealthRpcClient {
+  rpc(name: 'get_system_health'): Promise<{ data: unknown; error: { message: string } | null }>;
+}
+
+const HEALTH_LABELS: Record<HealthStatus, string> = {
+  healthy: 'Sain',
+  stale: 'Données anciennes',
+  failed: 'Échec',
+  running: 'En cours',
+  disabled: 'Désactivé',
+  unknown: 'Inconnu',
+};
+
+const HEALTH_TONES: Record<HealthStatus, StatusBadgeTone> = {
+  healthy: 'success',
+  stale: 'warning',
+  failed: 'danger',
+  running: 'info',
+  disabled: 'neutral',
+  unknown: 'neutral',
+};
+
+const HEALTH_ACTIONS: Record<string, string> = {
+  inspect_failed_pipeline: "Inspecter l'étape en échec et les journaux du dernier run.",
+  inspect_stale_data: 'Vérifier la dernière exécution du pipeline et les données anciennes.',
+  verify_monitoring_configuration: 'Vérifier la configuration et la première exécution du monitoring.',
+};
+
+function isSystemHealthSnapshot(value: unknown): value is SystemHealthSnapshot {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<SystemHealthSnapshot>;
+  return typeof candidate.checked_at === 'string'
+    && typeof candidate.global_status === 'string'
+    && Boolean(candidate.pipeline && candidate.cron && candidate.ingestion && candidate.freshness)
+    && Array.isArray(candidate.history);
+}
+
+function formatHealthDate(value: string | null | undefined) {
+  if (!value) return 'Aucune donnée';
+  return new Intl.DateTimeFormat('fr-BE', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Europe/Brussels',
+  }).format(new Date(value));
+}
+
+function formatDuration(durationMs: number | null | undefined) {
+  if (durationMs === null || durationMs === undefined) return '-';
+  if (durationMs < 1_000) return `${durationMs} ms`;
+  return `${(durationMs / 1_000).toFixed(1)} s`;
+}
+
+function HealthBadge({ status }: { status: HealthStatus }) {
+  return <StatusBadge tone={HEALTH_TONES[status]} leadingDot>{HEALTH_LABELS[status]}</StatusBadge>;
+}
+
+function SystemHealthTab() {
+  const [health, setHealth] = useState<SystemHealthSnapshot | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  function refresh() {
+    setIsLoading(true);
+    setError(null);
+    const client = assertSupabase() as unknown as HealthRpcClient;
+    void client.rpc('get_system_health')
+      .then(({ data, error: rpcError }) => {
+        if (rpcError) throw new Error(rpcError.message);
+        if (!isSystemHealthSnapshot(data)) throw new Error('Réponse de santé invalide.');
+        setHealth(data);
+      })
+      .catch((loadError) => {
+        setHealth(null);
+        setError(loadError instanceof Error ? loadError.message : 'État de santé indisponible.');
+      })
+      .finally(() => setIsLoading(false));
+  }
+
+  useEffect(refresh, []);
+
+  const freshnessRows = health ? [
+    ['Listings', health.freshness.listings],
+    ['Scores', health.freshness.scores],
+    ['Signaux', health.freshness.signals],
+    ['Référence marché', health.freshness.market_reference],
+    ['Vue canonique matérialisée', health.freshness.canonical_matview],
+  ] as const : [];
+
+  return (
+    <Panel title="Santé système" description="État opérationnel calculé côté serveur, sans fallback mock.">
+      <button type="button" onClick={refresh} disabled={isLoading}>
+        <RotateCcw size={14} /> {isLoading ? 'Vérification…' : 'Actualiser'}
+      </button>
+
+      {error && <div className="admin-error" role="alert">Accès ou lecture impossible : {error}</div>}
+      {isLoading && !health && <div className="admin-empty">Chargement de la santé système…</div>}
+      {!isLoading && !error && !health && <div className="admin-empty">Aucune donnée de santé disponible.</div>}
+
+      {health && (
+        <>
+          <div className="admin-kpi-grid">
+            <article><span>État global</span><strong><HealthBadge status={health.global_status} /></strong></article>
+            <article><span>Pipeline quotidien</span><strong><HealthBadge status={health.pipeline.status} /></strong></article>
+            <article>
+              <span>Ingestion</span>
+              <strong><HealthBadge status={health.ingestion.status} /></strong>
+              {!health.ingestion.enabled && <small>Ingestion désactivée</small>}
+            </article>
+          </div>
+
+          <p className="admin-help">
+            Dernière vérification : {formatHealthDate(health.checked_at)}.
+            {health.action_required ? ` ${HEALTH_ACTIONS[health.action_required] ?? 'Une vérification est nécessaire.'}` : ' Aucune action nécessaire.'}
+          </p>
+
+          <h3 className="admin-section-title">Pipeline</h3>
+          <div className="admin-list">
+            <div className="admin-list-row"><strong>Dernier run</strong><span>{formatHealthDate(health.pipeline.last_attempt?.started_at)}</span></div>
+            <div className="admin-list-row"><strong>Durée</strong><span>{formatDuration(health.pipeline.last_attempt?.duration_ms)}</span></div>
+            <div className="admin-list-row"><strong>Étapes réussies</strong><span>{health.pipeline.last_attempt ? `${health.pipeline.last_attempt.successful_steps}/${health.pipeline.last_attempt.total_steps}` : '-'}</span></div>
+            <div className="admin-list-row"><strong>Dernier succès</strong><span>{formatHealthDate(health.pipeline.last_success_at)}</span></div>
+            <div className="admin-list-row"><strong>Prochaine exécution</strong><span>{formatHealthDate(health.pipeline.next_run_at)}</span></div>
+            {health.pipeline.last_attempt?.failed_step && (
+              <div className="admin-error" role="alert">
+                Étape en échec : {health.pipeline.last_attempt.failed_step}. {health.pipeline.last_attempt.error_message ?? 'Erreur interne nettoyée.'}
+              </div>
+            )}
+          </div>
+
+          <h3 className="admin-section-title">Fraîcheur</h3>
+          <div className="admin-list">
+            {freshnessRows.map(([label, item]) => (
+              <div className="admin-list-row" key={label}>
+                <strong>{label}</strong>
+                <HealthBadge status={item.status} />
+                <span>{formatHealthDate(item.last_updated_at)}</span>
+              </div>
+            ))}
+          </div>
+
+          <h3 className="admin-section-title">Historique récent</h3>
+          <div className="admin-list">
+            {health.history.length === 0 ? <div className="admin-empty">Aucun run enregistré.</div> : health.history.map((run) => (
+              <div className="admin-list-row" key={run.id}>
+                <strong>{run.source}</strong>
+                <span>{run.status} · {run.successful_steps}/{run.total_steps} étapes</span>
+                <span>{formatHealthDate(run.started_at)} · {formatDuration(run.duration_ms)}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </Panel>
   );
 }
