@@ -7,6 +7,7 @@ script_dir="$root_dir/scripts/database/cutover-proof"
 supabase_bin="$root_dir/node_modules/.bin/supabase"
 proof_root="${RUNNER_TEMP:?RUNNER_TEMP is required}/cutover-schema-proof"
 artifact_dir="$proof_root/artifacts"
+security_report_dir="$proof_root/security-report-only"
 raw_dir="$proof_root/raw"
 local_db_url="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
 postgres_image="postgres:17"
@@ -28,7 +29,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p -- "$artifact_dir" "$raw_dir"
+mkdir -p -- "$artifact_dir" "$security_report_dir" "$raw_dir"
 if [[ -z "${CUTOVER_DATABASE_URL:-}" ]]; then
   echo "CUTOVER_DATABASE_URL is not configured in the protected environment." >&2
   exit 2
@@ -54,28 +55,52 @@ if (( dry_run_status != 0 )); then
   echo "Supabase CLI dump dry-run failed; sanitized output retained locally." >&2
   exit "$dry_run_status"
 fi
+node "$script_dir/scan-dump.mjs" \
+  "$artifact_dir/dump-dry-run-sanitized.txt" \
+  "$artifact_dir/dump-dry-run-security-report.json" --log
 
-# Use the official PostgreSQL 17 image for both the read-only assertion and dump.
-readonly_state="$(docker run --rm \
+# The CLI dry-run does not forward host PGOPTIONS. Prove PGOPTIONS with PostgreSQL
+# 17 and reject any credential that still has remote write capabilities before the
+# same role is handed to the official Supabase schema dumper.
+pgoptions_state="$(docker run --rm \
   -e DATABASE_URL -e PGOPTIONS \
   "$postgres_image" \
   psql "$DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 \
   -c "show default_transaction_read_only")"
-if [[ "$readonly_state" != "on" ]]; then
-  echo "Remote connection did not inherit default_transaction_read_only=on." >&2
+readonly_probe="$(docker run --rm \
+  -e DATABASE_URL \
+  "$postgres_image" \
+  psql "$DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 \
+  -c "SELECT current_setting('default_transaction_read_only') || '|' || ((NOT r.rolsuper AND NOT r.rolcreaterole AND NOT r.rolcreatedb AND NOT r.rolreplication AND NOT r.rolbypassrls AND NOT has_database_privilege(current_user,current_database(),'CREATE') AND NOT has_schema_privilege(current_user,'public','CREATE') AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p') AND has_table_privilege(current_user,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE')))::text FROM pg_roles r WHERE r.rolname=current_user")"
+IFS='|' read -r readonly_state role_is_readonly <<<"$readonly_probe"
+if [[ "$pgoptions_state" != "on" || "$readonly_state" != "on" || "$role_is_readonly" != "true" ]]; then
+  echo "Remote credential did not satisfy the read-only transaction and role-capability contract." >&2
   exit 3
 fi
-printf '%s\n' 'default_transaction_read_only=on' >"$artifact_dir/read-only-proof.txt"
+{
+  printf '%s\n' 'Supabase CLI: 2.109.1'
+  docker run --rm "$postgres_image" pg_dump --version
+  docker run --rm "$postgres_image" psql --version
+} >"$artifact_dir/tool-versions.txt"
+printf '%s\n' '{"pgoptionsProbe":"default_transaction_read_only=on","credentialDefaultTransactionReadOnly":true,"credentialWriteCapabilities":false,"cliDryRunForwardsPgoptions":false,"guarantee":"official pg_dump uses a role whose own session default is read-only and which is rejected if it has database, schema, or table write capabilities"}' \
+  >"$artifact_dir/read-only-proof.json"
 
-docker run --rm \
-  -e DATABASE_URL -e PGOPTIONS \
-  -v "$artifact_dir:/proof" \
-  "$postgres_image" \
-  pg_dump "$DATABASE_URL" \
-  --schema-only \
-  --schema=public \
-  --no-password \
-  --file=/proof/public-schema-current.sql
+set +e
+"$supabase_bin" db dump --db-url "$DATABASE_URL" --schema public \
+  --file "$artifact_dir/public-schema-current.sql" \
+  >"$raw_dir/dump.raw" 2>&1
+dump_status=$?
+set -e
+node "$script_dir/sanitize-output.mjs" \
+  "$raw_dir/dump.raw" "$artifact_dir/dump-sanitized.log"
+rm -f -- "$raw_dir/dump.raw"
+node "$script_dir/scan-dump.mjs" \
+  "$artifact_dir/dump-sanitized.log" \
+  "$artifact_dir/dump-log-security-report.json" --log
+if (( dump_status != 0 )); then
+  echo "Official Supabase schema dump failed; sanitized output retained." >&2
+  exit "$dump_status"
+fi
 
 docker run --rm \
   -e DATABASE_URL -e PGOPTIONS \
@@ -95,13 +120,20 @@ docker run --rm \
 
 sha256sum "$artifact_dir/public-schema-current.sql" \
   >"$artifact_dir/public-schema-current.sql.sha256"
+set +e
 node "$script_dir/scan-dump.mjs" \
   "$artifact_dir/public-schema-current.sql" \
   "$artifact_dir/dump-security-report.json"
+dump_scan_status=$?
+set -e
+if (( dump_scan_status != 0 )); then
+  cp -- "$artifact_dir/dump-security-report.json" "$security_report_dir/dump-security-report.json"
+  rm -f -- "$artifact_dir/public-schema-current.sql" "$artifact_dir/public-schema-current.sql.sha256"
+  printf '%s\n' 'security_report_only=true' >>"${GITHUB_OUTPUT:?GITHUB_OUTPUT is required}"
+  exit "$dump_scan_status"
+fi
 node "$script_dir/inventory-scrape-runs.mjs" \
   "$root_dir" "$artifact_dir/scrape-runs-source-dependencies.json"
-node "$script_dir/write-out-of-dump-inventory.mjs" \
-  "$artifact_dir/objects-outside-public-dump.json"
 node "$script_dir/scan-dump.mjs" \
   "$artifact_dir/remote-schema-fingerprint.json" \
   "$artifact_dir/remote-inventory-security-report.json" --log
@@ -167,6 +199,21 @@ fi
 printf '%s\n' 'auth/storage schemas and anon/authenticated/service_role roles present' \
   >"$artifact_dir/local-managed-prerequisites.txt"
 
+preexisting_public_objects="$(psql "$local_db_url" -X -Atq -v ON_ERROR_STOP=1 <<'SQL'
+SELECT count(*)
+FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','S','f')
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_depend d
+    WHERE d.classid='pg_class'::regclass AND d.objid=c.oid AND d.deptype='e'
+  );
+SQL
+)"
+if [[ "$preexisting_public_objects" != "0" ]]; then
+  echo "Disposable public schema contains duplicate non-extension objects before restore." >&2
+  exit 6
+fi
+
 psql "$local_db_url" -X -v ON_ERROR_STOP=1 <<'SQL' >/dev/null
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   REVOKE ALL ON TABLES FROM anon, authenticated;
@@ -186,6 +233,10 @@ if (( restore_status == 0 )); then
   psql "$local_db_url" -X -Atq -v ON_ERROR_STOP=1 \
     -f "$script_dir/fingerprint.sql" \
     >"$artifact_dir/local-schema-fingerprint.json"
+  node "$script_dir/write-out-of-dump-inventory.mjs" \
+    "$artifact_dir/remote-schema-fingerprint.json" \
+    "$artifact_dir/local-schema-fingerprint.json" \
+    "$artifact_dir/objects-outside-public-dump.json"
   set +e
   node "$script_dir/compare-fingerprints.mjs" \
     "$artifact_dir/remote-schema-fingerprint.json" \

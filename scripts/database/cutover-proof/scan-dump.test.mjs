@@ -7,6 +7,8 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const scanner = fileURLToPath(new URL('./scan-dump.mjs', import.meta.url))
+const sanitizer = fileURLToPath(new URL('./sanitize-output.mjs', import.meta.url))
+const comparator = fileURLToPath(new URL('./compare-fingerprints.mjs', import.meta.url))
 async function scan(content) {
   const dir = await mkdtemp(path.join(tmpdir(), 'cutover-scan-'))
   const input = path.join(dir, 'input.sql'), report = path.join(dir, 'report.json')
@@ -28,4 +30,29 @@ test('rejects credentials without copying them to the report', async () => {
   const credential = 'postgresql://reader:very-secret@db.example.invalid/postgres'
   const { result, report } = await scan(`-- ${credential}`)
   assert.notEqual(result.status, 0); assert.doesNotMatch(report, /very-secret/)
+})
+
+test('sanitizes every connection identity emitted by the CLI dry-run', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'cutover-sanitize-'))
+  const input = path.join(dir, 'dry-run.txt'), output = path.join(dir, 'sanitized.txt')
+  const projectRef = 'abcdefghijklmnopqrst'
+  await writeFile(input, `export PGHOST="db.${projectRef}.supabase.co"\nexport PGUSER="reader.${projectRef}"\nexport PGPASSWORD="secret-value"\nexport PGDATABASE="postgres"\n`)
+  const result = spawnSync(process.execPath, [sanitizer, input, output], { encoding: 'utf8' })
+  const sanitized = await readFile(output, 'utf8')
+  assert.equal(result.status, 0)
+  assert.doesNotMatch(sanitized, new RegExp(projectRef))
+  assert.doesNotMatch(sanitized, /secret-value|reader\./)
+})
+
+test('treats ACL-only drift as a blocking privilege difference', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'cutover-compare-'))
+  const remotePath = path.join(dir, 'remote.json'), localPath = path.join(dir, 'local.json'), output = path.join(dir, 'diff.json')
+  const base = { key: 'public.protected_table', kind: 'r', owner: 'postgres', acl: ['anon=r/postgres'] }
+  await writeFile(remotePath, JSON.stringify({ relations: [base] }))
+  await writeFile(localPath, JSON.stringify({ relations: [{ ...base, owner: 'local_owner', acl: [] }] }))
+  const result = spawnSync(process.execPath, [comparator, remotePath, localPath, output], { encoding: 'utf8' })
+  const report = JSON.parse(await readFile(output, 'utf8'))
+  assert.notEqual(result.status, 0)
+  assert.equal(report.privilegeParity, false)
+  assert.equal(report.differences[0].classification, 'blocking-privilege-difference')
 })

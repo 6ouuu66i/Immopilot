@@ -8,8 +8,11 @@ const secret = process.env.CUTOVER_DATABASE_URL
 if (secret) value = value.split(secret).join('[REDACTED_DATABASE_URL]')
 
 const rules = [
+  [/export\s+(PGHOST|PGPORT|PGUSER|PGPASSWORD|PGDATABASE)="[^"]*"/gi, 'export $1="[REDACTED_CONNECTION_FIELD]"'],
   [/postgres(?:ql)?:\/\/[^\s'"<>]+/gi, '[REDACTED_DATABASE_URL]'],
   [/https?:\/\/[a-z0-9-]+\.supabase\.(?:co|net)(?:\/[^\s'"<>]*)?/gi, '[REDACTED_SUPABASE_URL]'],
+  [/(?:db\.)?[a-z]{20}\.(?:supabase\.(?:co|net)|pooler\.supabase\.com)/gi, '[REDACTED_SUPABASE_HOST]'],
+  [/[a-z0-9.-]+\.pooler\.supabase\.com/gi, '[REDACTED_SUPABASE_HOST]'],
   [/\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b/g, '[REDACTED_JWT]'],
   [/\bsb_(?:secret|publishable)_[A-Za-z0-9_-]+\b/gi, '[REDACTED_SUPABASE_KEY]'],
   [/(?:password|passwd|pwd)(\s*(?:=|:|\s)\s*)[^\s,;]+/gi, '$1[REDACTED_PASSWORD]'],

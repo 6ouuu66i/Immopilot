@@ -25,8 +25,10 @@ requireMatch(workflowText.includes('secrets.CUTOVER_DATABASE_URL'), 'secret name
 requireMatch(workflowText.includes('retention-days: 1'), 'artifact retention must be one day')
 requireMatch(combined.includes('postgres:17'), 'PostgreSQL 17 container is required')
 requireMatch(combined.includes('default_transaction_read_only=on'), 'read-only session proof is required')
-requireMatch(combined.includes('--schema-only') && combined.includes('--schema=public'), 'public schema-only dump is required')
+requireMatch(/db dump[\s\S]*?--schema public[\s\S]*?--file/.test(operationalText), 'official public schema-only dump is required')
 requireMatch(combined.includes('artifact_safe=true'), 'artifact upload must be gated by security scans')
+requireMatch(combined.includes('security_report_only=true'), 'sensitive dump failure must upload only a sanitized finding report')
+requireMatch(combined.includes('role_privileges'), 'effective role privilege parity is required')
 for (const [name, pattern] of Object.entries({
   'remote database mutation': /supabase\s+db\s+(?:push|pull|reset)\b|supabase\s+migration\s+(?:repair|squash|up)\b/i,
   'linked operation': /--linked\b/i,
@@ -34,6 +36,7 @@ for (const [name, pattern] of Object.entries({
   'automatic trigger': /^\s*(?:push|pull_request|schedule):/m,
   'secret echo': /echo[^\n]*\$(?:\{)?(?:CUTOVER_DATABASE_URL|DATABASE_URL)/i,
   'error masking': /\|\|\s*(?:true|:)/,
+  'raw pg_dump of the remote': /\bpg_dump\s+"\$DATABASE_URL"/,
 })) requireMatch(!pattern.test(combined), `${name} is forbidden`)
 requireMatch(!/[a-z]{20}\.supabase\.(?:co|net)/i.test(combined), 'project reference must not be hardcoded')
 if (errors.length) {

@@ -123,6 +123,68 @@ WITH relations AS (
     'acl', COALESCE(to_jsonb(d.defaclacl), '[]'::jsonb)
   ) ORDER BY pg_get_userbyid(d.defaclrole),n.nspname,d.defaclobjtype) value
   FROM pg_default_acl d JOIN pg_namespace n ON n.oid=d.defaclnamespace WHERE n.nspname='public'
+), role_privileges AS (
+  SELECT jsonb_agg(item ORDER BY item->>'key') value
+  FROM (
+    SELECT jsonb_build_object(
+      'key', 'role:' || r.rolname || ':schema:public',
+      'usage', has_schema_privilege(r.rolname,'public','USAGE'),
+      'create', has_schema_privilege(r.rolname,'public','CREATE')
+    ) item
+    FROM pg_roles r WHERE r.rolname IN ('anon','authenticated','service_role')
+    UNION ALL
+    SELECT jsonb_build_object(
+      'key', 'role:' || r.rolname || ':relation:public.' || c.relname,
+      'select', has_table_privilege(r.rolname,c.oid,'SELECT'),
+      'insert', has_table_privilege(r.rolname,c.oid,'INSERT'),
+      'update', has_table_privilege(r.rolname,c.oid,'UPDATE'),
+      'delete', has_table_privilege(r.rolname,c.oid,'DELETE'),
+      'truncate', has_table_privilege(r.rolname,c.oid,'TRUNCATE'),
+      'references', has_table_privilege(r.rolname,c.oid,'REFERENCES'),
+      'trigger', has_table_privilege(r.rolname,c.oid,'TRIGGER')
+    ) item
+    FROM pg_roles r CROSS JOIN pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE r.rolname IN ('anon','authenticated','service_role')
+      AND n.nspname='public' AND c.relkind IN ('r','p','v','m','f')
+    UNION ALL
+    SELECT jsonb_build_object(
+      'key', 'role:' || r.rolname || ':sequence:public.' || c.relname,
+      'select', has_sequence_privilege(r.rolname,c.oid,'SELECT'),
+      'usage', has_sequence_privilege(r.rolname,c.oid,'USAGE'),
+      'update', has_sequence_privilege(r.rolname,c.oid,'UPDATE')
+    ) item
+    FROM pg_roles r CROSS JOIN pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE r.rolname IN ('anon','authenticated','service_role')
+      AND n.nspname='public' AND c.relkind='S'
+    UNION ALL
+    SELECT jsonb_build_object(
+      'key', 'role:' || r.rolname || ':function:public.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')',
+      'execute', has_function_privilege(r.rolname,p.oid,'EXECUTE')
+    ) item
+    FROM pg_roles r CROSS JOIN pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE r.rolname IN ('anon','authenticated','service_role') AND n.nspname='public'
+  ) privileges
+), managed_inventory AS (
+  SELECT jsonb_build_object(
+    'auth_schema', to_regnamespace('auth') IS NOT NULL,
+    'auth_users_table', to_regclass('auth.users') IS NOT NULL,
+    'auth_user_triggers', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('name',t.tgname,'definition_md5',md5(pg_get_triggerdef(t.oid,true))) ORDER BY t.tgname)
+      FROM pg_trigger t WHERE t.tgrelid=to_regclass('auth.users') AND NOT t.tgisinternal
+    ),'[]'::jsonb),
+    'storage_schema', to_regnamespace('storage') IS NOT NULL,
+    'storage_buckets_table', to_regclass('storage.buckets') IS NOT NULL,
+    'storage_objects_table', to_regclass('storage.objects') IS NOT NULL,
+    'storage_policies', COALESCE((
+      SELECT jsonb_agg(jsonb_build_object('key',schemaname || '.' || tablename || '.' || policyname,'command',cmd,'roles',roles) ORDER BY schemaname,tablename,policyname)
+      FROM pg_policies WHERE schemaname='storage'
+    ),'[]'::jsonb),
+    'realtime_publications', COALESCE((SELECT jsonb_agg(pubname ORDER BY pubname) FROM pg_publication),'[]'::jsonb),
+    'cron_extension', EXISTS (SELECT 1 FROM pg_extension WHERE extname='pg_cron'),
+    'cron_jobs_table', to_regclass('cron.job') IS NOT NULL,
+    'vault_extension', EXISTS (SELECT 1 FROM pg_extension WHERE extname IN ('supabase_vault','vault')),
+    'vault_secrets_table', to_regclass('vault.secrets') IS NOT NULL
+  ) value
 )
 SELECT jsonb_build_object(
   'meta', jsonb_build_object('server_version', current_setting('server_version')),
@@ -138,6 +200,8 @@ SELECT jsonb_build_object(
   'policies', COALESCE(policies.value,'[]'::jsonb),
   'extensions', COALESCE(extensions.value,'[]'::jsonb),
   'publications', COALESCE(publications.value,'[]'::jsonb),
-  'default_acls', COALESCE(default_acls.value,'[]'::jsonb)
+  'default_acls', COALESCE(default_acls.value,'[]'::jsonb),
+  'role_privileges', COALESCE(role_privileges.value,'[]'::jsonb),
+  'managed_inventory', managed_inventory.value
 )
-FROM relations,columns,types,sequences,views,constraints,indexes,functions,triggers,policies,extensions,publications,default_acls;
+FROM relations,columns,types,sequences,views,constraints,indexes,functions,triggers,policies,extensions,publications,default_acls,role_privileges,managed_inventory;

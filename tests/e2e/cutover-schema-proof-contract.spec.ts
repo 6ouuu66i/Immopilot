@@ -29,3 +29,12 @@ test('workflow contains neither a hosted project reference nor a literal credent
   expect(source).not.toMatch(/[a-z]{20}\.supabase\.(?:co|net)/i)
   expect(source).not.toMatch(/postgres(?:ql)?:\/\/[^\s]+:[^\s]+@/i)
 })
+
+test('privilege drift and sensitive dump failures are fail-closed', () => {
+  const comparator = readFileSync(path.join(root, 'scripts/database/cutover-proof/compare-fingerprints.mjs'), 'utf8')
+  const runner = readFileSync(path.join(root, 'scripts/database/cutover-proof/run-proof.sh'), 'utf8')
+  expect(comparator).toContain('blocking-privilege-difference')
+  expect(comparator).toContain('privilegeParity')
+  expect(runner).toContain('security_report_only=true')
+  expect(runner).toContain('rm -f -- "$artifact_dir/public-schema-current.sql"')
+})

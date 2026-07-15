@@ -6,7 +6,7 @@ if (!input || !report) throw new Error('usage: scan-dump.mjs <input> <report> [-
 const value = await readFile(input, 'utf8')
 const findings = []
 const add = (rule, pattern) => {
-  const matches = [...value.matchAll(pattern)]
+  const matches = [...value.matchAll(pattern)].filter((match) => !match[0].includes('[REDACTED_'))
   if (!matches.length) return
   const objects = [...new Set(matches.map((match) => objectAt(match.index ?? 0)))]
   findings.push({ rule, count: matches.length, objects })
@@ -15,7 +15,7 @@ const secret = process.env.CUTOVER_DATABASE_URL
 if (secret && value.includes(secret)) findings.push({ rule: 'exact-environment-secret', count: value.split(secret).length - 1, objects: [path.basename(input)] })
 add('credentialed-database-url', /postgres(?:ql)?:\/\/[^\s'"<>:@]+:[^\s'"<>@]+@/gi)
 add('hosted-supabase-url', /https?:\/\/[a-z0-9-]+\.supabase\.(?:co|net)/gi)
-add('supabase-project-reference', /\bproject[_ -]?ref\b\s*(?:=|:)\s*['"]?[a-z]{20}\b/gi)
+add('supabase-project-reference', /\bproject[_ -]?ref\b\s*(?:=|:)\s*['"]?[a-z]{20}\b|(?:db\.)?[a-z]{20}\.(?:supabase\.(?:co|net)|pooler\.supabase\.com)/gi)
 add('jwt-or-supabase-key', /\b(?:eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}|sb_(?:secret|publishable)_[A-Za-z0-9_-]+)\b/gi)
 add('password-literal', /(?:password|passwd|pwd)\s*(?:=|:|\s)\s*['"]?[^\s,'";]+/gi)
 add('private-key', /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g)
