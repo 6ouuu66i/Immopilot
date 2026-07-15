@@ -9,7 +9,7 @@ ImmoPilot utilise Node.js 22 en CI. Installe les dépendances avec `npm ci` avan
 - `npm run test:contracts` : contrats déterministes Playwright, sans test authentifié.
 - `npm run test:e2e:local` : point d’entrée local sûr, identique aux contrats déterministes.
 - `npm run test:e2e:auth` : seul test navigateur authentifié.
-- `npm run test:ci` : 130 tests déterministes puis contrats statiques de la CI DB.
+- `npm run test:ci` : 135 tests déterministes puis contrats statiques de la CI DB.
 - `npm run ci:validate` : validation YAML de tous les workflows GitHub Actions.
 - `npm run build` : build Vite de production.
 - `npm run test:db:contracts` : contrats statiques de la CI PostgreSQL, sans Docker.
@@ -19,7 +19,7 @@ ImmoPilot utilise Node.js 22 en CI. Installe les dépendances avec `npm ci` avan
 
 La CI DB utilise Supabase CLI `2.109.1`, épinglée exactement dans `package.json` et `package-lock.json`. Cette version stable embarque PostgreSQL `17.6.1.111`; `supabase/config.toml` fixe donc `major_version = 17` et le projet local `immopilot-ci`.
 
-L’inventaire actuel comprend 57 migrations, 7 suites SQL/pgTAP et 176 assertions planifiées :
+L’inventaire actuel comprend 58 migrations, 8 suites SQL/pgTAP et 200 assertions planifiées :
 
 - F-001 : rôle, agence et activation des profils ;
 - F-002 : acceptation atomique des invitations ;
@@ -28,8 +28,9 @@ L’inventaire actuel comprend 57 migrations, 7 suites SQL/pgTAP et 176 assertio
 - F-008/F-014 : Dashboard, RPC et vue matérialisée canonique ;
 - F-009/F-010 : ledger, orchestration et observabilité du pipeline ;
 - F-023 : santé système.
+- Durcissement PostgreSQL : helpers `SECURITY DEFINER`, triggers de référence et compteur interne.
 
-Chaque suite SQL ouvre une transaction, appelle `finish()` puis effectue un `rollback`. Les fixtures utilisent uniquement le domaine réservé `test.local` et créent actuellement 10 agences et 26 utilisateurs Auth jetables. Le seed est désactivé ; toutes les données viennent des migrations ou des transactions de test.
+Chaque suite SQL ouvre une transaction, appelle `finish()` puis effectue un `rollback`. Les fixtures utilisent uniquement le domaine réservé `test.local` et créent actuellement 11 agences et 27 utilisateurs Auth jetables. Le seed est désactivé ; toutes les données viennent des migrations ou des transactions de test.
 
 Le test `supabase/tests/f009_f010_advisory_lock_concurrency.sh` ouvre deux connexions `psql` distinctes. La première tient le verrou transactionnel du pipeline ; la seconde appelle le véritable orchestrateur et exige un ledger `skipped|cron|0`, puis les deux transactions sont annulées.
 
@@ -42,7 +43,7 @@ npm ci
 npm run ci:database
 ```
 
-Le script principal valide d’abord l’isolation, supprime un éventuel volume `immopilot-ci`, démarre la stack locale, attend PostgreSQL, exécute `supabase db reset --local --no-seed`, compare l’historique appliqué aux 57 migrations, lance chaque suite pgTAP puis le test de concurrence. Un trap conserve le premier code d’échec et exécute toujours `supabase stop --no-backup --project-id immopilot-ci`.
+Le script principal valide d’abord l’isolation, supprime un éventuel volume `immopilot-ci`, démarre la stack locale, attend PostgreSQL, exécute `supabase db reset --local --no-seed`, compare l’historique appliqué aux 58 migrations, lance chaque suite pgTAP puis le test de concurrence. Un trap conserve le premier code d’échec et exécute toujours `supabase stop --no-backup --project-id immopilot-ci`.
 
 Cette machine Windows ne disposant pas de Docker utilisable, la reconstruction dynamique, pgTAP et la concurrence doivent être validés par GitHub Actions. Les contrats statiques restent reproductibles avec `npm run test:db:contracts`.
 

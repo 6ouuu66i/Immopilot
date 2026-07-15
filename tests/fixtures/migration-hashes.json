@@ -55,5 +55,6 @@
   "20260715140000_scrub_invitation_token_identity_metadata.sql": "aa4410052caac6485ae0b37ac5765ac9581d5b0a6f4f1cfab1bdcd582d1a75a7",
   "20260715150000_fix_dashboard_canonical_materialized_data.sql": "b69f27eb1a2a153d5c3e16a0f720832ddfd800d8b79204bc79dd50686da977c8",
   "20260715151000_optimize_dashboard_snapshot_work_mem.sql": "c978152009f4bbaf5ae03a2d2e4b814a1f4f0f1607fb675051bdf6987775f812",
-  "20260715152000_f023_system_health_monitoring.sql": "9be29e78467b81fa68aeac2e73a038761ee1648ab80bdeeef64132851d49ca91"
+  "20260715152000_f023_system_health_monitoring.sql": "9be29e78467b81fa68aeac2e73a038761ee1648ab80bdeeef64132851d49ca91",
+  "20260715231055_restrict_internal_security_definer_functions.sql": "e01ac2d158989514d72b1e3ac74c4fe90fd0d9813754e6854b381188ea4442ba"
 }

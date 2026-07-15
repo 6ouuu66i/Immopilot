@@ -10,6 +10,7 @@ export const criticalSuites = [
   'f008_f014_dashboard.test.sql',
   'f009_f010_pipeline_observability.test.sql',
   'f023_system_health.test.sql',
+  'security_definer_hardening.test.sql',
 ];
 
 export async function readDatabaseInventory(rootDir = process.cwd()) {

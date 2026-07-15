@@ -15,6 +15,7 @@ const docsPath = path.join(rootDir, 'docs', 'testing.md');
 const packagePath = path.join(rootDir, 'package.json');
 const lockPath = path.join(rootDir, 'package-lock.json');
 const concurrencyPath = path.join(rootDir, 'supabase', 'tests', 'f009_f010_advisory_lock_concurrency.sh');
+const securityHardeningMigrationName = '20260715231055_restrict_internal_security_definer_functions.sql';
 const expectedCliVersion = '2.109.1';
 const hostedDomain = ['supabase', 'co'].join('.');
 const forbiddenProjectHash = '4dc7093ed200cef9d48db489231fbe8be3577f3dcc71366c1fbc6c46c758a7ba';
@@ -92,10 +93,53 @@ check(stopScript.includes('stop --no-backup --project-id immopilot-ci'), 'Cleanu
 check(stopScript.includes('[[ ! -x "$supabase_bin" ]]'), 'Cleanup must remain safe when dependency installation failed before the CLI was available.');
 check(concurrencySource.includes('pg_advisory_xact_lock') && concurrencySource.includes('sync_daily_pipeline') && concurrencySource.includes('skipped|cron|0'), 'The concurrency test must use two real sessions and verify the ledger result.');
 
-check(inventory.migrationCount === 57, `Expected 57 migrations, found ${inventory.migrationCount}.`);
-check(inventory.suiteCount === 7, `Expected 7 pgTAP suites, found ${inventory.suiteCount}.`);
-check(inventory.assertionCount === 176, `Expected 176 planned assertions, found ${inventory.assertionCount}.`);
+check(inventory.migrationCount === 58, `Expected 58 migrations, found ${inventory.migrationCount}.`);
+check(inventory.suiteCount === 8, `Expected 8 pgTAP suites, found ${inventory.suiteCount}.`);
+check(inventory.assertionCount === 200, `Expected 200 planned assertions, found ${inventory.assertionCount}.`);
 for (const suiteName of criticalSuites) check(inventory.suiteNames.includes(suiteName), `Critical suite missing: ${suiteName}`);
+
+const migrationSources = new Map(await Promise.all(inventory.migrationNames.map(async (name) => [
+  name,
+  await read(path.join(rootDir, 'supabase', 'migrations', name)),
+])));
+const hardeningMigration = migrationSources.get(securityHardeningMigrationName) || '';
+for (const signature of [
+  'public.generate_reference(uuid, text)',
+  'public.set_contact_reference()',
+  'public.set_deal_reference()',
+  'public.rls_auto_enable()',
+]) {
+  const escapedSignature = signature.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\\ /g, '\\s*');
+  check(
+    new RegExp(`revoke\\s+execute\\s+on\\s+function\\s+${escapedSignature}[\\s\\S]*?from\\s+public\\s*,\\s*anon\\s*,\\s*authenticated\\s*,\\s*service_role`, 'i').test(hardeningMigration),
+    `${signature} must explicitly revoke EXECUTE from PUBLIC and every application role.`,
+  );
+}
+check(/alter\s+function\s+public\.set_contact_reference\(\)\s+security\s+definer/i.test(hardeningMigration), 'The contact trigger wrapper must run as its unchanged owner.');
+check(/alter\s+function\s+public\.set_deal_reference\(\)\s+security\s+definer/i.test(hardeningMigration), 'The deal trigger wrapper must run as its unchanged owner.');
+check(/revoke\s+insert\s*,\s*update\s*,\s*delete\s*,\s*truncate[\s\S]*?on\s+table\s+public\.reference_counters[\s\S]*?from\s+anon\s*,\s*authenticated\s*,\s*service_role/i.test(hardeningMigration), 'Reference-counter mutation grants must be revoked from every application role.');
+check(!/\bgrant\s+execute\b/i.test(hardeningMigration), 'Internal definer functions must not receive a new direct EXECUTE grant.');
+
+function normalizeSql(value) {
+  return value.toLowerCase().replaceAll('"', '').replace(/\s+/g, ' ').trim();
+}
+for (const [migrationName, source] of migrationSources) {
+  if (migrationName < securityHardeningMigrationName) continue;
+  const functionStarts = [...source.matchAll(/create\s+(?:or\s+replace\s+)?function\s+([a-z_][a-z0-9_]*(?:\s*\.\s*[a-z_][a-z0-9_]*)?)\s*\(/gi)];
+  const aclStatements = [...source.matchAll(/(?:revoke|grant)\s+execute\s+on\s+function[\s\S]*?;/gi)].map((match) => normalizeSql(match[0]));
+  functionStarts.forEach((match, index) => {
+    const bodyEnd = functionStarts[index + 1]?.index ?? source.length;
+    const functionBlock = source.slice(match.index, bodyEnd);
+    if (!/\bsecurity\s+definer\b/i.test(functionBlock)) return;
+
+    const functionName = normalizeSql(match[1]).replace(/\s*\.\s*/g, '.');
+    const decisions = aclStatements.filter((statement) => statement.includes(functionName));
+    check(decisions.some((statement) => statement.startsWith('revoke ') && /\bfrom\s+[^;]*\bpublic\b/.test(statement)), `${migrationName}: ${functionName} must explicitly revoke PUBLIC EXECUTE.`);
+    for (const role of ['anon', 'authenticated', 'service_role']) {
+      check(decisions.some((statement) => new RegExp(`\\b(?:from|to)\\s+[^;]*\\b${role}\\b`).test(statement)), `${migrationName}: ${functionName} needs an explicit EXECUTE decision for ${role}.`);
+    }
+  });
+}
 
 check(/project_id\s*=\s*"immopilot-ci"/.test(configSource), 'Supabase project_id must be local and non-sensitive.');
 check(/major_version\s*=\s*17/.test(configSource), 'Local PostgreSQL must use major version 17.');
@@ -118,7 +162,7 @@ check(guardSource.includes(forbiddenProjectHash), 'The guard must recognize the 
 for (const command of ['npm run test:ci', 'npm run typecheck', 'npm run lint', 'npm run build', 'npm run ci:validate', 'npm run test:db:contracts', 'npm run ci:database']) {
   check(docsSource.includes(`\`${command}\``), `Testing documentation is missing ${command}.`);
 }
-check(docsSource.includes(expectedCliVersion) && docsSource.includes('57 migrations') && docsSource.includes('7 suites') && docsSource.includes('176 assertions'), 'Testing documentation must match the pinned version and current database inventory.');
+check(docsSource.includes(expectedCliVersion) && docsSource.includes('58 migrations') && docsSource.includes('8 suites') && docsSource.includes('200 assertions'), 'Testing documentation must match the pinned version and current database inventory.');
 
 if (failures.length > 0) {
   throw new Error(`Database CI contract failures:\n${failures.map((failure) => `- ${failure}`).join('\n')}`);
