@@ -37,11 +37,18 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Reject remote Supabase state
-        run: node scripts/database/guard-local-only.mjs
-
       - name: Install pinned dependencies
         run: npm ci
+
+      - name: Remove repository-linked Supabase cache
+        run: |
+          rm -f -- \
+            supabase/.temp/project-ref \
+            supabase/.temp/linked-project.json \
+            supabase/.temp/pooler-url
+
+      - name: Reject remote Supabase state
+        run: node scripts/database/guard-local-only.mjs
 
       - name: Verify database tools
         run: |

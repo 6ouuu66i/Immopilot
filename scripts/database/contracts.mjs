@@ -51,6 +51,9 @@ const packageLock = JSON.parse(lockSource);
 const inventory = await readDatabaseInventory(rootDir);
 const databaseJob = workflow?.jobs?.['postgres-contracts'];
 const workflowSteps = databaseJob?.steps || [];
+const cacheRemovalStep = workflowSteps.find((step) => step.name === 'Remove repository-linked Supabase cache');
+const cacheRemovalIndex = workflowSteps.indexOf(cacheRemovalStep);
+const guardIndex = workflowSteps.findIndex((step) => step.name === 'Reject remote Supabase state');
 const pushBranches = workflow?.on?.push?.branches || [];
 const pullRequestBranches = workflow?.on?.pull_request?.branches || [];
 
@@ -63,6 +66,10 @@ check(!('if' in (databaseJob || {})), 'The database job must not be conditionall
 check(pushBranches.includes('skeleton-review') && pushBranches.includes('master'), 'Database push triggers must cover skeleton-review and master.');
 check(pullRequestBranches.includes('skeleton-review') && pullRequestBranches.includes('master'), 'Database pull request triggers must cover skeleton-review and master.');
 check(workflowSteps.some((step) => step.run === 'npm ci'), 'The workflow must install the lockfile exactly with npm ci.');
+check(cacheRemovalIndex >= 0 && guardIndex > cacheRemovalIndex, 'Tracked linked Supabase cache must be removed before the local-only guard runs.');
+for (const fileName of ['project-ref', 'linked-project.json', 'pooler-url']) {
+  check(cacheRemovalStep?.run?.includes(`supabase/.temp/${fileName}`), `The workflow must remove tracked linked cache file ${fileName}.`);
+}
 check(workflowSteps.some((step) => step.run === 'npm run ci:database'), 'The workflow must execute the complete database CI entry point.');
 check(workflowSteps.some((step) => step.if === 'always()' && step.run === 'npm run test:db:stop'), 'The workflow must always stop the disposable stack.');
 check(!workflowSource.includes('secrets.'), 'The database workflow must not reference GitHub secrets.');
@@ -82,6 +89,7 @@ check(runCi.includes('f009_f010_advisory_lock_concurrency.sh'), 'The real two-co
 check(runPgtap.includes('test db --local'), 'The pgTAP runner must explicitly target the local database.');
 check(runPgtap.includes("-name '*.test.sql'"), 'The pgTAP runner must discover every SQL suite.');
 check(stopScript.includes('stop --no-backup --project-id immopilot-ci'), 'Cleanup must delete only the disposable local project volumes.');
+check(stopScript.includes('[[ ! -x "$supabase_bin" ]]'), 'Cleanup must remain safe when dependency installation failed before the CLI was available.');
 check(concurrencySource.includes('pg_advisory_xact_lock') && concurrencySource.includes('sync_daily_pipeline') && concurrencySource.includes('skipped|cron|0'), 'The concurrency test must use two real sessions and verify the ledger result.');
 
 check(inventory.migrationCount === 57, `Expected 57 migrations, found ${inventory.migrationCount}.`);

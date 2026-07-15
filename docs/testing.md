@@ -50,6 +50,8 @@ Cette machine Windows ne disposant pas de Docker utilisable, la reconstruction d
 
 Le workflow `Database CI` ne référence aucun secret Supabase, aucune URL hébergée et aucun environnement GitHub. Il installe uniquement la CLI épinglée depuis le lockfile et travaille sur les ports loopback déclarés dans `supabase/config.toml`.
 
+Le dépôt contient encore un cache Supabase historique suivi par Git sous `supabase/.temp`. Le runner jetable supprime explicitement `project-ref`, `linked-project.json` et `pooler-url` avant d’exécuter le garde. Aucune valeur de ces fichiers n’est lue, utilisée ou affichée. Le garde refuse ensuite tout cache lié restant avant la première commande Supabase.
+
 Le garde échoue avant le démarrage si un état lié existe dans `supabase/.temp`, si un identifiant distant interdit apparaît, si une URL n’est pas loopback, ou si l’une de ces variables distantes est définie :
 
 - `SUPABASE_ACCESS_TOKEN` ;

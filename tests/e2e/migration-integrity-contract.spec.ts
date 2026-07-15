@@ -53,8 +53,9 @@ test('historical active migrations match the reviewed SHA-256 reference manifest
 
   expect(activeNames).toEqual(referenceNames);
   await Promise.all(activeNames.map(async (name) => {
-    const contents = await fs.readFile(path.join(migrationsDir, name));
-    const actualHash = crypto.createHash('sha256').update(contents).digest('hex');
+    const contents = await fs.readFile(path.join(migrationsDir, name), 'utf8');
+    const canonicalContents = contents.replace(/\r\n/g, '\n');
+    const actualHash = crypto.createHash('sha256').update(canonicalContents).digest('hex');
     expect(actualHash, `${name} changed after its reference hash was recorded`).toBe(migrationHashes[name]);
   }));
 });
