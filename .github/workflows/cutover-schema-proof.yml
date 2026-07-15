@@ -1,0 +1,55 @@
+name: Cutover schema proof
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cutover-schema-proof-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  schema-proof:
+    name: Read-only schema dump and restore proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: cutover-schema-readonly
+    env:
+      CI: 'true'
+      SUPABASE_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install pinned dependencies
+        run: npm ci
+
+      - name: Verify proof contracts
+        run: |
+          test "$(./node_modules/.bin/supabase --version)" = "2.109.1"
+          node scripts/database/cutover-proof/contracts.mjs
+          node --test scripts/database/cutover-proof/scan-dump.test.mjs
+
+      - name: Extract, restore, and compare schema
+        id: proof
+        env:
+          CUTOVER_DATABASE_URL: ${{ secrets.CUTOVER_DATABASE_URL }}
+        run: bash scripts/database/cutover-proof/run-proof.sh
+
+      - name: Upload private temporary proof
+        if: always() && steps.proof.outputs.artifact_safe == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-schema-proof-${{ github.run_id }}
+          path: ${{ runner.temp }}/cutover-schema-proof/artifacts/
+          if-no-files-found: error
+          retention-days: 1
