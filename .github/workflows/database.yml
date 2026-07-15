@@ -1,0 +1,56 @@
+name: Database CI
+
+on:
+  pull_request:
+    branches:
+      - skeleton-review
+      - master
+  push:
+    branches:
+      - skeleton-review
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-contracts:
+    name: Supabase PostgreSQL contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CI: 'true'
+      SUPABASE_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Reject remote Supabase state
+        run: node scripts/database/guard-local-only.mjs
+
+      - name: Install pinned dependencies
+        run: npm ci
+
+      - name: Verify database tools
+        run: |
+          test "$(./node_modules/.bin/supabase --version)" = "2.109.1"
+          psql --version
+
+      - name: Rebuild and test disposable database
+        run: npm run ci:database
+
+      - name: Stop disposable database
+        if: always()
+        run: npm run test:db:stop

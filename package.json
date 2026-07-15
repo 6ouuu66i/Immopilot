@@ -14,7 +14,12 @@
     "test:contracts": "playwright test --grep-invert @auth",
     "test:e2e:local": "playwright test --grep-invert @auth",
     "test:e2e:auth": "playwright test --grep @auth",
-    "test:ci": "playwright test --grep-invert @auth",
+    "test:ci": "playwright test --grep-invert @auth && npm run test:db:contracts",
+    "test:db:guard": "node scripts/database/guard-local-only.mjs",
+    "test:db:contracts": "node scripts/database/contracts.mjs",
+    "test:db:ci": "bash scripts/database/run-ci.sh",
+    "test:db:stop": "bash scripts/database/stop-local.sh",
+    "ci:database": "npm run test:db:contracts && npm run test:db:ci",
     "ci:validate": "node scripts/validate-workflows.mjs"
   },
   "dependencies": {
@@ -38,6 +43,7 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
+    "supabase": "2.109.1",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
     "vite": "^6.2.3",
