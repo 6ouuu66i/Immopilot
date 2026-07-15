@@ -50,5 +50,7 @@
   "20260713005437_fix_pipeline_health_source_separation.sql": "cbe8d9f643d4dbc30a9f19da052df14872f35290ce95e5d0c447661dc4e7581d",
   "20260713020957_fix_pipeline_observability_real_timestamps.sql": "d0f0655b3bda11ff507746f855ff23d5402d4a81a1c498dc27af6f56f94d4473",
   "20260713204325_enforce_invitation_only_access.sql": "c29dcc82585a6b3bc102e444348e6786be6d40f3549997ef33e93c1297c374fb",
-  "20260715120000_resume_confirmed_invitation_signup.sql": "aa985664c7b4e9eee01c17f3f87e63e04bfa6db583406b2bb93a7b048fd18655"
+  "20260715120000_resume_confirmed_invitation_signup.sql": "aa985664c7b4e9eee01c17f3f87e63e04bfa6db583406b2bb93a7b048fd18655",
+  "20260715130000_remove_invitation_token_after_signup.sql": "c7156042f5139ecb43a3ab8652b2cfb2086ef41e93e79ae7e52a5d2891bf9e66",
+  "20260715140000_scrub_invitation_token_identity_metadata.sql": "aa4410052caac6485ae0b37ac5765ac9581d5b0a6f4f1cfab1bdcd582d1a75a7"
 }

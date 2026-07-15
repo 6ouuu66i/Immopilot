@@ -8,6 +8,8 @@ import {
 
 const root = process.cwd();
 const resumeMigration = 'supabase/migrations/20260715120000_resume_confirmed_invitation_signup.sql';
+const metadataCleanupMigration = 'supabase/migrations/20260715130000_remove_invitation_token_after_signup.sql';
+const identityCleanupMigration = 'supabase/migrations/20260715140000_scrub_invitation_token_identity_metadata.sql';
 const acceptMigration = 'supabase/migrations/20260712050248_create_accept_invitation_function.sql';
 
 async function source(relativePath: string): Promise<string> {
@@ -145,7 +147,37 @@ test('17. the final redirect is exactly the dashboard route without callback par
   expect(page).toContain("window.dispatchEvent(new HashChangeEvent('hashchange'))");
 });
 
-test('18. password recovery remains wired to its dedicated route and generic copy', async () => {
+test('18. signup metadata is scrubbed persistently after the hosted Auth write', async () => {
+  const [resume, cleanup] = await Promise.all([source(resumeMigration), source(metadataCleanupMigration)]);
+  expect(resume).toContain("NEW.raw_user_meta_data->>'invitation_token'");
+  expect(resume).toMatch(/INSERT INTO public\.invitation_signup_resumptions[\s\S]*?NEW\.id,[\s\S]*?v_invitation_id/);
+  expect(resume).not.toContain('invitation_token text');
+  expect(cleanup).toContain('CREATE CONSTRAINT TRIGGER scrub_invitation_token_after_signup');
+  expect(cleanup).toContain('DEFERRABLE INITIALLY DEFERRED');
+  expect(cleanup).toMatch(/UPDATE auth\.users AS users[\s\S]*?WHERE users\.id = NEW\.id/);
+  expect(cleanup).not.toMatch(/NEW\.raw_user_meta_data\s*:?=/);
+  expect(cleanup).not.toContain('raw_app_meta_data');
+});
+
+test('19. mandatory token cleanup fails closed without replacing profile or context creation', async () => {
+  const cleanup = await source(metadataCleanupMigration);
+  expect(cleanup).toMatch(/IF EXISTS \([\s\S]*?users\.id = NEW\.id[\s\S]*?'invitation_token'[\s\S]*?RAISE EXCEPTION/);
+  expect(cleanup).toContain("ERRCODE = 'IPV09'");
+  expect(cleanup).toContain('AFTER INSERT ON auth.users');
+  expect(cleanup).not.toContain('CREATE OR REPLACE FUNCTION public.handle_new_user()');
+  expect(cleanup).toContain('REVOKE EXECUTE ON FUNCTION public.scrub_invitation_token_after_signup()');
+});
+
+test('20. signup identity metadata is scrubbed and included in the mandatory postcondition', async () => {
+  const cleanup = await source(identityCleanupMigration);
+  expect(cleanup).toMatch(/UPDATE auth\.identities AS identities[\s\S]*?WHERE identities\.user_id = NEW\.id/);
+  expect(cleanup).toMatch(/OR EXISTS \([\s\S]*?FROM auth\.identities AS identities[\s\S]*?identities\.user_id = NEW\.id/);
+  expect(cleanup).toContain("identity_data, '{}'::jsonb) - 'invitation_token'");
+  expect(cleanup).toMatch(/UPDATE auth\.identities AS identities[\s\S]*?WHERE COALESCE\(identities\.identity_data/);
+  expect(cleanup).not.toContain('raw_app_meta_data');
+});
+
+test('21. password recovery remains wired to its dedicated route and generic copy', async () => {
   const [auth, main, resetPage] = await Promise.all([
     source('src/lib/auth.tsx'),
     source('src/main.tsx'),
