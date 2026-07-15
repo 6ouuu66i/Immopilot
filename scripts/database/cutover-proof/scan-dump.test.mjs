@@ -32,7 +32,15 @@ test('rejects credentials without copying them to the report', async () => {
   assert.notEqual(result.status, 0); assert.doesNotMatch(report, /very-secret/)
 })
 
-test('sanitizes every connection identity emitted by the CLI dry-run', async () => {
+test('rejects privileged role switches in a dump', async () => {
+  for (const statement of ['SET ROLE postgres;', 'SET SESSION AUTHORIZATION "postgres";']) {
+    const { result, report } = await scan(statement)
+    assert.notEqual(result.status, 0)
+    assert.match(report, /privileged-role-switch/)
+  }
+})
+
+test('sanitizes every connection identity emitted by operational tooling', async () => {
   const dir = await mkdtemp(path.join(tmpdir(), 'cutover-sanitize-'))
   const input = path.join(dir, 'dry-run.txt'), output = path.join(dir, 'sanitized.txt')
   const projectRef = 'abcdefghijklmnopqrst'

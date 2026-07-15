@@ -5,11 +5,11 @@ This temporary workflow proves whether the current Pre-Alpha `public` schema can
 ## Protected setup
 
 1. In GitHub, create an environment named exactly `cutover-schema-readonly`.
-2. Add required reviewers so a human must approve every job that accesses the environment.
+2. Add required reviewers when the repository plan supports them. On plans where this option is unavailable, keep the secret scoped only to this dedicated environment and dispatch the workflow manually.
 3. In that environment only, add a secret named exactly `CUTOVER_DATABASE_URL` containing a dedicated database connection URL whose role has read-only privileges and its own `default_transaction_read_only=on` setting.
 4. Do not paste the URL into an issue, task, commit, workflow input, or chat.
 
-The workflow is manual-only (`workflow_dispatch`) and has `contents: read` repository permission. Supabase CLI 2.109.1 does not forward host `PGOPTIONS` in its generated dump script, so the workflow verifies both the explicit PostgreSQL 17 `PGOPTIONS` probe and the credential's own `default_transaction_read_only=on` session default. It also rejects the credential if its role has database, schema, or table write capability. The actual schema file is produced by the official Supabase dumper. Artifacts are private and retained for one day.
+The workflow is manual-only (`workflow_dispatch`) and has `contents: read` repository permission. The remote schema is extracted directly by the official PostgreSQL 17 `pg_dump` binary, without `SET ROLE`, `--role`, Supabase linking, or an administrator credential. It keeps ACLs, omits ownership statements for portable restoration, and inventories owners separately in the fingerprint. Before extraction, the workflow verifies `PGOPTIONS`, both read-only settings, login/session identity, role attributes, memberships, privileged `SET ROLE` paths, object ownership, direct write grants, sequence mutation rights, and callable `SECURITY DEFINER` write paths. Artifacts are private and retained for one day.
 
 ## Run and interpret
 

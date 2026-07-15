@@ -24,6 +24,7 @@ add('role-or-database-ddl', /^(?:CREATE|ALTER|DROP)\s+(?:ROLE|USER|DATABASE)\b/g
 add('vault-or-secret-value', /\b(?:vault|secret|token)\b\s*(?:=|:|VALUES?)\s*['"][^'"]+/gi)
 add('zimmo-session-value', /\bzimmo_session\b\s*(?:=|:|VALUES?)\s*['"][^'"]+/gi)
 add('sensitive-set-parameter', /^\s*SET\s+\S*(?:password|secret|token|session|jwt)\S*\s*(?:=|TO)\s*\S+/gim)
+add('privileged-role-switch', /^\s*SET\s+(?:ROLE|SESSION\s+AUTHORIZATION)\s+"?postgres"?\s*;/gim)
 
 if (mode !== '--log') {
   const topLevel = splitSql(value)

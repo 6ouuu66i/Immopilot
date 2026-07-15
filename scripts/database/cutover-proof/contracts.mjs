@@ -25,7 +25,15 @@ requireMatch(workflowText.includes('secrets.CUTOVER_DATABASE_URL'), 'secret name
 requireMatch(workflowText.includes('retention-days: 1'), 'artifact retention must be one day')
 requireMatch(combined.includes('postgres:17'), 'PostgreSQL 17 container is required')
 requireMatch(combined.includes('default_transaction_read_only=on'), 'read-only session proof is required')
-requireMatch(/db dump[\s\S]*?--schema public[\s\S]*?--file/.test(operationalText), 'official public schema-only dump is required')
+requireMatch(/\bpg_dump\s+"\$DATABASE_URL"[\s\S]*?--schema-only[\s\S]*?--schema=public[\s\S]*?--format=plain[\s\S]*?--no-owner[\s\S]*?--no-tablespaces[\s\S]*?--file=/.test(operationalText), 'direct PostgreSQL public schema-only dump is required')
+requireMatch(/pg_dump --version/.test(operationalText), 'pg_dump version must be recorded')
+requireMatch(operationalText.includes('verify-readonly-role.sql'), 'strict read-only credential verification is required')
+requireMatch(operationalText.includes('publicSecurityDefinerWritePaths'), 'SECURITY DEFINER write paths must fail closed')
+requireMatch(operationalText.includes('current_user = session_user'), 'current and session identities must match')
+requireMatch(operationalText.includes('pg_auth_members'), 'role memberships must be rejected')
+requireMatch(operationalText.includes("pg_has_role(current_user, target.oid, 'SET')"), 'privileged SET ROLE paths must be rejected')
+requireMatch(operationalText.includes('owned_objects'), 'object ownership must be rejected')
+requireMatch(operationalText.includes('privileged_function_write_paths'), 'privileged function write paths must be rejected')
 requireMatch(combined.includes('artifact_safe=true'), 'artifact upload must be gated by security scans')
 requireMatch(combined.includes('security_report_only=true'), 'sensitive dump failure must upload only a sanitized finding report')
 requireMatch(combined.includes('role_privileges'), 'effective role privilege parity is required')
@@ -36,7 +44,12 @@ for (const [name, pattern] of Object.entries({
   'automatic trigger': /^\s*(?:push|pull_request|schedule):/m,
   'secret echo': /echo[^\n]*\$(?:\{)?(?:CUTOVER_DATABASE_URL|DATABASE_URL)/i,
   'error masking': /\|\|\s*(?:true|:)/,
-  'raw pg_dump of the remote': /\bpg_dump\s+"\$DATABASE_URL"/,
+  'Supabase remote dumper': /\bsupabase(?:_bin|\s)+[^\n]*\bdb\s+dump\b|"\$supabase_bin"\s+db\s+dump\b/i,
+  'privileged dump role': /--role(?:=|\s+)["']?postgres\b/i,
+  'privileged role switch': /\bSET\s+(?:ROLE|SESSION\s+AUTHORIZATION)\s+["']?postgres\b/i,
+  'ACL removal': /--no-(?:acl|privileges)\b/i,
+  'data dump option': /--data-only\b|--column-inserts\b|--inserts\b/i,
+  'remote create or clean': /\bpg_dump\b[^\n]*(?:--clean|--create)\b/i,
 })) requireMatch(!pattern.test(combined), `${name} is forbidden`)
 requireMatch(!/[a-z]{20}\.supabase\.(?:co|net)/i.test(combined), 'project reference must not be hardcoded')
 if (errors.length) {

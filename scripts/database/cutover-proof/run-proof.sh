@@ -42,39 +42,32 @@ fi
 export DATABASE_URL="$CUTOVER_DATABASE_URL"
 export PGOPTIONS="-c default_transaction_read_only=on"
 
-# Capture the official CLI dry-run without ever streaming its raw output.
-set +e
-"$supabase_bin" db dump --db-url "$DATABASE_URL" --schema public --dry-run \
-  >"$raw_dir/dump-dry-run.raw" 2>&1
-dry_run_status=$?
-set -e
-node "$script_dir/sanitize-output.mjs" \
-  "$raw_dir/dump-dry-run.raw" "$artifact_dir/dump-dry-run-sanitized.txt"
-rm -f -- "$raw_dir/dump-dry-run.raw"
-if (( dry_run_status != 0 )); then
-  echo "Supabase CLI dump dry-run failed; sanitized output retained locally." >&2
-  exit "$dry_run_status"
-fi
+# Record only the credential-free command shape used by the proof.
+cat >"$artifact_dir/dump-command-sanitized.txt" <<'EOF'
+pg_dump [REDACTED_DATABASE_URL] --schema-only --schema=public --format=plain --no-owner --no-tablespaces --file=[RUNNER_TEMP]/public-schema-current.sql
+EOF
 node "$script_dir/scan-dump.mjs" \
-  "$artifact_dir/dump-dry-run-sanitized.txt" \
-  "$artifact_dir/dump-dry-run-security-report.json" --log
+  "$artifact_dir/dump-command-sanitized.txt" \
+  "$artifact_dir/dump-command-security-report.json" --log
 
-# The CLI dry-run does not forward host PGOPTIONS. Prove PGOPTIONS with PostgreSQL
-# 17 and reject any credential that still has remote write capabilities before the
-# same role is handed to the official Supabase schema dumper.
+# Prove PGOPTIONS and reject any credential with direct, inherited, ownership, or
+# SECURITY DEFINER write capabilities before handing it to pg_dump.
 pgoptions_state="$(docker run --rm \
   -e DATABASE_URL -e PGOPTIONS \
   "$postgres_image" \
-  psql "$DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 \
-  -c "show default_transaction_read_only")"
+  sh -eu -c 'psql "$DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 -c "show default_transaction_read_only"')"
 readonly_probe="$(docker run --rm \
-  -e DATABASE_URL \
+  -e DATABASE_URL -e PGOPTIONS \
+  -v "$script_dir:/proof-scripts:ro" \
   "$postgres_image" \
-  psql "$DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 \
-  -c "SELECT current_setting('default_transaction_read_only') || '|' || ((NOT r.rolsuper AND NOT r.rolcreaterole AND NOT r.rolcreatedb AND NOT r.rolreplication AND NOT r.rolbypassrls AND NOT has_database_privilege(current_user,current_database(),'CREATE') AND NOT has_schema_privilege(current_user,'public','CREATE') AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p') AND has_table_privilege(current_user,c.oid,'INSERT,UPDATE,DELETE,TRUNCATE')))::text FROM pg_roles r WHERE r.rolname=current_user")"
-IFS='|' read -r readonly_state role_is_readonly <<<"$readonly_probe"
-if [[ "$pgoptions_state" != "on" || "$readonly_state" != "on" || "$role_is_readonly" != "true" ]]; then
-  echo "Remote credential did not satisfy the read-only transaction and role-capability contract." >&2
+  sh -eu -c 'psql "$DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 -f /proof-scripts/verify-readonly-role.sql')"
+IFS='|' read -r remote_login_role role_is_readonly <<<"$readonly_probe"
+if [[ ! "$remote_login_role" =~ ^cutover_schema_reader_[0-9]{8}$ ]]; then
+  echo "Remote credential uses an unexpected login identity." >&2
+  exit 3
+fi
+if [[ "$pgoptions_state" != "on" || "$role_is_readonly" != "true" ]]; then
+  echo "Remote credential did not satisfy the strict read-only role contract." >&2
   exit 3
 fi
 {
@@ -82,12 +75,21 @@ fi
   docker run --rm "$postgres_image" pg_dump --version
   docker run --rm "$postgres_image" psql --version
 } >"$artifact_dir/tool-versions.txt"
-printf '%s\n' '{"pgoptionsProbe":"default_transaction_read_only=on","credentialDefaultTransactionReadOnly":true,"credentialWriteCapabilities":false,"cliDryRunForwardsPgoptions":false,"guarantee":"official pg_dump uses a role whose own session default is read-only and which is rejected if it has database, schema, or table write capabilities"}' \
+printf '%s\n' '{"pgoptionsProbe":"default_transaction_read_only=on","identityVerified":true,"credentialDefaultTransactionReadOnly":true,"credentialWriteCapabilities":false,"credentialMemberships":false,"credentialOwnerships":false,"publicSecurityDefinerWritePaths":false,"guarantee":"PostgreSQL 17 pg_dump connects directly as the temporary login role without SET ROLE and the credential is rejected on any direct, inherited, ownership, or privileged-function write path"}' \
   >"$artifact_dir/read-only-proof.json"
 
 set +e
-"$supabase_bin" db dump --db-url "$DATABASE_URL" --schema public \
-  --file "$artifact_dir/public-schema-current.sql" \
+docker run --rm \
+  -e DATABASE_URL -e PGOPTIONS \
+  -v "$artifact_dir:/proof-output" \
+  "$postgres_image" \
+  sh -eu -c 'exec pg_dump "$DATABASE_URL" \
+    --schema-only \
+    --schema=public \
+    --format=plain \
+    --no-owner \
+    --no-tablespaces \
+    --file=/proof-output/public-schema-current.sql' \
   >"$raw_dir/dump.raw" 2>&1
 dump_status=$?
 set -e
@@ -98,7 +100,7 @@ node "$script_dir/scan-dump.mjs" \
   "$artifact_dir/dump-sanitized.log" \
   "$artifact_dir/dump-log-security-report.json" --log
 if (( dump_status != 0 )); then
-  echo "Official Supabase schema dump failed; sanitized output retained." >&2
+  echo "PostgreSQL 17 schema dump failed; sanitized output retained." >&2
   exit "$dump_status"
 fi
 
@@ -106,16 +108,14 @@ docker run --rm \
   -e DATABASE_URL -e PGOPTIONS \
   -v "$script_dir:/proof-scripts:ro" \
   "$postgres_image" \
-  psql "$DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 \
-  -f /proof-scripts/fingerprint.sql \
+  sh -eu -c 'psql "$DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 -f /proof-scripts/fingerprint.sql' \
   >"$artifact_dir/remote-schema-fingerprint.json"
 
 docker run --rm \
   -e DATABASE_URL -e PGOPTIONS \
   -v "$script_dir:/proof-scripts:ro" \
   "$postgres_image" \
-  psql "$DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 \
-  -f /proof-scripts/scrape-runs-dependencies.sql \
+  sh -eu -c 'psql "$DATABASE_URL" -X -Atq -v ON_ERROR_STOP=1 -f /proof-scripts/scrape-runs-dependencies.sql' \
   >"$artifact_dir/scrape-runs-catalog-dependencies.json"
 
 sha256sum "$artifact_dir/public-schema-current.sql" \
@@ -217,6 +217,12 @@ fi
 psql "$local_db_url" -X -v ON_ERROR_STOP=1 <<'SQL' >/dev/null
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   REVOKE ALL ON TABLES FROM anon, authenticated;
+SQL
+
+# Preserve the temporary schema ACL during restore without granting it any local login.
+psql "$local_db_url" -X -v ON_ERROR_STOP=1 \
+  --set=cutover_role="$remote_login_role" <<'SQL' >/dev/null
+SELECT format('CREATE ROLE %I NOLOGIN', :'cutover_role') \gexec
 SQL
 
 set +e

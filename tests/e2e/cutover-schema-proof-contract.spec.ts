@@ -24,6 +24,18 @@ test('contract rejects a remote write without leaking its environment secret', (
   expect(`${result.stdout}${result.stderr}`).not.toContain(secret)
 })
 
+test('contract rejects Supabase dumping and privileged role switches', () => {
+  for (const forbidden of ['pg_dump --role postgres', 'pg_dump --role=postgres', 'SET ROLE postgres', 'SET SESSION AUTHORIZATION postgres', 'supabase db dump']) {
+    const dir = mkdtempSync(path.join(tmpdir(), 'cutover-contract-role-'))
+    const malicious = path.join(dir, 'workflow.yml')
+    writeFileSync(malicious, `${readFileSync(workflow, 'utf8')}\n# ${forbidden}\n`)
+    const result = spawnSync(process.execPath, [contract], {
+      cwd: root, encoding: 'utf8', env: { ...process.env, CUTOVER_PROOF_WORKFLOW_PATH: malicious },
+    })
+    expect(result.status, forbidden).not.toBe(0)
+  }
+})
+
 test('workflow contains neither a hosted project reference nor a literal credential', () => {
   const source = readFileSync(workflow, 'utf8')
   expect(source).not.toMatch(/[a-z]{20}\.supabase\.(?:co|net)/i)
@@ -37,4 +49,6 @@ test('privilege drift and sensitive dump failures are fail-closed', () => {
   expect(comparator).toContain('privilegeParity')
   expect(runner).toContain('security_report_only=true')
   expect(runner).toContain('rm -f -- "$artifact_dir/public-schema-current.sql"')
+  expect(runner).toContain('exec pg_dump "$DATABASE_URL"')
+  expect(runner).not.toContain('db dump')
 })
