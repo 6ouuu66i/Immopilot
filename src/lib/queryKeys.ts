@@ -102,7 +102,10 @@ export const queryKeys = {
   propertyContactLinks(userId: string | null | undefined, propertyIds: string[]) {
     return ['property-contact-links', userId ?? 'anonymous', createPropertyIdsKey(propertyIds)] as const;
   },
+  dashboardRoot(userId: string | null | undefined) {
+    return ['dashboard-snapshot', userId ?? 'anonymous'] as const;
+  },
   dashboardSnapshot(userId: string | null | undefined, limit = 8) {
-    return ['dashboard-snapshot', userId ?? 'anonymous', limit] as const;
+    return [...queryKeys.dashboardRoot(userId), limit] as const;
   },
 };

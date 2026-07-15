@@ -7,6 +7,7 @@ const activeMigrationsDir = path.join(rootDir, 'supabase/migrations');
 const canonicalPhotoMigration = '20260711031705_expose_all_property_photos.sql';
 const canonicalMatviewStatement = 'CREATE MATERIALIZED VIEW public.active_properties_canonical_mat';
 const completePhotoProjection = 'l.photo_urls AS photo_urls';
+const canonicalViewProjection = 'FROM public.active_properties_canonical';
 const cappedPhotoProjection = /l\.photo_urls\s*\[\s*1\s*:\s*6\s*\]\s+AS\s+photo_urls/i;
 
 // Regression: ISSUE-BIENS-PHOTO-CAP-001 — the canonical matview truncated photo_urls to six entries
@@ -32,7 +33,10 @@ test('active canonical matview migrations never restore the six-photo cap', asyn
 
   expect(matviewRecreations.map(({ name }) => name)).toContain(canonicalPhotoMigration);
   for (const { name, sql } of matviewRecreations) {
-    expect(sql, `${name} must expose the complete photo array`).toContain(completePhotoProjection);
+    expect(
+      sql.includes(completePhotoProjection) || sql.includes(canonicalViewProjection),
+      `${name} must expose complete photos directly or derive them from the canonical view`,
+    ).toBe(true);
     expect(sql, `${name} must not restore the historical photo cap`).not.toMatch(cappedPhotoProjection);
   }
 });

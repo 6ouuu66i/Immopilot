@@ -10,5 +10,7 @@ export function useDashboardSnapshot(limit = 8) {
     queryKey: queryKeys.dashboardSnapshot(user?.id, limit),
     queryFn: () => getDashboardSnapshot(limit),
     enabled: Boolean(user),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 }

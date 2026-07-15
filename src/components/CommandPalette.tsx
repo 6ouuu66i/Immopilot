@@ -11,26 +11,17 @@ import {
   Settings,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import { formatEuro } from '../lib/formatCurrency';
 import { sentenceCaseIfShouty, titleCaseIfShouty } from '../lib/formatText';
+import {
+  searchActiveProperties,
+  type PropertySearchHit,
+} from '../lib/services/propertySearchService';
 
 interface CommandPaletteProps {
   open: boolean;
   onClose: () => void;
   onSearchBiens: (query: string) => void;
-}
-
-interface PropertyHit {
-  listing_id: string;
-  property_id: string | null;
-  title_fr: string | null;
-  locality: string | null;
-  postal_code: string | null;
-  price: number | null;
-  primary_photo_url: string | null;
-  seller_score: number | null;
-  seller_segment: 'particulier' | 'agence';
 }
 
 interface PaletteEntry {
@@ -60,26 +51,9 @@ function sanitizeQuery(raw: string): string {
   return raw.replace(/[%,()]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-async function searchProperties(query: string): Promise<PropertyHit[]> {
-  if (!supabase) return [];
-  const sanitized = sanitizeQuery(query);
-  if (sanitized.length < 2) return [];
-
-  const { data, error } = await supabase
-    .from('active_properties_canonical_mat')
-    .select('listing_id, property_id, title_fr, locality, postal_code, price, primary_photo_url, seller_score, seller_segment')
-    .or(`title_fr.ilike.%${sanitized}%,locality.ilike.%${sanitized}%,postal_code.ilike.%${sanitized}%`)
-    .order('last_seen_at', { ascending: false })
-    .limit(6)
-    .returns<PropertyHit[]>();
-
-  if (error) throw new Error(error.message);
-  return data ?? [];
-}
-
 export function CommandPalette({ open, onClose, onSearchBiens }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
-  const [hits, setHits] = useState<PropertyHit[]>([]);
+  const [hits, setHits] = useState<PropertySearchHit[]>([]);
   const [searching, setSearching] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -107,7 +81,7 @@ export function CommandPalette({ open, onClose, onSearchBiens }: CommandPaletteP
     setSearching(true);
     let cancelled = false;
     const timer = window.setTimeout(() => {
-      searchProperties(sanitized)
+      searchActiveProperties(sanitized, 6)
         .then((results) => {
           if (!cancelled) setHits(results);
         })

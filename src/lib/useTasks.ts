@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './auth';
+import { queryKeys } from './queryKeys';
 import type { Task, TaskPriority } from '../types';
 import { isSupabaseUuid } from './services/notesService';
 import {
   tasksService,
   type CreateTaskInput,
+  type DashboardTaskCounts,
   type TaskScope,
   type TaskWithRelations,
   type UpdateTaskInput,
@@ -28,6 +30,12 @@ export interface UseTasksResult {
   uncompleteTask: (taskId: string) => Promise<TaskWithRelations>;
   toggleTask: (taskId: string) => Promise<TaskWithRelations | null>;
   deleteTask: (taskId: string) => Promise<void>;
+}
+
+export interface UseDashboardTaskCountsResult {
+  counts: DashboardTaskCounts;
+  error: string | null;
+  isLoading: boolean;
 }
 
 export interface UseTasksForParams {
@@ -116,6 +124,33 @@ function patchTask(task: TaskWithRelations, patch: UpdateTaskInput): TaskWithRel
   };
 }
 
+async function invalidateTaskMetrics(
+  queryClient: ReturnType<typeof useQueryClient>,
+  userId: string,
+): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['tasks', userId] }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.dashboardRoot(userId) }),
+  ]);
+}
+
+export function useDashboardTaskCounts(): UseDashboardTaskCountsResult {
+  const { user } = useAuth();
+  const countsQuery = useQuery({
+    queryKey: ['tasks', user?.id ?? 'anonymous', 'dashboard-counts'],
+    queryFn: () => tasksService.getMyOpenTaskCounts(),
+    enabled: Boolean(user),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
+  return {
+    counts: countsQuery.data ?? { overdue: 0, today: 0 },
+    error: countsQuery.error instanceof Error ? countsQuery.error.message : null,
+    isLoading: countsQuery.isLoading,
+  };
+}
+
 export function taskToView(task: TaskWithRelations): Task {
   const due = task.due_date ? new Date(task.due_date) : null;
   const validDue = due && !Number.isNaN(due.getTime()) ? due : null;
@@ -197,7 +232,7 @@ export function useTasks(filters: UseTasksFilters = {}): UseTasksResult {
         queryKey,
         (current = []) => [created, ...current.filter((task) => task.id !== temp.id)],
       );
-      await queryClient.invalidateQueries({ queryKey: ['tasks', user.id] });
+      await invalidateTaskMetrics(queryClient, user.id);
       return created;
     } catch (createError) {
       queryClient.setQueryData<TaskWithRelations[]>(queryKey, previous);
@@ -221,7 +256,7 @@ export function useTasks(filters: UseTasksFilters = {}): UseTasksResult {
         queryKey,
         (current = []) => replaceTask(current, updated),
       );
-      if (user) await queryClient.invalidateQueries({ queryKey: ['tasks', user.id] });
+      if (user) await invalidateTaskMetrics(queryClient, user.id);
       return updated;
     } catch (updateError) {
       queryClient.setQueryData<TaskWithRelations[]>(queryKey, previous);
@@ -249,7 +284,7 @@ export function useTasks(filters: UseTasksFilters = {}): UseTasksResult {
     );
     try {
       await tasksService.deleteTask(taskId);
-      if (user) await queryClient.invalidateQueries({ queryKey: ['tasks', user.id] });
+      if (user) await invalidateTaskMetrics(queryClient, user.id);
     } catch (deleteError) {
       queryClient.setQueryData<TaskWithRelations[]>(queryKey, previous);
       const message = deleteError instanceof Error ? deleteError.message : 'Suppression de la tache impossible.';
@@ -263,6 +298,7 @@ export function useTasks(filters: UseTasksFilters = {}): UseTasksResult {
 
 export function useTasksFor(params: UseTasksForParams): UseTasksForResult {
   const { user, profile } = useAuth();
+  const queryClient = useQueryClient();
   const [openTasks, setOpenTasks] = useState<TaskWithRelations[]>([]);
   const [completedTasks, setCompletedTasks] = useState<TaskWithRelations[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -321,6 +357,7 @@ export function useTasksFor(params: UseTasksForParams): UseTasksForResult {
     try {
       const created = await tasksService.createTask(scopedInput);
       setAllTasks([created, ...previous]);
+      await invalidateTaskMetrics(queryClient, user.id);
       return created;
     } catch (createError) {
       setAllTasks(previous);
@@ -328,7 +365,7 @@ export function useTasksFor(params: UseTasksForParams): UseTasksForResult {
       setError(message);
       throw new Error(message);
     }
-  }, [profile?.agency_id, setAllTasks, tasks, user, validContext]);
+  }, [profile?.agency_id, queryClient, setAllTasks, tasks, user, validContext]);
 
   const updateTask = useCallback(async (taskId: string, patch: UpdateTaskInput) => {
     const previous = tasks;
@@ -338,6 +375,7 @@ export function useTasksFor(params: UseTasksForParams): UseTasksForResult {
     try {
       const updated = await tasksService.updateTask(taskId, patch);
       setAllTasks(replaceTask(previous, updated));
+      if (user) await invalidateTaskMetrics(queryClient, user.id);
       return updated;
     } catch (updateError) {
       setAllTasks(previous);
@@ -345,7 +383,7 @@ export function useTasksFor(params: UseTasksForParams): UseTasksForResult {
       setError(message);
       throw new Error(message);
     }
-  }, [setAllTasks, tasks]);
+  }, [queryClient, setAllTasks, tasks, user]);
 
   const completeTask = useCallback((taskId: string) => updateTask(taskId, { is_completed: true }), [updateTask]);
   const uncompleteTask = useCallback((taskId: string) => updateTask(taskId, { is_completed: false }), [updateTask]);
@@ -361,13 +399,14 @@ export function useTasksFor(params: UseTasksForParams): UseTasksForResult {
     setAllTasks(tasks.filter((task) => task.id !== taskId));
     try {
       await tasksService.deleteTask(taskId);
+      if (user) await invalidateTaskMetrics(queryClient, user.id);
     } catch (deleteError) {
       setAllTasks(previous);
       const message = deleteError instanceof Error ? deleteError.message : 'Suppression de la tache impossible.';
       setError(message);
       throw new Error(message);
     }
-  }, [setAllTasks, tasks]);
+  }, [queryClient, setAllTasks, tasks, user]);
 
   return {
     openTasks,

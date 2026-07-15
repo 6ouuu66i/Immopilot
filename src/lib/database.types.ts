@@ -1999,6 +1999,20 @@ export type Database = {
       }
       refresh_active_properties_canonical: { Args: never; Returns: undefined }
       refresh_market_reference: { Args: never; Returns: undefined }
+      search_active_properties: {
+        Args: { result_limit?: number; search_term: string }
+        Returns: {
+          listing_id: string
+          locality: string | null
+          postal_code: string | null
+          price: number | null
+          primary_photo_url: string | null
+          property_id: string | null
+          seller_score: number | null
+          seller_segment: string
+          title_fr: string | null
+        }[]
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       sync_agency_mandate_aging_signal: { Args: never; Returns: undefined }

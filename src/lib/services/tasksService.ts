@@ -29,6 +29,11 @@ export interface TasksByCompletion {
   completed: TaskWithRelations[];
 }
 
+export interface DashboardTaskCounts {
+  overdue: number;
+  today: number;
+}
+
 export interface ListMyTasksInput {
   scope?: TaskScope;
 }
@@ -231,6 +236,36 @@ async function getTasksByForeignKey(column: 'deal_id' | 'property_id' | 'contact
 }
 
 export const tasksService = {
+  async getMyOpenTaskCounts(): Promise<DashboardTaskCounts> {
+    const client = assertSupabase();
+    const profile = await getCurrentProfile();
+    const { start, end } = localDayBounds();
+
+    const todayQuery = client
+      .from('tasks')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', profile.id)
+      .eq('is_completed', false)
+      .gte('due_date', start)
+      .lt('due_date', end);
+    const overdueQuery = client
+      .from('tasks')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', profile.id)
+      .eq('is_completed', false)
+      .lt('due_date', start)
+      .not('due_date', 'is', null);
+
+    const [todayResult, overdueResult] = await Promise.all([todayQuery, overdueQuery]);
+    if (todayResult.error) throw new Error(todayResult.error.message);
+    if (overdueResult.error) throw new Error(overdueResult.error.message);
+
+    return {
+      today: todayResult.count ?? 0,
+      overdue: overdueResult.count ?? 0,
+    };
+  },
+
   async listMyTasks({ scope = 'all' }: ListMyTasksInput = {}): Promise<TaskWithRelations[]> {
     const client = assertSupabase();
     const profile = await getCurrentProfile();

@@ -4,7 +4,7 @@
 --   supabase test db
 
 begin;
-select plan(22);
+select plan(23);
 
 insert into public.agencies (id, name, slug)
 values ('f0060000-0000-0000-0000-000000000001', 'F006 Agency', 'f006-agency');
@@ -118,8 +118,13 @@ select ok(has_function_privilege('authenticated', 'public.accept_invitation(text
 select ok(not has_function_privilege('anon', 'public.accept_invitation(text)', 'EXECUTE'), 'F-002 anon accept remains denied');
 
 select ok(
-  (select not prosecdef from pg_proc where oid = 'public.get_dashboard_snapshot(integer)'::regprocedure),
-  'dashboard snapshot executes as invoker'
+  (select prosecdef from pg_proc where oid = 'public.get_dashboard_snapshot(integer)'::regprocedure),
+  'dashboard snapshot uses the reviewed guarded definer model'
+);
+select ok(
+  (select proconfig from pg_proc where oid = 'public.get_dashboard_snapshot(integer)'::regprocedure)
+    @> array['search_path=""'],
+  'dashboard snapshot uses an empty search_path'
 );
 select ok(not has_table_privilege('authenticated', 'public.active_properties_canonical_mat', 'SELECT'), 'authenticated cannot read canonical matview directly');
 select ok(not has_table_privilege('anon', 'public.active_properties_canonical_mat', 'SELECT'), 'anon cannot read canonical matview directly');

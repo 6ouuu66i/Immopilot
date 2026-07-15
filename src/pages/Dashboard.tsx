@@ -19,8 +19,12 @@ import {
   type DashboardSnapshot,
 } from '../lib/services/dashboardService';
 import { useDashboardSnapshot } from '../lib/useDashboardSnapshot';
-import { taskLinkLabel, taskToView, useTasks } from '../lib/useTasks';
+import { taskLinkLabel, taskToView, useDashboardTaskCounts, useTasks } from '../lib/useTasks';
 import type { TaskWithRelations } from '../lib/services/tasksService';
+import {
+  dashboardDueTaskTotal,
+  selectVisibleDashboardTasks,
+} from '../lib/dashboardTasks';
 
 type KpiTone = 'good' | 'risk' | 'watch' | 'neutral';
 
@@ -61,7 +65,12 @@ function formatDateTime(value: string | null): string {
   if (!value) return '-';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleString('fr-BE', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function buildKpis({
@@ -86,9 +95,9 @@ function buildKpis({
   return [
     {
       delta: `${surveillerCount} à surveiller`,
-      deltaLabel: `score moyen ${scoreAverage.toFixed(1)}`,
-      hint: 'score ≥ 70',
-      label: 'Opportunités chaudes',
+      deltaLabel: `Bande forte · score moyen ${scoreAverage.toFixed(1)}`,
+      hint: 'bande forte',
+      label: 'Opportunités fortes',
       tone: hotCount > 0 ? 'good' : 'neutral',
       value: String(hotCount),
     },
@@ -105,7 +114,7 @@ function buildKpis({
       hint: '24 h',
       label: 'Tâches dues',
       tone: overdueCount > 0 ? 'watch' : 'good',
-      value: String(todayTaskCount + overdueCount),
+      value: String(dashboardDueTaskTotal({ today: todayTaskCount, overdue: overdueCount })),
     },
     {
       delta: `${fsboCount} à contacter`,
@@ -121,7 +130,7 @@ function buildKpis({
 export function Dashboard() {
   const { profile } = useAuth();
   const todayTasksState = useTasks({ scope: 'today' });
-  const overdueTasksState = useTasks({ scope: 'overdue' });
+  const taskCountsState = useDashboardTaskCounts();
   const dashboardQuery = useDashboardSnapshot(8);
   const snapshot = dashboardQuery.data ?? null;
   const dashboardLoading = dashboardQuery.isLoading;
@@ -129,34 +138,29 @@ export function Dashboard() {
   const firstName = (profile?.full_name ?? profile?.email ?? 'Agent').split(' ')[0] || 'Agent';
 
   const visibleTodayTasks = useMemo(
-    () => todayTasksState.tasks
-      .filter((task) => !task.is_completed)
-      .slice()
-      .sort((a, b) => `${a.due_date ?? ''}`.localeCompare(`${b.due_date ?? ''}`))
-      .slice(0, 5),
+    () => selectVisibleDashboardTasks(todayTasksState.tasks),
     [todayTasksState.tasks],
-  );
-  const overdueOpenTasks = useMemo(
-    () => overdueTasksState.tasks.filter((task) => !task.is_completed),
-    [overdueTasksState.tasks],
   );
 
   const kpis = buildKpis({
     fsboCount: snapshot?.fsboCount ?? 0,
     hotCount: snapshot?.hotOpportunitiesCount ?? 0,
-    overdueCount: overdueOpenTasks.length,
+    overdueCount: taskCountsState.counts.overdue,
     priceDropCount: snapshot?.priceDropCount ?? 0,
     priceDropTotal: snapshot?.priceDropTotal ?? 0,
     scoreAverage: snapshot?.scoreAverage ?? 0,
     surveillerCount: snapshot?.scoreDistribution.surveiller ?? 0,
-    todayTaskCount: visibleTodayTasks.length,
+    todayTaskCount: taskCountsState.counts.today,
   });
 
   const metaDate = longDateFormatter.format(new Date());
-  const lastSync = formatDateTime(snapshot?.lastSyncAt ?? null);
+  const lastListingSeen = formatDateTime(snapshot?.lastListingSeenAt ?? null);
+  const lastScoresComputed = formatDateTime(snapshot?.lastScoresComputedAt ?? null);
+  const lastPipelineSuccess = formatDateTime(snapshot?.lastPipelineSuccessAt ?? null);
+  const canonicalRefreshed = formatDateTime(snapshot?.canonicalRefreshedAt ?? null);
   const visibleSignals = snapshot?.signals ?? [];
   const opportunities = snapshot?.opportunities ?? [];
-  const tasksError = todayTasksState.error ?? overdueTasksState.error;
+  const tasksError = todayTasksState.error ?? taskCountsState.error;
 
   return (
     <main className="lv-dashboard lv-page">
@@ -176,12 +180,12 @@ export function Dashboard() {
       <MorningJournal snapshot={snapshot} firstName={firstName} />
 
       <div className="lv-dashboard-meta" aria-label="Etat de la prospection">
-        <span className="lv-live-pill">Live</span>
+        <span className="lv-live-pill" title={`Canonique actualisé : ${canonicalRefreshed}`}>Actualisé quotidiennement</span>
         <span>{metaDate}</span>
         <span className="lv-meta-separator" aria-hidden="true" />
         <span><b>{formatNumber(snapshot?.activeSignalsCount ?? 0)}</b> signaux actifs</span>
         <span className="lv-meta-separator" aria-hidden="true" />
-        <span><b>{formatNumber(snapshot?.activePropertiesCount ?? 0)}</b> biens actifs</span>
+        <span><b>{formatNumber(snapshot?.activePropertiesCount ?? 0)}</b> biens canoniques actifs</span>
         <span className="lv-meta-separator" aria-hidden="true" />
         <span><b>{formatNumber(snapshot?.scoredPropertiesCount ?? 0)}</b> biens scorés</span>
         <span className="lv-meta-separator" aria-hidden="true" />
@@ -189,7 +193,11 @@ export function Dashboard() {
         <span className="lv-meta-separator" aria-hidden="true" />
         <span>Scores <b>{snapshot?.scoreDistribution.forte ?? 0}</b> fortes / <b>{snapshot?.scoreDistribution.surveiller ?? 0}</b> à surveiller / <b>{snapshot?.scoreDistribution.faible ?? 0}</b> faibles</span>
         <span className="lv-meta-separator" aria-hidden="true" />
-        <span>Dernière synchro <b>{lastSync}</b></span>
+        <span>Dernière annonce vue <b>{lastListingSeen}</b></span>
+        <span className="lv-meta-separator" aria-hidden="true" />
+        <span>Scores calculés <b>{lastScoresComputed}</b></span>
+        <span className="lv-meta-separator" aria-hidden="true" />
+        <span>Pipeline réussi <b>{lastPipelineSuccess}</b></span>
       </div>
 
       {dashboardError && (
@@ -230,7 +238,7 @@ export function Dashboard() {
         </section>
 
         <aside className="lv-dashboard-rail" aria-label="Taches et signaux">
-          <MiniPanel title="Tâches du jour" count={visibleTodayTasks.length} actionHref="#agenda">
+          <MiniPanel title="Tâches du jour" count={taskCountsState.counts.today} actionHref="#agenda">
             <div className="lv-task-list">
               {todayTasksState.isLoading ? (
                 <EmptyDashboardLine>Chargement des tâches...</EmptyDashboardLine>
