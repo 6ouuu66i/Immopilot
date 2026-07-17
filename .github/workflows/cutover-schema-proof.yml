@@ -97,11 +97,12 @@ jobs:
               raise SystemExit('missing local restore command')
           restore_prep = '''restore_input="$raw_dir/public-schema-restore.sql"
           managed_default_privileges="$raw_dir/supabase-admin-default-privileges.sql"
-          awk -v managed_defaults="$managed_default_privileges" '\
-          /^ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public / { print > managed_defaults; next }\
-          /^CREATE SCHEMA public;$/ { next }\
-          { print }\
-          ' "$artifact_dir/public-schema-current.sql" >"$restore_input"
+          sed -n '/^ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public /p' \
+            "$artifact_dir/public-schema-current.sql" >"$managed_default_privileges"
+          sed \
+            -e '/^CREATE SCHEMA public;$/d' \
+            -e '/^ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public /d' \
+            "$artifact_dir/public-schema-current.sql" >"$restore_input"
 
           '''
           run_proof = run_proof.replace(restore_command, restore_prep + restore_command, 1)
