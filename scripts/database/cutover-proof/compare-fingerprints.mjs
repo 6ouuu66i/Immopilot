@@ -8,8 +8,8 @@ const categories = ['relations','columns','types','sequences','views','constrain
 const differences = []
 
 for (const category of categories) {
-  const left = new Map((remote[category] ?? []).map((item) => [item.key, item]))
-  const right = new Map((local[category] ?? []).map((item) => [item.key, item]))
+  const left = new Map(normalize(category, remote[category] ?? []).map((item) => [item.key, item]))
+  const right = new Map(normalize(category, local[category] ?? []).map((item) => [item.key, item]))
   for (const key of [...new Set([...left.keys(), ...right.keys()])].sort()) {
     const before = left.get(key), after = right.get(key)
     if (JSON.stringify(before) === JSON.stringify(after)) continue
@@ -39,6 +39,30 @@ const result = {
 }
 await writeFile(output, `${JSON.stringify(result, null, 2)}\n`, { mode: 0o600 })
 if (blockingCount) process.exitCode = 5
+
+function normalize(category, items) {
+  const normalized = structuredClone(items)
+  for (const item of normalized) {
+    if (Array.isArray(item.acl)) item.acl.sort()
+    if (category === 'columns' && typeof item.default === 'string') {
+      item.default = item.default.replaceAll('extensions.', '')
+    }
+  }
+  if (category === 'columns') {
+    const byRelation = new Map()
+    for (const item of normalized) {
+      const relation = item.key.slice(0, item.key.lastIndexOf('.'))
+      const group = byRelation.get(relation) ?? []
+      group.push(item)
+      byRelation.set(relation, group)
+    }
+    for (const group of byRelation.values()) {
+      group.sort((a, b) => a.ordinal - b.ordinal)
+      group.forEach((item, index) => { item.ordinal = index + 1 })
+    }
+  }
+  return normalized
+}
 
 function ownerOnly(a, b) {
   if (!a || !b) return false
