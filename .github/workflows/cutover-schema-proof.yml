@@ -96,7 +96,12 @@ jobs:
           if restore_command not in run_proof:
               raise SystemExit('missing local restore command')
           restore_prep = '''restore_input="$raw_dir/public-schema-restore.sql"
-          sed '/^CREATE SCHEMA public;$/d' "$artifact_dir/public-schema-current.sql" >"$restore_input"
+          managed_default_privileges="$raw_dir/supabase-admin-default-privileges.sql"
+          awk -v managed_defaults="$managed_default_privileges" '\
+          /^ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public / { print > managed_defaults; next }\
+          /^CREATE SCHEMA public;$/ { next }\
+          { print }\
+          ' "$artifact_dir/public-schema-current.sql" >"$restore_input"
 
           '''
           run_proof = run_proof.replace(restore_command, restore_prep + restore_command, 1)
@@ -105,6 +110,23 @@ jobs:
           if restore_path not in run_proof:
               raise SystemExit('missing local restore input path')
           run_proof = run_proof.replace(restore_path, '-f "$restore_input"', 1)
+
+          restore_result = '''  >"$raw_dir/restore.raw" 2>&1
+          restore_status=$?
+          set -e'''
+          if restore_result not in run_proof:
+              raise SystemExit('missing local restore result block')
+          managed_default_restore = '''  >"$raw_dir/restore.raw" 2>&1
+          restore_status=$?
+          if (( restore_status == 0 )); then
+            PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U supabase_admin -d postgres \
+              -X -v ON_ERROR_STOP=1 --single-transaction \
+              -f "$managed_default_privileges" \
+              >>"$raw_dir/restore.raw" 2>&1
+            restore_status=$?
+          fi
+          set -e'''
+          run_proof = run_proof.replace(restore_result, managed_default_restore, 1)
 
           run_proof_path.write_text(run_proof)
           PY
