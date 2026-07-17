@@ -55,7 +55,7 @@ jobs:
               ("'storage_buckets_table', to_regclass('storage.buckets') IS NOT NULL,", "'storage_buckets_table', EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='storage' AND c.relname='buckets'),"),
               ("'storage_objects_table', to_regclass('storage.objects') IS NOT NULL,", "'storage_objects_table', EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='storage' AND c.relname='objects'),"),
               ("'cron_jobs_table', to_regclass('cron.job') IS NOT NULL,", "'cron_jobs_table', EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='cron' AND c.relname='job'),"),
-              ("'vault_secrets_table', to_regclass('vault.secrets') IS NOT NULL", "'vault_secrets_table', EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='vault' AND c.relname='secrets')"),
+              ("'vault_secrets_table', to_regclass('vault.secrets') IS NOT NULL", "'vault_secrets_table', EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='vault' AND c.relname='secrets')")
           ]
           for old, new in replacements:
               if old not in text:
@@ -70,6 +70,11 @@ jobs:
           if marker not in run_proof:
               raise SystemExit('missing local proof transition marker')
           run_proof = run_proof.replace(marker, 'unset DATABASE_URL PGOPTIONS\n\n' + marker, 1)
+
+          default_revoke = 'REVOKE ALL ON TABLES FROM anon, authenticated;'
+          if default_revoke not in run_proof:
+              raise SystemExit('missing local default privilege revoke')
+          run_proof = run_proof.replace(default_revoke, 'REVOKE ALL ON TABLES FROM anon, authenticated, service_role;', 1)
 
           default_privileges = '''psql "$local_db_url" -X -v ON_ERROR_STOP=1 <<'SQL' >/dev/null
           ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public'''
@@ -124,6 +129,32 @@ jobs:
               -X -v ON_ERROR_STOP=1 --single-transaction \
               -f "$managed_default_privileges" \
               >>"$raw_dir/restore.raw" 2>&1
+            restore_status=$?
+          fi
+          if (( restore_status == 0 )); then
+            psql "$local_db_url" -X -v ON_ERROR_STOP=1 <<'SQL' >>"$raw_dir/restore.raw" 2>&1
+          SELECT format('REFRESH MATERIALIZED VIEW %I.%I', n.nspname, c.relname)
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public' AND c.relkind = 'm' AND NOT c.relispopulated
+          ORDER BY c.relname
+          \\gexec
+
+          SELECT 'CREATE PUBLICATION supabase_realtime'
+          WHERE NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime')
+          \\gexec
+
+          SELECT 'ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications'
+          WHERE to_regclass('public.notifications') IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1
+              FROM pg_publication_tables
+              WHERE pubname = 'supabase_realtime'
+                AND schemaname = 'public'
+                AND tablename = 'notifications'
+            )
+          \\gexec
+          SQL
             restore_status=$?
           fi
           set -e'''
