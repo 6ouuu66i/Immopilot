@@ -39,8 +39,30 @@ jobs:
           node scripts/database/cutover-proof/contracts.mjs
           node --test scripts/database/cutover-proof/scan-dump.test.mjs
 
-      - name: Apply PostgreSQL fingerprint compatibility fix
-        run: sed -i 's/d\.defaclobjtype,/d.defaclobjtype::text,/' scripts/database/cutover-proof/fingerprint.sql
+      - name: Apply PostgreSQL fingerprint compatibility fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/database/cutover-proof/fingerprint.sql')
+          text = path.read_text()
+          replacements = [
+              ("d.defaclobjtype,", "d.defaclobjtype::text,"),
+              ("'auth_schema', to_regnamespace('auth') IS NOT NULL,", "'auth_schema', EXISTS (SELECT 1 FROM pg_namespace WHERE nspname='auth'),"),
+              ("'auth_users_table', to_regclass('auth.users') IS NOT NULL,", "'auth_users_table', EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='auth' AND c.relname='users'),"),
+              ("FROM pg_trigger t WHERE t.tgrelid=to_regclass('auth.users') AND NOT t.tgisinternal", "FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='auth' AND c.relname='users' AND NOT t.tgisinternal"),
+              ("'storage_schema', to_regnamespace('storage') IS NOT NULL,", "'storage_schema', EXISTS (SELECT 1 FROM pg_namespace WHERE nspname='storage'),"),
+              ("'storage_buckets_table', to_regclass('storage.buckets') IS NOT NULL,", "'storage_buckets_table', EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='storage' AND c.relname='buckets'),"),
+              ("'storage_objects_table', to_regclass('storage.objects') IS NOT NULL,", "'storage_objects_table', EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='storage' AND c.relname='objects'),"),
+              ("'cron_jobs_table', to_regclass('cron.job') IS NOT NULL,", "'cron_jobs_table', EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='cron' AND c.relname='job'),"),
+              ("'vault_secrets_table', to_regclass('vault.secrets') IS NOT NULL", "'vault_secrets_table', EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='vault' AND c.relname='secrets')"),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'missing expected fingerprint fragment: {old}')
+              text = text.replace(old, new)
+          path.write_text(text)
+          PY
 
       - name: Extract, restore, and compare schema
         id: proof
