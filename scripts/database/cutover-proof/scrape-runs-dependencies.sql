@@ -1,12 +1,16 @@
 WITH target AS (
   SELECT to_regclass('public.scrape_runs') AS oid
+), function_candidates AS MATERIALIZED (
+  SELECT p.oid, n.nspname, p.proname
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid=p.pronamespace
+  WHERE n.nspname='public' AND p.prokind IN ('f','p')
 ), fn AS (
-  SELECT n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' AS key,
-         pg_get_functiondef(p.oid) ~* '(^|[^[:alnum:]_])(public[.])?scrape_runs([^[:alnum:]_]|$)' AS references_target,
-         position('to_regclass' in pg_get_functiondef(p.oid)) > 0 AS guarded
-  FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
-  WHERE n.nspname='public'
-    AND pg_get_functiondef(p.oid) ~* '(^|[^[:alnum:]_])(public[.])?scrape_runs([^[:alnum:]_]|$)'
+  SELECT nspname || '.' || proname || '(' || pg_get_function_identity_arguments(oid) || ')' AS key,
+         pg_get_functiondef(oid) ~* '(^|[^[:alnum:]_])(public[.])?scrape_runs([^[:alnum:]_]|$)' AS references_target,
+         position('to_regclass' in pg_get_functiondef(oid)) > 0 AS guarded
+  FROM function_candidates
+  WHERE pg_get_functiondef(oid) ~* '(^|[^[:alnum:]_])(public[.])?scrape_runs([^[:alnum:]_]|$)'
 ), vw AS (
   SELECT schemaname || '.' || viewname AS key FROM pg_views
   WHERE schemaname='public'
