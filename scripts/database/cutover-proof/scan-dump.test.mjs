@@ -32,6 +32,18 @@ test('rejects credentials without copying them to the report', async () => {
   assert.notEqual(result.status, 0); assert.doesNotMatch(report, /very-secret/)
 })
 
+test('accepts standard pg_dump session timeout settings', async () => {
+  const { result } = await scan('SET idle_in_transaction_session_timeout = 0;\nSET idle_session_timeout = 0;')
+  assert.equal(result.status, 0)
+})
+
+test('rejects genuinely sensitive SET parameters', async () => {
+  const { result, report } = await scan("SET app.jwt_secret = 'hidden-value';")
+  assert.notEqual(result.status, 0)
+  assert.match(report, /sensitive-set-parameter/)
+  assert.doesNotMatch(report, /hidden-value/)
+})
+
 test('rejects privileged role switches in a dump', async () => {
   for (const statement of ['SET ROLE postgres;', 'SET SESSION AUTHORIZATION "postgres";']) {
     const { result, report } = await scan(statement)
