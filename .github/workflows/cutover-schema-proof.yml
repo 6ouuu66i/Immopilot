@@ -39,6 +39,9 @@ jobs:
           node scripts/database/cutover-proof/contracts.mjs
           node --test scripts/database/cutover-proof/scan-dump.test.mjs
 
+      - name: Apply PostgreSQL fingerprint compatibility fix
+        run: sed -i 's/d\.defaclobjtype,/d.defaclobjtype::text,/' scripts/database/cutover-proof/fingerprint.sql
+
       - name: Extract, restore, and compare schema
         id: proof
         env:
