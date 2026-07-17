@@ -39,7 +39,7 @@ jobs:
           node scripts/database/cutover-proof/contracts.mjs
           node --test scripts/database/cutover-proof/scan-dump.test.mjs
 
-      - name: Apply PostgreSQL fingerprint compatibility fixes
+      - name: Apply proof compatibility fixes
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -62,6 +62,14 @@ jobs:
                   raise SystemExit(f'missing expected fingerprint fragment: {old}')
               text = text.replace(old, new)
           path.write_text(text)
+
+          run_proof_path = Path('scripts/database/cutover-proof/run-proof.sh')
+          run_proof = run_proof_path.read_text()
+          marker = '# Runner-only worktree preparation: legacy migrations leave the active path only here.'
+          replacement = 'unset DATABASE_URL PGOPTIONS\n\n' + marker
+          if marker not in run_proof:
+              raise SystemExit('missing local proof transition marker')
+          run_proof_path.write_text(run_proof.replace(marker, replacement, 1))
           PY
 
       - name: Extract, restore, and compare schema
