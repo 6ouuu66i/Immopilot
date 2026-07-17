@@ -65,11 +65,28 @@ jobs:
 
           run_proof_path = Path('scripts/database/cutover-proof/run-proof.sh')
           run_proof = run_proof_path.read_text()
+
           marker = '# Runner-only worktree preparation: legacy migrations leave the active path only here.'
-          replacement = 'unset DATABASE_URL PGOPTIONS\n\n' + marker
           if marker not in run_proof:
               raise SystemExit('missing local proof transition marker')
-          run_proof_path.write_text(run_proof.replace(marker, replacement, 1))
+          run_proof = run_proof.replace(marker, 'unset DATABASE_URL PGOPTIONS\n\n' + marker, 1)
+
+          restore_command = '''set +e
+          psql "$local_db_url" -X -v ON_ERROR_STOP=1 --single-transaction'''
+          if restore_command not in run_proof:
+              raise SystemExit('missing local restore command')
+          restore_prep = '''restore_input="$raw_dir/public-schema-restore.sql"
+          sed '/^CREATE SCHEMA public;$/d' "$artifact_dir/public-schema-current.sql" >"$restore_input"
+
+          '''
+          run_proof = run_proof.replace(restore_command, restore_prep + restore_command, 1)
+
+          restore_path = '-f "$artifact_dir/public-schema-current.sql"'
+          if restore_path not in run_proof:
+              raise SystemExit('missing local restore input path')
+          run_proof = run_proof.replace(restore_path, '-f "$restore_input"', 1)
+
+          run_proof_path.write_text(run_proof)
           PY
 
       - name: Extract, restore, and compare schema
