@@ -71,6 +71,26 @@ jobs:
               raise SystemExit('missing local proof transition marker')
           run_proof = run_proof.replace(marker, 'unset DATABASE_URL PGOPTIONS\n\n' + marker, 1)
 
+          default_privileges = '''psql "$local_db_url" -X -v ON_ERROR_STOP=1 <<'SQL' >/dev/null
+          ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public'''
+          if default_privileges not in run_proof:
+              raise SystemExit('missing local default privileges block')
+          extension_prep = '''psql "$local_db_url" -X -v ON_ERROR_STOP=1 <<'SQL' >/dev/null
+          WITH required(extname) AS (VALUES ('pg_trgm'), ('unaccent'))
+          SELECT CASE
+            WHEN e.oid IS NULL THEN format('CREATE EXTENSION %I WITH SCHEMA public', r.extname)
+            ELSE format('ALTER EXTENSION %I SET SCHEMA public', r.extname)
+          END
+          FROM required r
+          LEFT JOIN pg_extension e ON e.extname = r.extname
+          LEFT JOIN pg_namespace n ON n.oid = e.extnamespace
+          WHERE e.oid IS NULL OR n.nspname <> 'public'
+          \\gexec
+          SQL
+
+          '''
+          run_proof = run_proof.replace(default_privileges, extension_prep + default_privileges, 1)
+
           restore_command = '''set +e
           psql "$local_db_url" -X -v ON_ERROR_STOP=1 --single-transaction'''
           if restore_command not in run_proof:
