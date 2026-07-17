@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import '@fontsource/inter/400.css';
@@ -37,7 +37,6 @@ type RouteKey =
   | 'admin'
   | 'settings'
   | 'notifications'
-  | 'score-test'
   | 'invite'
   | 'reset-password'
   | 'login';
@@ -55,11 +54,8 @@ const Commissions = lazy(() => import('./pages/Commissions').then((module) => ({
 const Settings = lazy(() => import('./pages/Settings').then((module) => ({ default: module.Settings })));
 const Admin = lazy(() => import('./pages/Admin').then((module) => ({ default: module.Admin })));
 const Login = lazy(() => import('./pages/Login').then((module) => ({ default: module.Login })));
-const ScoreTest = lazy(() => import('./pages/ScoreTest').then((module) => ({ default: module.ScoreTest })));
 const InviteAccept = lazy(() => import('./pages/InviteAccept').then((module) => ({ default: module.InviteAccept })));
 const PasswordReset = lazy(() => import('./pages/PasswordReset').then((module) => ({ default: module.PasswordReset })));
-
-const legacyRouteLoaders: Partial<Record<RouteKey, () => Promise<{ default: string }>>> = {};
 
 function getRouteFromHash(): RouteKey {
   if (window.location.pathname === '/login') return 'login';
@@ -68,56 +64,25 @@ function getRouteFromHash(): RouteKey {
   if (isInvitationResumeRequest()) return 'invite';
   const rawHash = window.location.hash.replace(/^#/, '') || DEFAULT_ROUTE;
   const routeName = rawHash.split('?')[0] as RouteKey;
-  if (routeName === 'login' || routeName === 'dashboard' || routeName === 'biens' || routeName === 'biens-agence' || routeName === 'pipeline' || routeName === 'agenda' || routeName === 'contacts' || routeName === 'transfers' || routeName === 'commissions' || routeName === 'notifications' || routeName === 'settings' || routeName === 'admin' || routeName === 'score-test' || routeName === 'invite' || routeName === 'reset-password' || legacyRouteLoaders[routeName]) return routeName;
-  return DEFAULT_ROUTE;
-}
-
-function executeScripts(container: HTMLElement) {
-  const scripts = container.querySelectorAll('script');
-  for (const oldScript of Array.from(scripts)) {
-    const newScript = document.createElement('script');
-    for (const attr of Array.from(oldScript.attributes)) {
-      newScript.setAttribute(attr.name, attr.value);
-    }
-    newScript.textContent = oldScript.textContent;
-    oldScript.parentNode?.replaceChild(newScript, oldScript);
+  if (
+    routeName === 'login' ||
+    routeName === 'dashboard' ||
+    routeName === 'biens' ||
+    routeName === 'biens-agence' ||
+    routeName === 'pipeline' ||
+    routeName === 'agenda' ||
+    routeName === 'contacts' ||
+    routeName === 'transfers' ||
+    routeName === 'commissions' ||
+    routeName === 'notifications' ||
+    routeName === 'settings' ||
+    routeName === 'admin' ||
+    routeName === 'invite' ||
+    routeName === 'reset-password'
+  ) {
+    return routeName;
   }
-}
-
-interface LegacyPageProps {
-  route: RouteKey;
-}
-
-function LegacyPage({ route }: LegacyPageProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [html, setHtml] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setHtml(null);
-
-    legacyRouteLoaders[route]?.().then((module) => {
-      if (!cancelled) setHtml(module.default);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [route]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    if (!html) {
-      container.innerHTML = '';
-      return;
-    }
-
-    container.innerHTML = html;
-    executeScripts(container);
-  }, [html, route]);
-
-  return <div ref={containerRef} className="ip-legacy-content" />;
+  return DEFAULT_ROUTE;
 }
 
 function PageLoading() {
@@ -155,8 +120,6 @@ function App() {
     };
   }, []);
 
-  const isLegacyRoute = Boolean(legacyRouteLoaders[route]);
-
   if (route === 'login') {
     return (
       <Suspense fallback={<PageLoading />}>
@@ -190,8 +153,6 @@ function App() {
         <Suspense fallback={<PageLoading />}>
           {route === 'dashboard' ? (
             <Dashboard />
-          ) : route === 'score-test' ? (
-            <ScoreTest />
           ) : route === 'biens' ? (
             <Biens key="particulier" segment="particulier" />
           ) : route === 'biens-agence' ? (
@@ -212,8 +173,6 @@ function App() {
             <Settings />
           ) : route === 'admin' ? (
             <Admin />
-          ) : isLegacyRoute ? (
-            <LegacyPage route={route} />
           ) : (
             <Dashboard />
           )}
