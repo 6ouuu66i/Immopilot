@@ -6,7 +6,7 @@ if (!root || !destination) throw new Error('usage: prepare-local-worktree.mjs <r
 const migrations = path.join(root, 'supabase', 'migrations')
 const files = (await import('node:fs/promises')).readdir(migrations).then((items) => items.filter((item) => item.endsWith('.sql')))
 const migrationFiles = await files
-if (migrationFiles.length !== 57) throw new Error(`Expected 57 historical migrations, found ${migrationFiles.length}.`)
+if (migrationFiles.length !== 58) throw new Error(`Expected 58 historical migrations, found ${migrationFiles.length}.`)
 await rm(destination, { recursive: true, force: true })
 await mkdir(path.dirname(destination), { recursive: true })
 await rename(migrations, destination)
@@ -27,4 +27,4 @@ for (const section of ['storage', 'realtime']) {
 }
 await writeFile(configPath, config)
 await stat(destination)
-console.log('Prepared an unlinked disposable Supabase worktree with 57 historical migrations isolated.')
+console.log('Prepared an unlinked disposable Supabase worktree with 58 historical migrations isolated.')
