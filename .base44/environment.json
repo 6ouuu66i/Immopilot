@@ -1,0 +1,27 @@
+{
+  "previewPort": 3000,
+  "healthPath": "/",
+  "startCommand": "docker compose -f docker-compose.base44.yml up -d",
+  "secrets": [
+    {
+      "name": "VITE_SUPABASE_URL",
+      "description": "Hosted Supabase project URL (e.g. https://<project-ref>.supabase.co). Find it in your Supabase dashboard under Project Settings > API. Required for login and all data.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "VITE_SUPABASE_PUBLISHABLE_KEY",
+      "description": "Supabase publishable/anon public key from Project Settings > API > Project API keys. Required for auth and data access (RLS-protected). VITE_SUPABASE_ANON_KEY is used as a fallback if this is unset.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "VITE_GOOGLE_MAPS_PLATFORM_KEY",
+      "description": "Optional Google Maps Platform API key for the property map view. Leave blank to disable maps.",
+      "requiredAtBoot": false
+    },
+    {
+      "name": "VITE_POSTHOG_KEY",
+      "description": "Optional PostHog project key for error monitoring/analytics. Leave blank to disable PostHog.",
+      "requiredAtBoot": false
+    }
+  ]
+}
