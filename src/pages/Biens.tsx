@@ -20,6 +20,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { PropertyCard } from '../components/biens/PropertyCard';
+import { OpportunityDossier } from '../components/biens/OpportunityDossier';
 import { SellerTensionScoreZone } from '../components/biens/SellerTensionScoreZone';
 import {
   MandateContextPanel,
@@ -506,6 +507,21 @@ export function Biens({ segment }: BiensProps) {
     ?? profile?.email
     ?? (authLoading ? 'Profil en cours de chargement' : 'Profil agent indisponible');
   const allTasks = useTasks({ scope: 'all' });
+
+  // Opportunity summary — derived from real data only, used as filter entry points.
+  const opportunitySummary = useMemo(() => {
+    const total = useServerPagination ? liveTotalCount : allProps.length;
+    const highOpportunity = allProps.filter((p) => {
+      const s = p.supabasePropertyId ? scoresByProperty[p.supabasePropertyId] : undefined;
+      return s?.band === 'forte' || (s?.score ?? p.score) >= 75;
+    }).length;
+    const newSignals = allProps.filter((p) => {
+      const sigs = p.supabasePropertyId ? signalsByProperty[p.supabasePropertyId] : undefined;
+      return (sigs?.some((s) => s.is_active) ?? false) || p.tag === 'Nouveau';
+    }).length;
+    const favorites = propertyMarks.favorites.length;
+    return { total, highOpportunity, newSignals, favorites };
+  }, [allProps, liveTotalCount, propertyMarks.favorites, scoresByProperty, signalsByProperty, useServerPagination]);
 
   useEffect(() => {
     if (!propertyMarks.error) return;
@@ -1096,6 +1112,35 @@ export function Biens({ segment }: BiensProps) {
 
       </div>
 
+      {/* ── Opportunity summary ───────────────────── */}
+      <div style={{ padding: selectedProperty ? '0 4px 0 32px' : '0 32px' }}>
+        <div className="ip-opportunity-strip" role="group" aria-label="Synthèse des opportunités">
+          <button type="button" className="ip-opportunity-strip__item" onClick={() => applySavedView('tous')}
+            title="Tous les biens">
+            <span className="ip-opportunity-strip__value">{opportunitySummary.total.toLocaleString('fr-BE')}</span>
+            <span className="ip-opportunity-strip__label">Biens actifs</span>
+          </button>
+          <button type="button" className={`ip-opportunity-strip__item ${scoreMin === '70' ? 'is-active' : ''}`}
+            onClick={() => applyTrackedFilter('score_min', '70', () => setScoreMin(scoreMin === '70' ? 'Tous' : '70'))}
+            title="Opportunités fortes (score ≥ 70)">
+            <span className="ip-opportunity-strip__value ip-opportunity-strip__value--accent">{opportunitySummary.highOpportunity}</span>
+            <span className="ip-opportunity-strip__label">Opportunité forte</span>
+          </button>
+          <button type="button" className={`ip-opportunity-strip__item ${filterSignal === 'Nouveau' ? 'is-active' : ''}`}
+            onClick={() => applyTrackedFilter('signal', 'Nouveau', () => setFilterSignal(filterSignal === 'Nouveau' ? 'Tous' : 'Nouveau'))}
+            title="Biens avec nouveaux signaux">
+            <span className="ip-opportunity-strip__value ip-opportunity-strip__value--ocre">{opportunitySummary.newSignals}</span>
+            <span className="ip-opportunity-strip__label">Nouveaux signaux</span>
+          </button>
+          <button type="button" className={`ip-opportunity-strip__item ${favoritesOnly ? 'is-active' : ''}`}
+            onClick={() => applySavedView('favoris')}
+            title="Vos favoris">
+            <span className="ip-opportunity-strip__value ip-opportunity-strip__value--brique">{opportunitySummary.favorites}</span>
+            <span className="ip-opportunity-strip__label">Favoris</span>
+          </button>
+        </div>
+      </div>
+
       {/* ── Toolbar ───────────────────────────────── */}
       <div className="lv-biens-views" style={{ padding: selectedProperty ? '12px 4px 0 32px' : '12px 32px 0' }}>
         <div
@@ -1489,6 +1534,10 @@ export function Biens({ segment }: BiensProps) {
                   primarySignal={cardSignals.primarySignal}
                   secondarySignalCount={cardSignals.secondarySignalCount}
                   signals={livePropertySignals}
+                  useOpportunityScore={segment === 'particulier'}
+                  score={propertyScore}
+                  fallbackScore={p.score}
+                  isInactive={p.reserved || p.status?.startsWith('archiv')}
                   scoreContent={(
                     <PropertyInsightDisplay
                       property={p}
@@ -3504,6 +3553,13 @@ function GrandeFicheBien({
 
             </aside>
           </div>
+
+          <OpportunityDossier
+            score={score}
+            fallbackScore={property.score}
+            signals={liveSignals}
+            inactive={property.reserved || property.status?.startsWith('archiv')}
+          />
 
           <div
             className="lv-biens-dossier-modules"

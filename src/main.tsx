@@ -14,6 +14,7 @@ import '@fontsource/archivo/600.css';
 import '@fontsource/archivo/700.css';
 import './index.css';
 import './styles/la-cote-overrides.css';
+import './styles/biens-intelligence.css';
 import { renderInteractiveMap, hasValidKey } from './lib/maps';
 import { AppShell } from './components/AppShell';
 import { PostHogErrorBoundary } from './components/PostHogErrorBoundary';

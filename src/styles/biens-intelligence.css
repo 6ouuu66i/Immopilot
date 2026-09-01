@@ -1,0 +1,562 @@
+/*
+ * ImmoPilot — Property Intelligence redesign layer.
+ * Frontend-only premium treatment for Biens + Fiche Bien.
+ * Layers on top of index.css / la-cote-overrides.css (imported last).
+ * Uses !important to override pervasive inline styles, matching the existing theme approach.
+ */
+
+/* ── Editorial type roles ──────────────────────────────────────────── */
+:root {
+  --ip-serif: 'Instrument Serif', 'Lora', Georgia, serif;
+  --ip-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --ip-mono: 'JetBrains Mono', 'IBM Plex Mono', Consolas, monospace;
+  --ip-ink: #1D1F1E;
+  --ip-stone: #6B6F6D;
+  --ip-faint: #9A9C99;
+  --ip-line: #E4E4DF;
+  --ip-line-strong: #D4D5CF;
+  --ip-forest: #1E5A3A;
+  --ip-forest-soft: #E8F0EB;
+  --ip-ocre: #8A6D1F;
+  --ip-ocre-soft: #F5EEDB;
+  --ip-brique: #B3402E;
+  --ip-brique-soft: #FAEDE9;
+  --ip-bone: #FBF9F6;
+  --ip-surface: #FFFFFF;
+  --ip-page: #F7F6F2;
+  --ip-hover: #F2F1EC;
+}
+
+/* ── Page surface ──────────────────────────────────────────────────── */
+.lv-biens.lv-page {
+  background: var(--ip-page) !important;
+}
+
+/* ── Header ────────────────────────────────────────────────────────── */
+.lv-biens h1.lv-title,
+.lv-biens .lv-title {
+  font-family: var(--ip-serif) !important;
+  font-weight: 400 !important;
+  font-size: 34px !important;
+  letter-spacing: -0.015em !important;
+  line-height: 1.05 !important;
+}
+
+.lv-biens-head p {
+  font-size: 13px !important;
+  color: var(--ip-stone) !important;
+  letter-spacing: 0.01em !important;
+}
+
+/* Sync pill — quieter, more refined */
+.lv-biens-sync {
+  border-radius: 999px !important;
+  letter-spacing: 0.01em !important;
+  border-color: var(--ip-line) !important;
+}
+
+/* ── Opportunity summary strip ─────────────────────────────────────── */
+.ip-opportunity-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-top: 1px solid var(--ip-line);
+  border-bottom: 1px solid var(--ip-line);
+  background: var(--ip-surface);
+  margin-top: 18px;
+}
+.ip-opportunity-strip__item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 12px 22px;
+  border-right: 1px solid var(--ip-line);
+  background: none;
+  border-top: none;
+  border-bottom: none;
+  border-left: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--ip-sans);
+  transition: background 140ms ease;
+  min-width: 0;
+}
+.ip-opportunity-strip__item:last-child { border-right: none; }
+.ip-opportunity-strip__item:hover { background: var(--ip-hover); }
+.ip-opportunity-strip__item.is-active {
+  background: var(--ip-forest-soft);
+}
+.lv-biens .ip-opportunity-strip__value,
+.ip-opportunity-strip__value {
+  font-family: var(--ip-mono) !important;
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ip-ink);
+  letter-spacing: -0.01em;
+}
+.ip-opportunity-strip__value--accent { color: var(--ip-forest); }
+.ip-opportunity-strip__value--ocre { color: var(--ip-ocre); }
+.ip-opportunity-strip__value--brique { color: var(--ip-brique); }
+.ip-opportunity-strip__label {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--ip-stone);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ── Saved views tabs ───────────────────────────────────────────────── */
+.lv-biens-tab {
+  border-radius: 999px !important;
+  letter-spacing: 0.01em !important;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease !important;
+}
+.lv-biens-tab.is-active {
+  background: var(--ip-ink) !important;
+  color: #fff !important;
+  border-color: var(--ip-ink) !important;
+}
+
+/* ── Toolbar / search ───────────────────────────────────────────────── */
+.lv-biens-search-input {
+  border-radius: 10px !important;
+  border-color: var(--ip-line) !important;
+  transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+.lv-biens-search-input:focus {
+  border-color: var(--ip-forest) !important;
+  box-shadow: 0 0 0 3px rgba(30, 90, 58, 0.10) !important;
+}
+.lv-biens-view-toggle,
+.lv-biens-sort .lv-secondary-button {
+  border-color: var(--ip-line) !important;
+  border-radius: 10px !important;
+}
+.lv-biens-view-toggle .lv-icon-toggle.is-active {
+  background: var(--ip-ink) !important;
+}
+
+/* ── Filter bar ─────────────────────────────────────────────────────── */
+.lv-biens-filter-bar {
+  background: var(--ip-surface) !important;
+  border-color: var(--ip-line) !important;
+  border-radius: 10px !important;
+}
+
+/* Filter chips — refined, square-ish, clear active state */
+.lv-biens-filter-bar .lv-filter-button,
+.lv-biens-filter-bar button[class*='lv-filter'] {
+  border-radius: 7px !important;
+  border-color: var(--ip-line) !important;
+  font-weight: 500 !important;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease !important;
+}
+.lv-biens-filter-bar .lv-filter-button:hover {
+  border-color: var(--ip-line-strong) !important;
+  background: var(--ip-hover) !important;
+}
+
+/* Active filter chip — removable style */
+.ip-active-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 10px;
+  border-radius: 999px;
+  background: var(--ip-ink);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: var(--ip-sans);
+  line-height: 1;
+  white-space: nowrap;
+  animation: ip-chip-in 160ms ease both;
+}
+.ip-active-chip__x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.ip-active-chip__x:hover { background: rgba(255, 255, 255, 0.30); }
+@keyframes ip-chip-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── Property grid ──────────────────────────────────────────────────── */
+.lv-biens-grid {
+  gap: 14px !important;
+}
+.lv-biens.has-panel .lv-biens-grid {
+  gap: 12px !important;
+}
+
+/* ── Property card — intelligence record ────────────────────────────── */
+.lv-biens .lv-biens-grid .lv-property-card,
+.lv-biens .lv-property-card {
+  border-radius: 10px !important;
+  border-color: var(--ip-line) !important;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease !important;
+  overflow: hidden;
+}
+.lv-biens .lv-biens-grid .lv-property-card:hover,
+.lv-biens .lv-property-card:hover {
+  border-color: var(--ip-line-strong) !important;
+  box-shadow: 0 6px 22px rgba(29, 31, 30, 0.07) !important;
+}
+.lv-biens .lv-biens-grid .lv-property-card.is-selected,
+.lv-biens .lv-property-card.is-selected {
+  border-color: var(--ip-forest) !important;
+  box-shadow: 0 0 0 1px var(--ip-forest), 0 6px 22px rgba(30, 90, 58, 0.10) !important;
+}
+
+/* Image — subtle zoom on hover */
+.lv-property-card-media {
+  height: 176px !important;
+}
+.lv-property-card-photo {
+  transition: transform 420ms cubic-bezier(0.2, 0.6, 0.2, 1), opacity 200ms ease !important;
+}
+.lv-property-card:hover .lv-property-card-photo {
+  transform: scale(1.045);
+}
+
+/* Photo nav buttons — refined */
+.lv-photo-nav {
+  border-radius: 8px !important;
+  transition: opacity 160ms ease, background 160ms ease !important;
+}
+
+/* ── Opportunity score (card) ───────────────────────────────────────── */
+.ip-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+.ip-score__head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.lv-biens .ip-score__num,
+.ip-score__num {
+  font-family: var(--ip-mono) !important;
+  font-variant-numeric: tabular-nums;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: var(--ip-ink);
+}
+.ip-score__num--forte { color: var(--ip-forest) !important; }
+.ip-score__num--surveiller { color: var(--ip-ocre) !important; }
+.ip-score__num--faible { color: var(--ip-faint) !important; }
+.ip-score__num--unknown { color: var(--ip-faint) !important; }
+.lv-biens .ip-score__max,
+.ip-score__max {
+  font-family: var(--ip-mono) !important;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ip-faint);
+  letter-spacing: 0;
+}
+.lv-biens .ip-score__band,
+.ip-score__band {
+  font-family: var(--ip-sans) !important;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.ip-score__band--forte { color: var(--ip-forest); }
+.ip-score__band--surveiller { color: var(--ip-ocre); }
+.ip-score__band--faible { color: var(--ip-faint); }
+.ip-score__band--unknown { color: var(--ip-faint); }
+/* Scale bar */
+.ip-score__scale {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ip-line);
+  overflow: hidden;
+}
+.ip-score__scale::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--ip-score-pct, 0%);
+  border-radius: 999px;
+  background: var(--ip-score-color, var(--ip-faint));
+  transition: width 360ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+/* Compact variant (card) */
+.ip-score--compact .ip-score__num { font-size: 26px; }
+.ip-score--compact .ip-score__scale { height: 3px; }
+
+/* Large variant (fiche) */
+.ip-score--lg {
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+.ip-score--lg .ip-score__num { font-size: 64px; }
+.ip-score--lg .ip-score__max { font-size: 18px; }
+.ip-score--lg .ip-score__band { font-size: 11px; letter-spacing: 0.12em; }
+.ip-score--lg .ip-score__scale { height: 6px; max-width: 220px; }
+
+/* ── Opportunity reason line ────────────────────────────────────────── */
+.ip-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ip-forest-soft);
+  border: 1px solid color-mix(in srgb, var(--ip-forest) 18%, transparent);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #2C4A38;
+}
+.ip-reason__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--ip-forest);
+}
+
+/* ── Card fact row ──────────────────────────────────────────────────── */
+.ip-facts {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--ip-stone);
+  font-family: var(--ip-sans);
+}
+.ip-facts__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.ip-facts__item svg { color: var(--ip-faint); }
+
+/* ── Table / list view — intelligence terminal ──────────────────────── */
+.lv-biens-table-shell {
+  border-radius: 10px !important;
+  border-color: var(--ip-line) !important;
+  overflow: hidden;
+}
+.lv-biens-table-head {
+  background: var(--ip-bone) !important;
+  border-color: var(--ip-line) !important;
+}
+.lv-biens-table-head,
+.lv-biens-table-head th,
+.lv-biens-table-head span {
+  font-family: var(--ip-sans) !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: var(--ip-stone) !important;
+}
+.lv-biens-table-row {
+  font-variant-numeric: tabular-nums;
+  transition: background 130ms ease !important;
+}
+.lv-biens-table-row:hover {
+  background: var(--ip-hover) !important;
+}
+.lv-biens-table-row.is-selected {
+  background: var(--ip-forest-soft) !important;
+  box-shadow: inset 3px 0 0 var(--ip-forest) !important;
+}
+
+/* ── Opportunity dossier (fiche signature section) ───────────────────── */
+.ip-opportunity-dossier {
+  border-top: 1px solid var(--ip-line);
+  margin-top: 8px;
+}
+.ip-dossier-title {
+  font-family: var(--ip-serif);
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  color: var(--ip-ink);
+  margin: 0;
+  line-height: 1.1;
+}
+
+/* ── Fiche dossier ──────────────────────────────────────────────────── */
+.lv-biens-dossier {
+  border-radius: 14px !important;
+  border-color: var(--ip-line) !important;
+}
+.lv-biens-dossier-title {
+  font-family: var(--ip-serif) !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.01em !important;
+}
+.lv-biens-dossier-gallery {
+  border-radius: 10px !important;
+  border-color: var(--ip-line) !important;
+}
+.lv-biens-dossier-gallery img {
+  transition: transform 600ms cubic-bezier(0.2, 0.6, 0.2, 1) !important;
+}
+.lv-biens-dossier-thumbs button {
+  border-radius: 7px !important;
+  overflow: hidden;
+  border-color: var(--ip-line) !important;
+  transition: border-color 150ms ease, box-shadow 150ms ease !important;
+}
+.lv-biens-dossier-thumbs button[style*='box-shadow: inset'] {
+  box-shadow: 0 0 0 2px var(--ip-forest) !important;
+}
+
+/* Dossier section labels — editorial */
+.lv-biens-dossier section h2,
+.lv-biens-dossier section h3,
+.lv-biens-dossier .lv-biens-dossier-signal-heading > strong {
+  font-family: var(--ip-serif) !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* Dossier score zone */
+.lv-biens-dossier-score-zone {
+  border-radius: 12px !important;
+  border-color: var(--ip-line) !important;
+}
+
+/* Dossier cards — quieter */
+.lv-biens-dossier section[style*='border-radius'] {
+  border-color: var(--ip-line) !important;
+  box-shadow: none !important;
+}
+
+/* ── Reason strength bars (fiche) ────────────────────────────────────── */
+.ip-strength {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 100px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--ip-line);
+  font-size: 12.5px;
+}
+.ip-strength:last-child { border-bottom: none; }
+.ip-strength__label {
+  color: var(--ip-ink);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lv-biens .ip-strength__value,
+.ip-strength__value {
+  font-family: var(--ip-mono) !important;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: right;
+}
+.ip-strength__value--strong { color: var(--ip-forest); }
+.ip-strength__value--medium { color: var(--ip-ocre); }
+.ip-strength__value--weak { color: var(--ip-faint); }
+.ip-strength__bar {
+  position: relative;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--ip-line);
+  overflow: hidden;
+}
+.ip-strength__bar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--ip-strength-pct, 0%);
+  border-radius: 999px;
+  background: var(--ip-strength-color, var(--ip-faint));
+  transition: width 400ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+.lv-biens .lv-primary-button {
+  border-radius: 10px !important;
+  background: var(--ip-ink) !important;
+  transition: background 150ms ease, transform 120ms ease !important;
+}
+.lv-biens .lv-primary-button:hover { background: #000 !important; }
+.lv-biens .lv-primary-button:active { transform: translateY(1px) !important; }
+.lv-biens .lv-secondary-button {
+  border-radius: 10px !important;
+  border-color: var(--ip-line) !important;
+  transition: background 150ms ease, border-color 150ms ease !important;
+}
+.lv-biens .lv-secondary-button:hover {
+  background: var(--ip-hover) !important;
+  border-color: var(--ip-line-strong) !important;
+}
+
+/* ── Micro-interactions ─────────────────────────────────────────────── */
+@keyframes ip-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.lv-property-card {
+  animation: ip-fade-up 280ms ease both;
+}
+.lv-biens-dossier {
+  animation: ip-fade-up 220ms ease both;
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .lv-property-card,
+  .lv-property-card-photo,
+  .lv-biens-dossier,
+  .lv-biens-tab,
+  .lv-biens-filter-bar button,
+  .ip-active-chip,
+  .ip-score__scale::after,
+  .ip-strength__bar::after {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .ip-opportunity-strip { overflow-x: auto; }
+  .ip-opportunity-strip__item { padding: 11px 16px; }
+  .lv-biens .lv-title { font-size: 28px !important; }
+}
+@media (max-width: 720px) {
+  .ip-opportunity-strip__item { padding: 10px 13px; }
+  .ip-opportunity-strip__value { font-size: 18px; }
+  .lv-biens .lv-title { font-size: 25px !important; }
+  .ip-strength { grid-template-columns: minmax(0, 1fr) 80px; }
+  .ip-strength__value { grid-column: 2; }
+  .ip-strength__bar { grid-column: 1 / -1; }
+}
