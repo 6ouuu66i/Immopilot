@@ -13180,3 +13180,371 @@ textarea:hover,
   background: var(--accent-warm) !important;
   border-color: var(--accent-warm-border) !important;
 }
+
+/* ============================================================
+   FINAL POLISH — subtle depth, micro-interactions, transitions
+   Progressive refinement only. Typography unchanged.
+   ============================================================ */
+
+:root {
+  --polish-shadow-card: 0 1px 2px rgba(16, 22, 19, 0.035), 0 1px 3px rgba(16, 22, 19, 0.025);
+  --polish-shadow-hover: 0 4px 14px -6px rgba(16, 22, 19, 0.12), 0 1px 2px rgba(16, 22, 19, 0.04);
+  --polish-shadow-press: 0 1px 1px rgba(16, 22, 19, 0.03);
+  --polish-transition: 160ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ── 1. Surface depth — hairline shadow for card separation ── */
+.lv-surface,
+.lv-kpi-card,
+.lv-priority-panel,
+.lv-mini-panel,
+.lv-property-card,
+.lv-biens-table-shell,
+.lv-biens-filter-bar,
+.ip-kpi-card,
+.ip-panel,
+.ip-wow-table-card,
+.ip-side-panel,
+.mc,
+.skeleton-card,
+.agenda-card,
+.settings-card,
+.admin-card,
+.transfers-card,
+.commissions-card,
+.notifications-card {
+  box-shadow: var(--polish-shadow-card) !important;
+}
+
+.lv-dashboard .lv-surface,
+.lv-dashboard .lv-kpi-card {
+  box-shadow: var(--polish-shadow-card) !important;
+}
+
+/* ── 2. Hover lift on interactive cards ── */
+.lv-kpi-card,
+.lv-property-card,
+.lv-priority-panel,
+.lv-mini-panel,
+.lv-biens-table-shell,
+.contacts-table-shell,
+.contact-panel,
+.agenda-card,
+.settings-card,
+.admin-card,
+.transfers-card,
+.commissions-card,
+.notifications-card {
+  transition:
+    box-shadow var(--polish-transition),
+    border-color var(--polish-transition) !important;
+}
+
+.lv-kpi-card:hover,
+.lv-property-card:hover,
+.lv-priority-panel:hover,
+.lv-mini-panel:hover,
+.lv-biens-table-shell:hover,
+.contacts-table-shell:hover,
+.contact-panel:hover,
+.agenda-card:hover,
+.settings-card:hover,
+.admin-card:hover,
+.transfers-card:hover,
+.commissions-card:hover,
+.notifications-card:hover {
+  border-color: var(--border-strong) !important;
+  box-shadow: var(--polish-shadow-hover) !important;
+}
+
+.lv-property-card.is-selected:hover,
+.lv-biens-table-row.is-selected:hover {
+  border-color: var(--color-brand) !important;
+  box-shadow: var(--polish-shadow-card) !important;
+}
+
+/* ── 3. Button micro-interactions — pressed/active feedback ── */
+.lv-secondary-button,
+.lv-filter-button,
+.lv-reset-button,
+.btn-secondary,
+.ip-icon-button,
+.lv-icon-button,
+.lv-primary-button,
+.lv-pipeline-actions .lv-primary-button,
+.lv-pipeline-actions .lv-secondary-button,
+.ip-login-submit {
+  transition:
+    background var(--lv-transition),
+    border-color var(--lv-transition),
+    color var(--lv-transition),
+    box-shadow var(--lv-transition),
+    transform 80ms ease !important;
+}
+
+.lv-secondary-button:active,
+.lv-filter-button:active,
+.lv-reset-button:active,
+.btn-secondary:active,
+.ip-icon-button:active,
+.lv-icon-button:active,
+.lv-pipeline-actions .lv-secondary-button:active {
+  transform: translateY(1px);
+  box-shadow: var(--polish-shadow-press) !important;
+}
+
+.lv-primary-button:active,
+.lv-pipeline-actions .lv-primary-button:active,
+.ip-login-submit:active {
+  transform: translateY(1px);
+}
+
+/* ── 4. Sidebar link transitions ── */
+.ip-sidebar.lv-lovable-sidebar .ip-sidebar-link {
+  transition:
+    background var(--lv-transition),
+    color var(--lv-transition) !important;
+}
+
+.ip-sidebar.lv-lovable-sidebar .ip-sidebar-link:active {
+  transform: translateY(1px);
+}
+
+/* ── 5. Table row transitions ── */
+.lv-biens-table-row,
+.ip-wow-table-row,
+.notifications-row,
+.lv-task-row,
+.lv-activity-row,
+.lv-priority-row,
+.lv-signal-row,
+.lv-panel-link {
+  transition: background var(--lv-transition) !important;
+}
+
+.lv-biens-table-row:active,
+.ip-wow-table-row:active,
+.lv-priority-row:active,
+.lv-task-row:active {
+  background: var(--surface-hover) !important;
+}
+
+/* ── 6. Tab transitions ── */
+.lv-tab,
+.lv-view-toggle-button {
+  transition:
+    background var(--lv-transition),
+    color var(--lv-transition),
+    border-color var(--lv-transition) !important;
+}
+
+.lv-tab:active,
+.lv-view-toggle-button:active {
+  transform: translateY(1px);
+}
+
+/* ── 7. Badge consistency — pills ── */
+.lv-badge {
+  border-radius: 999px !important;
+  transition:
+    background var(--lv-transition),
+    border-color var(--lv-transition) !important;
+}
+
+/* ── 8. Input/select transition refinement ── */
+input,
+select,
+textarea,
+.lv-input,
+.lv-select,
+.ip-command-search,
+.lv-biens-search-input,
+.notes-input {
+  transition:
+    border-color var(--lv-transition),
+    box-shadow var(--lv-transition) !important;
+}
+
+/* ── 9. Notification dropdown entrance ── */
+@keyframes ip-dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ip-notification-dropdown {
+  animation: ip-dropdown-in 140ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* ── 10. Confirm modal entrance ── */
+@keyframes ip-modal-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ip-modal-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[role="dialog"][aria-modal="true"] {
+  animation: ip-modal-overlay-in 120ms ease both;
+}
+
+[role="dialog"][aria-modal="true"] > section {
+  animation: ip-modal-panel-in 180ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* ── 11. Record side panel slide-in ── */
+@keyframes ip-panel-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.lv-record-panel.is-sticky {
+  animation: ip-panel-slide-in 200ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* ── 12. Scrollbar refinement ── */
+.ip-sidebar-nav,
+.lv-record-panel-body,
+.ip-notification-list,
+.contacts-table .table-scroll,
+.lv-biens-table-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.ip-sidebar-nav::-webkit-scrollbar,
+.lv-record-panel-body::-webkit-scrollbar,
+.ip-notification-list::-webkit-scrollbar,
+.contacts-table .table-scroll::-webkit-scrollbar,
+.lv-biens-table-body::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.ip-sidebar-nav::-webkit-scrollbar-thumb,
+.lv-record-panel-body::-webkit-scrollbar-thumb,
+.ip-notification-list::-webkit-scrollbar-thumb,
+.contacts-table .table-scroll::-webkit-scrollbar-thumb,
+.lv-biens-table-body::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+
+.ip-sidebar-nav::-webkit-scrollbar-track,
+.lv-record-panel-body::-webkit-scrollbar-track,
+.ip-notification-list::-webkit-scrollbar-track,
+.contacts-table .table-scroll::-webkit-scrollbar-track,
+.lv-biens-table-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── 13. Filter pill transitions ── */
+.lv-contacts .filter-pill,
+.lv-contacts .contacts-filter-square {
+  transition:
+    background var(--lv-transition),
+    border-color var(--lv-transition),
+    color var(--lv-transition) !important;
+}
+
+.lv-contacts .filter-pill:active,
+.lv-contacts .contacts-filter-square:active {
+  transform: translateY(1px);
+}
+
+/* ── 14. KPI card hover accent ── */
+.lv-kpi-card:hover .lv-kpi-value strong {
+  transition: color var(--polish-transition);
+}
+
+/* ── 15. Smooth scroll on main content ── */
+.ip-content,
+.ip-main {
+  scroll-behavior: smooth;
+}
+
+/* ── 16. Property card hover — subtle image zoom ── */
+.lv-property-card-photo {
+  transition: transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.lv-property-card:hover .lv-property-card-photo-button .lv-property-card-photo {
+  transform: scale(1.02);
+}
+
+/* ── 17. Agent card hover ── */
+.ip-agent-card {
+  transition:
+    border-color var(--lv-transition),
+    background var(--lv-transition) !important;
+}
+
+.ip-agent-card:hover {
+  border-color: var(--border-strong) !important;
+}
+
+/* ── 18. Brand mark subtle hover ── */
+.ip-brand-lockup {
+  transition: opacity var(--lv-transition);
+}
+
+.ip-brand-lockup:hover {
+  opacity: 0.85;
+}
+
+/* ── 19. Reduced motion — disable all polish animations ── */
+@media (prefers-reduced-motion: reduce) {
+  .lv-kpi-card,
+  .lv-property-card,
+  .lv-priority-panel,
+  .lv-mini-panel,
+  .lv-biens-table-shell,
+  .contacts-table-shell,
+  .contact-panel,
+  .agenda-card,
+  .settings-card,
+  .admin-card,
+  .transfers-card,
+  .commissions-card,
+  .notifications-card,
+  .lv-secondary-button,
+  .lv-filter-button,
+  .lv-primary-button,
+  .ip-icon-button,
+  .lv-tab,
+  .lv-view-toggle-button,
+  .lv-property-card-photo,
+  .ip-notification-dropdown,
+  [role="dialog"][aria-modal="true"],
+  [role="dialog"][aria-modal="true"] > section,
+  .lv-record-panel.is-sticky {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ── 20. Modal shadow — confirm dialog depth ── */
+[role="dialog"][aria-modal="true"] > section {
+  box-shadow: var(--shadow-lg) !important;
+}
