@@ -13675,3 +13675,389 @@ textarea,
     background: var(--surface-secondary) !important;
   }
 }
+
+/* ============================================================
+   SIGNATURE PREMIUM LAYER — "Editorial Belgian"
+   Instrument Serif headings · warm paper palette ·
+   crafted warm shadows · monospace data precision
+   The goal: a bespoke, handcrafted feel — not a template.
+   ============================================================ */
+
+:root {
+  /* Warm paper palette — away from cool gray to warm ivory */
+  --app-background: #FAF9F6;
+  --app-background-subtle: #FDFCFA;
+  --surface-primary: #FFFFFF;
+  --surface-secondary: #F5F3ED;
+  --surface-hover: #EFEBE3;
+  --surface-selected: #E8E3D8;
+  --border-subtle: #E7E3D9;
+  --border-strong: #D4CFC2;
+  --accent-warm: #F6F1E8;
+  --accent-warm-border: #EAE0D1;
+
+  /* Warm shadow system — warm rgba undertones, not generic blue-gray */
+  --shadow-card: 0 1px 2px rgba(42, 37, 32, 0.04), 0 3px 10px rgba(42, 37, 32, 0.03);
+  --shadow-hover: 0 2px 6px rgba(42, 37, 32, 0.06), 0 8px 24px rgba(42, 37, 32, 0.05);
+  --shadow-lg: 0 4px 12px rgba(42, 37, 32, 0.06), 0 16px 40px rgba(42, 37, 32, 0.08);
+  --shadow-overlay: 0 2px 6px rgba(42, 37, 32, 0.06), 0 12px 32px rgba(42, 37, 32, 0.07);
+  --shadow-xs: 0 1px 2px rgba(42, 37, 32, 0.04);
+  --shadow-sm: 0 1px 3px rgba(42, 37, 32, 0.05);
+  --shadow-md: 0 1px 2px rgba(42, 37, 32, 0.04), 0 4px 12px rgba(42, 37, 32, 0.04);
+
+  /* Typography — Instrument Serif for headings (already loaded, was unused) */
+  --lv-font-title: 'Instrument Serif', 'Georgia', serif;
+  --lv-font-mono: 'JetBrains Mono', 'IBM Plex Mono', Consolas, monospace;
+  --notion-serif: 'Instrument Serif', 'Georgia', serif;
+  --notion-mono: 'JetBrains Mono', 'IBM Plex Mono', Consolas, monospace;
+  --font-title: 'Instrument Serif', 'Georgia', serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', Consolas, monospace;
+
+  /* Font scale — slightly larger for confidence and readability */
+  --lv-fs-display: 34px;
+  --lv-fs-h1: 26px;
+  --lv-fs-h2: 20px;
+  --lv-fs-body: 14px;
+  --lv-fs-meta: 12.5px;
+
+  /* Radii — slightly softer */
+  --lv-radius-sm: 8px;
+  --lv-radius-md: 12px;
+  --lv-radius-lg: 16px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 18px;
+}
+
+/* ── Body — warm paper background ── */
+html, body {
+  background-color: #FAF9F6 !important;
+}
+
+/* ── Headings — Instrument Serif, weight 400 (the only weight available) ──
+   This is the signature change: a characterful editorial serif replaces
+   the generic sans-serif that every SaaS template uses. */
+.lv-title,
+.lv-dashboard .lv-title,
+.lv-dashboard-head h1,
+.lv-panel-head h2,
+.lv-mini-panel header h2,
+.ip-sidebar.lv-lovable-sidebar .ip-brand-name {
+  font-family: 'Instrument Serif', 'Georgia', serif !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* ── Dashboard title — large, confident serif ── */
+.lv-dashboard-head h1 {
+  font-size: 34px !important;
+  line-height: 1.1 !important;
+  letter-spacing: -0.015em !important;
+}
+
+/* ── Dashboard subtitle — italic serif for editorial flair ── */
+.lv-dashboard-head p {
+  font-family: 'Instrument Serif', 'Georgia', serif !important;
+  font-style: italic !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  line-height: 1.4 !important;
+  color: var(--text-secondary) !important;
+}
+
+/* ── Panel titles — serif at 18px ── */
+.lv-panel-head h2 {
+  font-size: 18px !important;
+  font-weight: 400 !important;
+  letter-spacing: -0.008em !important;
+}
+
+/* ── Mini-panel titles — serif at 15px ── */
+.lv-mini-panel header h2 {
+  font-size: 15px !important;
+  font-weight: 400 !important;
+}
+
+/* ── Sidebar brand name — serif ── */
+.ip-sidebar.lv-lovable-sidebar .ip-brand-name {
+  font-family: 'Instrument Serif', 'Georgia', serif !important;
+  font-weight: 400 !important;
+  font-size: 17px !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* ── KPI cards — accent line, warm shadow, mono numbers ── */
+.lv-dashboard .lv-kpi-card,
+.lv-kpi-card {
+  position: relative;
+  box-shadow: var(--shadow-card) !important;
+  border-radius: var(--lv-radius-md) !important;
+  border: 1px solid var(--border-subtle) !important;
+  padding: 18px 18px 14px !important;
+  overflow: hidden;
+}
+
+.lv-kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: currentColor;
+  opacity: 0.65;
+}
+
+.lv-kpi-card:hover {
+  box-shadow: var(--shadow-hover) !important;
+  border-color: var(--border-strong) !important;
+}
+
+/* KPI value — JetBrains Mono for precision */
+.lv-kpi-value strong {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace !important;
+  font-size: 30px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.lv-kpi-delta {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace !important;
+}
+
+.lv-kpi-label b {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace !important;
+}
+
+/* ── All cards — warm shadows for depth ── */
+.lv-dashboard .lv-surface,
+.lv-priority-panel,
+.lv-mini-panel,
+.lv-tip-card,
+.ip-kpi-card,
+.ip-panel,
+.ip-wow-table-card,
+.ip-side-panel,
+.skeleton-card,
+.agenda-card,
+.settings-card,
+.admin-card,
+.transfers-card,
+.commissions-card,
+.notifications-card {
+  box-shadow: var(--shadow-card) !important;
+  border-radius: var(--lv-radius-md) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+
+/* ── Sidebar — refined active state with left accent ── */
+.ip-sidebar.lv-lovable-sidebar .ip-sidebar-link.is-active {
+  background: color-mix(in srgb, var(--accent-forest) 5%, transparent) !important;
+  color: var(--accent-forest) !important;
+  box-shadow: inset 2px 0 0 var(--accent-forest) !important;
+  border-radius: 0 var(--lv-radius-sm) var(--lv-radius-sm) 0 !important;
+  font-weight: 600 !important;
+}
+
+.ip-sidebar.lv-lovable-sidebar .ip-sidebar-link:hover {
+  background: var(--surface-hover) !important;
+}
+
+/* ── Sidebar — warm tint, subtle separation ── */
+.ip-sidebar.lv-lovable-sidebar {
+  background: #FBFAF7 !important;
+  border-right: 1px solid var(--border-subtle) !important;
+}
+
+/* ── Sidebar brand mark — subtle depth ── */
+.ip-sidebar.lv-lovable-sidebar .ip-brand-mark {
+  box-shadow: 0 1px 3px rgba(30, 90, 58, 0.2) !important;
+}
+
+/* ── Topbar — warm tint, refined ── */
+.ip-topbar.lv-shell-topbar {
+  background: rgba(251, 250, 247, 0.92) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+/* ── Search bar — refined with warm background ── */
+.ip-command-search {
+  border-radius: var(--lv-radius-sm) !important;
+  background: var(--surface-secondary) !important;
+  border-color: var(--border-subtle) !important;
+  transition: background var(--lv-transition), box-shadow var(--lv-transition), border-color var(--lv-transition);
+}
+
+.ip-command-search:focus-within {
+  background: var(--surface-primary) !important;
+  border-color: color-mix(in srgb, var(--accent-forest) 30%, var(--border-subtle)) !important;
+  box-shadow: 0 0 0 3px rgba(30, 90, 58, 0.1) !important;
+}
+
+/* ── Primary button — forest green with subtle warm shadow ── */
+.lv-primary-button {
+  box-shadow: 0 1px 2px rgba(30, 90, 58, 0.15), 0 2px 6px rgba(30, 90, 58, 0.1) !important;
+  transition: box-shadow var(--lv-transition), background var(--lv-transition) !important;
+}
+
+.lv-primary-button:hover {
+  box-shadow: 0 2px 6px rgba(30, 90, 58, 0.2), 0 4px 12px rgba(30, 90, 58, 0.12) !important;
+}
+
+/* ── Secondary buttons — warm hover ── */
+.lv-secondary-button,
+.lv-panel-head a {
+  border-radius: var(--lv-radius-sm) !important;
+  border-color: var(--border-subtle) !important;
+  transition: background var(--lv-transition), border-color var(--lv-transition), box-shadow var(--lv-transition);
+}
+
+.lv-secondary-button:hover,
+.lv-panel-head a:hover {
+  background: var(--surface-hover) !important;
+  border-color: var(--border-strong) !important;
+  box-shadow: var(--shadow-xs) !important;
+}
+
+/* ── Inputs — refined focus ── */
+input:focus,
+select:focus,
+textarea:focus,
+.lv-input:focus,
+.lv-select:focus,
+.ip-command-search:focus-within {
+  border-color: color-mix(in srgb, var(--accent-forest) 40%, var(--border-subtle)) !important;
+  box-shadow: 0 0 0 3px rgba(30, 90, 58, 0.1) !important;
+}
+
+/* ── Live pill — mono, refined ── */
+.lv-live-pill {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace !important;
+}
+
+/* ── Dashboard meta — mono data ── */
+.lv-dashboard-meta b {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace !important;
+}
+
+/* ── Mini-panel count badge — mono ── */
+.lv-mini-panel header span {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace !important;
+}
+
+/* ── Signal row data — mono ── */
+.lv-signal-row b {
+  font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace !important;
+}
+
+/* ── Nav group labels — refined ── */
+.ip-nav-group-label,
+.ip-sidebar.lv-lovable-sidebar .ip-nav-group-label {
+  font-size: 10px !important;
+  letter-spacing: 0.08em !important;
+  color: var(--text-muted) !important;
+}
+
+/* ── Tip card — warm accent, refined ── */
+.lv-tip-card {
+  box-shadow: var(--shadow-card) !important;
+  border-radius: var(--lv-radius-md) !important;
+}
+
+/* ── Table headers — refined ── */
+.lv-biens-table-head,
+.ip-wow-table-head,
+.lv-toolbar {
+  border-radius: var(--lv-radius-md) var(--lv-radius-md) 0 0 !important;
+}
+
+/* ── Modals and dropdowns — warmer shadow ── */
+.lv-record-panel,
+.fiche-panel,
+.lv-biens-dossier,
+.deal-transfer-modal,
+.ip-notification-dropdown,
+.ip-login-panel,
+.confirm-modal {
+  box-shadow: var(--shadow-overlay) !important;
+  border-radius: var(--lv-radius-lg) !important;
+}
+
+/* ── Login panel — premium treatment ── */
+.ip-login-panel {
+  box-shadow: var(--shadow-lg) !important;
+  border-radius: var(--lv-radius-lg) !important;
+}
+
+/* ── Focus ring — warm green ── */
+.lv-shadow-focus,
+*:focus-visible {
+  outline-color: var(--accent-forest) !important;
+}
+
+/* ── Scrollbar — refined, warm ── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 2px solid var(--app-background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ── Selection — warm green tint ── */
+::selection {
+  background: rgba(30, 90, 58, 0.12);
+  color: var(--text-primary);
+}
+
+/* ── Dashboard head — more generous spacing ── */
+.lv-dashboard-head {
+  gap: 24px !important;
+  margin-bottom: 4px !important;
+}
+
+.lv-dashboard-kpis {
+  gap: 14px !important;
+}
+
+.lv-dashboard-split {
+  gap: 20px !important;
+}
+
+.lv-dashboard-rail {
+  gap: 16px !important;
+}
+
+/* ── Panel head — more breathing room ── */
+.lv-panel-head {
+  min-height: 64px !important;
+  padding: 16px 18px !important;
+}
+
+/* ── KPI label — slightly larger ── */
+.lv-kpi-label {
+  font-size: 11.5px !important;
+}
+
+.lv-kpi-card small {
+  font-size: 12.5px !important;
+}
+
+/* ── Body text base — 14px ── */
+.lv-page {
+  font-size: 14px !important;
+}
