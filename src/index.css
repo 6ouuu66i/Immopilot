@@ -13548,3 +13548,130 @@ textarea,
 [role="dialog"][aria-modal="true"] > section {
   box-shadow: var(--shadow-lg) !important;
 }
+
+/* ============================================================
+   REFINEMENT — skeletons, empty states, sparklines (desktop)
+   ============================================================ */
+
+/* ── Skeleton shimmer — smooth gradient sweep replaces opacity pulse ── */
+@keyframes ip-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-box,
+.skeleton-avatar,
+.skeleton-text-line,
+.skeleton-badge,
+.skeleton-table-row,
+.skeleton-text-multi > div {
+  background: linear-gradient(
+    90deg,
+    var(--surface-secondary) 0%,
+    var(--surface-hover) 20%,
+    var(--surface-secondary) 40%,
+    var(--surface-secondary) 100%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: ip-skeleton-shimmer 1.6s ease-in-out infinite !important;
+  border-radius: 6px !important;
+}
+
+/* Stagger multi-line text shimmer so lines don't all flash at once. */
+.skeleton-text-multi > div:nth-child(1) { animation-delay: 0s !important; }
+.skeleton-text-multi > div:nth-child(2) { animation-delay: 0.12s !important; }
+.skeleton-text-multi > div:nth-child(3) { animation-delay: 0.24s !important; }
+.skeleton-text-multi > div:nth-child(4) { animation-delay: 0.36s !important; }
+.skeleton-text-multi > div:nth-child(5) { animation-delay: 0.48s !important; }
+
+/* Skeleton table rows — stagger columns. */
+.skeleton-table-row > .skeleton-box:nth-child(1) { animation-delay: 0s !important; }
+.skeleton-table-row > .skeleton-box:nth-child(2) { animation-delay: 0.08s !important; }
+.skeleton-table-row > .skeleton-box:nth-child(3) { animation-delay: 0.16s !important; }
+.skeleton-table-row > .skeleton-box:nth-child(4) { animation-delay: 0.24s !important; }
+.skeleton-table-row > .skeleton-box:nth-child(5) { animation-delay: 0.32s !important; }
+.skeleton-table-row > .skeleton-box:nth-child(6) { animation-delay: 0.40s !important; }
+
+/* Skeleton card — gentle inner shimmer, not the box itself. */
+.skeleton-card {
+  border-radius: 12px !important;
+}
+
+/* ── Empty states — more generous, premium treatment ── */
+.lv-empty-state {
+  min-height: 168px !important;
+  gap: 14px !important;
+  padding: 28px 24px !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--lv-radius-md) !important;
+  background: var(--surface-secondary) !important;
+}
+
+.lv-empty-state.is-compact {
+  min-height: 88px !important;
+  gap: 10px !important;
+  padding: 16px !important;
+}
+
+.lv-empty-state-icon {
+  width: 42px !important;
+  height: 42px !important;
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--surface-primary) !important;
+  color: var(--text-tertiary) !important;
+  transition: border-color var(--lv-transition), color var(--lv-transition);
+}
+
+.lv-empty-state:hover .lv-empty-state-icon {
+  border-color: var(--border-strong) !important;
+  color: var(--text-secondary) !important;
+}
+
+.lv-empty-state.is-compact .lv-empty-state-icon {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.lv-empty-state-title {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.005em !important;
+}
+
+.lv-empty-state.is-compact .lv-empty-state-title {
+  font-size: 12.5px !important;
+}
+
+.lv-empty-state-description {
+  max-width: 360px !important;
+  margin-top: 2px !important;
+  font-size: 12.5px !important;
+  line-height: 1.5 !important;
+  color: var(--text-tertiary) !important;
+}
+
+.lv-empty-state.is-compact .lv-empty-state-description {
+  font-size: 11.5px !important;
+}
+
+/* ── KPI sparklines — better visibility ── */
+.lv-kpi-spark .area {
+  opacity: 0.12 !important;
+}
+
+.lv-kpi-spark .line {
+  stroke-width: 1.75 !important;
+}
+
+/* ── Reduced motion — disable shimmer ── */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-box,
+  .skeleton-avatar,
+  .skeleton-text-line,
+  .skeleton-badge,
+  .skeleton-table-row,
+  .skeleton-text-multi > div {
+    animation: none !important;
+    background: var(--surface-secondary) !important;
+  }
+}
